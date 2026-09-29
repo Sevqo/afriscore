@@ -1,0 +1,125 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AfriScore API",
+    "version": "0.2.0",
+    "description": "Consent-gated identity, financial data, operations and intelligence infrastructure for African businesses."
+  },
+  "servers": [{ "url": "http://localhost:4000/v1", "description": "Local development" }],
+  "tags": [
+    { "name": "Platform" },
+    { "name": "Businesses" },
+    { "name": "Persons" },
+    { "name": "Consent" },
+    { "name": "Data" },
+    { "name": "Operations" },
+    { "name": "Intelligence" },
+    { "name": "Webhooks" },
+    { "name": "Sandbox" }
+  ],
+  "paths": {
+    "/health": {
+      "get": { "tags": ["Platform"], "summary": "Check service health", "responses": { "200": { "description": "Healthy" } } }
+    },
+    "/clients": {
+      "post": { "tags": ["Platform"], "summary": "Create an API client", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Client and one-time API key created" }, "400": { "$ref": "#/components/responses/BadRequest" } } },
+      "get": { "tags": ["Platform"], "summary": "List API clients without key material", "responses": { "200": { "description": "Client list" } } }
+    },
+    "/businesses": {
+      "post": { "tags": ["Businesses"], "summary": "Register a business", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Business registered" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+    },
+    "/businesses/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Businesses"], "summary": "Get a business", "responses": { "200": { "description": "Business" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/businesses/{id}/verify": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "tags": ["Businesses"], "summary": "Run business verification", "responses": { "200": { "description": "Verification result" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/businesses/{id}/trust-record": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Businesses"], "summary": "Get a consent-gated trust record", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Trust record" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+    },
+    "/businesses/{id}/accounts": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Data"], "summary": "List connected accounts", "responses": { "200": { "description": "Accounts" } } }
+    },
+    "/businesses/{id}/accounts/connect": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "tags": ["Data"], "summary": "Connect a provider account", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Account connected" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+    },
+    "/businesses/{id}/accounts/{accountId}/sync": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }, { "$ref": "#/components/parameters/AccountId" }],
+      "post": { "tags": ["Data"], "summary": "Ingest and normalize provider transactions", "responses": { "200": { "description": "Sync result" }, "409": { "description": "Account disconnected" } } }
+    },
+    "/businesses/{id}/transactions": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Data"], "summary": "List normalized transactions", "responses": { "200": { "description": "Transactions" } } }
+    },
+    "/businesses/{id}/financial-profile": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Intelligence"], "summary": "Get explainable financial metrics", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Financial profile" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+    },
+    "/businesses/{id}/invoices": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "tags": ["Operations"], "summary": "Create an invoice", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Invoice created" } } },
+      "get": { "tags": ["Operations"], "summary": "List invoices", "responses": { "200": { "description": "Invoices" } } }
+    },
+    "/businesses/{id}/reconcile": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "tags": ["Operations"], "summary": "Match payments to invoices", "responses": { "200": { "description": "Reconciliation result" } } }
+    },
+    "/businesses/{id}/insights": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Intelligence"], "summary": "Get business intelligence", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Business insights" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+    },
+    "/businesses/{id}/ask": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "tags": ["Intelligence"], "summary": "Ask a grounded business question", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "200": { "description": "Grounded answer" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+    },
+    "/persons": {
+      "post": { "tags": ["Persons"], "summary": "Register a person without storing raw identifiers", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Person registered" } } }
+    },
+    "/persons/{id}/trust-record": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "tags": ["Persons"], "summary": "Get a consent-gated person trust record", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Trust record" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+    },
+    "/consents": {
+      "post": { "tags": ["Consent"], "summary": "Grant purpose-specific access", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Consent granted" } } },
+      "get": { "tags": ["Consent"], "summary": "List a subject's consent grants", "responses": { "200": { "description": "Consent grants" } } }
+    },
+    "/consents/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "delete": { "tags": ["Consent"], "summary": "Revoke consent immediately", "responses": { "200": { "description": "Consent revoked" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/webhooks": {
+      "post": { "tags": ["Webhooks"], "summary": "Create a signed webhook subscription", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Subscription and one-time signing secret" } } },
+      "get": { "tags": ["Webhooks"], "summary": "List caller webhook subscriptions", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Subscriptions" } } }
+    },
+    "/sandbox/businesses": {
+      "post": { "tags": ["Sandbox"], "summary": "Create an isolated synthetic business", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Sandbox business" } } },
+      "get": { "tags": ["Sandbox"], "summary": "List sandbox businesses", "responses": { "200": { "description": "Sandbox businesses" } } }
+    },
+    "/sandbox/webhook-test": {
+      "post": { "tags": ["Sandbox"], "summary": "Send a signed test webhook", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "200": { "description": "Delivery result" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKey": { "type": "apiKey", "in": "header", "name": "x-api-key" }
+    },
+    "parameters": {
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "AccountId": { "name": "accountId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+    },
+    "requestBodies": {
+      "JsonBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Invalid input" },
+      "Unauthorized": { "description": "Missing or invalid API key" },
+      "ConsentRequired": { "description": "An active consent grant with the required scope is missing" },
+      "NotFound": { "description": "Resource not found" }
+    }
+  }
+}

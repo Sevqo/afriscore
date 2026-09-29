@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbAll, dbRun } from "../db";
 
 interface WebhookSubscription {
@@ -24,7 +24,7 @@ function matchesPattern(eventType: string, pattern: string): boolean {
  *  forged or replayed with tampered contents. */
 export async function subscribe(input: { client_name: string; event_pattern: string; target_url: string }): Promise<WebhookSubscription> {
   const sub: WebhookSubscription = {
-    id: uuid(),
+    id: randomUUID(),
     client_name: input.client_name,
     event_pattern: input.event_pattern,
     target_url: input.target_url,
@@ -59,7 +59,7 @@ function sign(secret: string, body: string): string {
  */
 export async function testWebhookDelivery(targetUrl: string): Promise<{ delivered: boolean; status_code?: number; error?: string; signature: string }> {
   const secret = `whsec_test_${crypto.randomBytes(12).toString("hex")}`;
-  const body = JSON.stringify({ event: "webhook.test", data: { message: "This is a test delivery from AfriCore's sandbox." }, id: uuid() });
+  const body = JSON.stringify({ event: "webhook.test", data: { message: "This is a test delivery from AfriScore's sandbox." }, id: randomUUID() });
   const signature = sign(secret, body);
 
   try {
@@ -81,7 +81,7 @@ export async function testWebhookDelivery(targetUrl: string): Promise<{ delivere
  * break the operation that triggered the event.
  */
 export async function emitEvent(eventType: string, payload: object): Promise<void> {
-  const id = uuid();
+  const id = randomUUID();
   const createdAt = new Date().toISOString();
   const payloadStr = JSON.stringify(payload);
 

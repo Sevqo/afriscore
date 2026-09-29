@@ -1,4 +1,4 @@
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbAll, dbRun, isPostgres } from "../db";
 import { getAccount } from "./accountService";
 import { fetchMpesaTransactions, fetchBankTransactions, fetchSandboxTransactions, SandboxScenario } from "./connectorService";
@@ -50,7 +50,7 @@ export async function syncAccountTransactions(accountId: string): Promise<{ sync
 
   for (const canonical of raw) {
     const row = {
-      id: uuid(),
+    id: randomUUID(),
       account_id: accountId,
       business_id: account.business_id,
       created_at: new Date().toISOString(),

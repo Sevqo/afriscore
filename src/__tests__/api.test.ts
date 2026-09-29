@@ -31,7 +31,7 @@ async function api(method: string, urlPath: string, opts: { body?: unknown; apiK
   } catch {
     /* some responses may be empty */
   }
-  return { status: res.status, body: json };
+  return { status: res.status, body: json, headers: res.headers };
 }
 
 describe("API routes", () => {
@@ -61,6 +61,11 @@ describe("API routes", () => {
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.body.status, "ok");
     assert.strictEqual(res.body.db_engine, isPg ? "postgres" : "sqlite");
+    assert.strictEqual(res.body.service, "afriscore");
+    assert.ok(res.headers.get("x-request-id"));
+    assert.strictEqual(res.headers.get("x-content-type-options"), "nosniff");
+    assert.strictEqual(res.headers.get("x-powered-by"), null);
+    assert.strictEqual(res.headers.get("ratelimit-limit"), "120");
   });
 
   test("unknown route returns a structured 404", async () => {
@@ -196,6 +201,44 @@ describe("API routes", () => {
       const res = await api("GET", `/v1/businesses/${biz.body.id}/${suffix}`, { apiKey: client.body.api_key });
       assert.strictEqual(res.status, 403, `${suffix} must require consent`);
     }
+  });
+
+  test("consent scopes do not leak access across capabilities", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "least-privilege-client" } });
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Least Privilege Ltd" } });
+
+    await api("POST", "/v1/consents", {
+      body: {
+        subject_type: "business",
+        subject_id: biz.body.id,
+        grantee: "least-privilege-client",
+        purpose: "verification",
+        scope: ["trust_score"],
+      },
+    });
+
+    const trust = await api("GET", `/v1/businesses/${biz.body.id}/trust-record`, { apiKey: client.body.api_key });
+    const profile = await api("GET", `/v1/businesses/${biz.body.id}/financial-profile`, { apiKey: client.body.api_key });
+
+    assert.strictEqual(trust.status, 200);
+    assert.strictEqual(profile.status, 403);
+    assert.strictEqual(profile.body.required_scope, "financial_profile");
+  });
+
+  test("unknown consent scopes are rejected", async () => {
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Scope Validation Ltd" } });
+    const result = await api("POST", "/v1/consents", {
+      body: {
+        subject_type: "business",
+        subject_id: biz.body.id,
+        grantee: "scope-client",
+        purpose: "test",
+        scope: ["everything_please"],
+      },
+    });
+
+    assert.strictEqual(result.status, 400);
+    assert.strictEqual(result.body.error, "invalid_input");
   });
 
   test("ask endpoint enforces consent, then answers from real data", async () => {

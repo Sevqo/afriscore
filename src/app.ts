@@ -8,6 +8,7 @@ import businessDataRoutes from "./routes/businessData";
 import webhookRoutes from "./routes/webhooks";
 import sandboxRoutes from "./routes/sandbox";
 import { rateLimit } from "./middleware/rateLimit";
+import { requestContext, RequestWithContext } from "./middleware/requestContext";
 
 /**
  * Builds the Express app without binding a port, so tests can drive the
@@ -17,19 +18,29 @@ import { rateLimit } from "./middleware/rateLimit";
  */
 export function createApp() {
   const app = express();
-  app.use(express.json());
+  app.disable("x-powered-by");
+  app.use(requestContext);
+  app.use(express.json({ limit: "1mb" }));
   app.use(rateLimit);
 
   app.use((req, res, next) => {
     const start = Date.now();
     res.on("finish", () => {
-      console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+      console.log(JSON.stringify({
+        level: "info",
+        event: "http_request",
+        request_id: (req as RequestWithContext).requestId,
+        method: req.method,
+        path: req.originalUrl,
+        status: res.statusCode,
+        duration_ms: Date.now() - start,
+      }));
     });
     next();
   });
 
   app.get("/v1/health", (_req, res) =>
-    res.json({ status: "ok", service: "africore", phase: 9, db_engine: isPostgres ? "postgres" : "sqlite" })
+    res.json({ status: "ok", service: "afriscore", phase: 10, db_engine: isPostgres ? "postgres" : "sqlite" })
   );
 
   app.use("/v1/businesses", businessRoutes);
@@ -41,6 +52,11 @@ export function createApp() {
   app.use("/v1/sandbox", sandboxRoutes);
 
   app.use((req, res) => res.status(404).json({ error: "not_found", path: req.originalUrl }));
+
+  app.use((err: Error, req: RequestWithContext, res: express.Response, _next: express.NextFunction) => {
+    console.error(JSON.stringify({ level: "error", event: "request_failed", request_id: req.requestId, message: err.message }));
+    res.status(500).json({ error: "internal_error", request_id: req.requestId });
+  });
 
   return app;
 }

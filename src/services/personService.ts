@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { appendEvent, getLedger, verifyChainIntegrity } from "./ledgerService";
 
@@ -44,7 +44,7 @@ function hashIdentifier(value: string): string {
 export async function createPerson(input: { full_name: string; national_id?: string; phone?: string; is_sandbox?: boolean }): Promise<Person> {
   const now = new Date().toISOString();
   const person = {
-    id: uuid(),
+    id: randomUUID(),
     full_name: input.full_name,
     national_id_hash: input.national_id ? hashIdentifier(input.national_id) : undefined,
     phone_hash: input.phone ? hashIdentifier(input.phone) : undefined,

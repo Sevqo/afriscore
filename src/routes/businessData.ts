@@ -3,7 +3,7 @@ import { z } from "zod";
 import { connectAccount, disconnectAccount, listAccountsForBusiness } from "../services/accountService";
 import { syncAccountTransactions, listTransactionsForBusiness } from "../services/transactionService";
 import { computeFinancialProfile } from "../services/analyticsService";
-import { isConsentActive } from "../services/consentService";
+import { hasActiveConsentScope } from "../services/consentService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
 import { createInvoice, listInvoicesForBusiness } from "../services/invoiceService";
 import { reconcileBusiness } from "../services/reconciliationService";
@@ -64,8 +64,8 @@ router.get("/transactions", async (req: BizRequest, res) => {
 });
 
 router.get("/financial-profile", requireApiKey, async (req: AuthedRequest & BizRequest, res) => {
-  if (!(await isConsentActive("business", req.params.id, req.client!.name))) {
-    return res.status(403).json({ error: "consent_required", detail: "No active consent for this grantee" });
+  if (!(await hasActiveConsentScope("business", req.params.id, req.client!.name, "financial_profile"))) {
+    return res.status(403).json({ error: "consent_required", required_scope: "financial_profile" });
   }
   res.json(await computeFinancialProfile(req.params.id));
 });
@@ -105,8 +105,8 @@ router.post("/reconcile", async (req: BizRequest, res) => {
 // === Phase 4: Business Intelligence ===
 
 router.get("/insights", requireApiKey, async (req: AuthedRequest & BizRequest, res) => {
-  if (!(await isConsentActive("business", req.params.id, req.client!.name))) {
-    return res.status(403).json({ error: "consent_required", detail: "No active consent for this grantee" });
+  if (!(await hasActiveConsentScope("business", req.params.id, req.client!.name, "insights"))) {
+    return res.status(403).json({ error: "consent_required", required_scope: "insights" });
   }
 
   res.json({
@@ -127,8 +127,8 @@ router.post("/ask", requireApiKey, async (req: AuthedRequest & BizRequest, res) 
   const parsed = askSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
-  if (!(await isConsentActive("business", req.params.id, req.client!.name))) {
-    return res.status(403).json({ error: "consent_required", detail: "No active consent for this grantee" });
+  if (!(await hasActiveConsentScope("business", req.params.id, req.client!.name, "query"))) {
+    return res.status(403).json({ error: "consent_required", required_scope: "query" });
   }
 
   try {

@@ -1,4 +1,4 @@
-# AfriCore
+# AfriScore
 
 Programmable business and financial infrastructure for African
 markets, starting in Kenya. The goal is to be the layer other
@@ -85,9 +85,8 @@ anything real.
 Every service reads/writes through a dual-engine DB adapter
 (`src/db/adapter.ts`) — SQLite for local development, PostgreSQL for
 production — so the same code runs against either without changes.
-See `CHANGELOG.md` for how this was built up in stages, and the
-`## Not built yet` section below for what's deliberately still
-simulated or missing.
+The `## Not built yet` section below keeps the boundary between live,
+simulated and institution-dependent capabilities explicit.
 
 ## Quickstart
 
@@ -144,9 +143,9 @@ catches it.
 
 ## API reference
 
-Full reference: [`openapi.yaml`](./openapi.yaml) (OpenAPI 3.0 — paste
-it into any Swagger/Redoc viewer, or run `npm run validate:openapi` to
-confirm it's current). Every endpoint below requires no auth unless
+Full reference: [`openapi.json`](./openapi.json) (OpenAPI 3.0 — import
+it into Swagger or Redoc, or run `npm run validate:openapi` to confirm
+its structure). Every endpoint below requires no auth unless
 marked (lock), in which case it also needs an active consent grant for
 the subject being accessed.
 
@@ -207,6 +206,6 @@ src/
   routes/                  - one file per resource
   middleware/              - API-key auth, rate limiting
   __tests__/                - unit + route-level integration tests
-openapi.yaml              - full API spec
-CHANGELOG.md               - build history, phase by phase
+openapi.json              - OpenAPI reference
+.github/workflows/ci.yml  - SQLite, PostgreSQL and type-check CI
 ```

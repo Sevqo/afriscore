@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 
 export interface ApiClient {
@@ -18,7 +18,7 @@ function hashKey(rawKey: string): string {
 export async function createApiClient(name: string): Promise<{ client: Omit<ApiClient, "api_key_hash">; apiKey: string }> {
   const rawKey = `ak_${crypto.randomBytes(24).toString("hex")}`;
   const client: ApiClient = {
-    id: uuid(),
+    id: randomUUID(),
     name,
     api_key_hash: hashKey(rawKey),
     created_at: new Date().toISOString(),

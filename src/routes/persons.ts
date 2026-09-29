@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { createPerson, getPerson, runPersonVerification, getPersonTrustRecord } from "../services/personService";
-import { isConsentActive } from "../services/consentService";
+import { hasActiveConsentScope } from "../services/consentService";
 import { verifyChainIntegrity } from "../services/ledgerService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
 
@@ -38,11 +38,12 @@ router.post("/:id/verify", async (req, res) => {
 });
 
 router.get("/:id/trust-record", requireApiKey, async (req: AuthedRequest, res) => {
-  if (!(await isConsentActive("person", req.params.id, req.client!.name))) {
-    return res.status(403).json({ error: "consent_required", detail: "No active consent for this grantee" });
+  const personId = String(req.params.id);
+  if (!(await hasActiveConsentScope("person", personId, req.client!.name, "trust_score"))) {
+    return res.status(403).json({ error: "consent_required", required_scope: "trust_score" });
   }
 
-  const record = await getPersonTrustRecord(req.params.id);
+  const record = await getPersonTrustRecord(personId);
   if (!record) return res.status(404).json({ error: "not_found" });
   res.json(record);
 });

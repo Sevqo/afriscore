@@ -17,10 +17,18 @@ interface Bucket {
 }
 
 const buckets = new Map<string, Bucket>();
+let lastCleanup = Date.now();
 
 export function rateLimit(req: Request, res: Response, next: NextFunction) {
   const key = req.header("x-api-key") || req.ip || "unknown";
   const now = Date.now();
+
+  if (now - lastCleanup >= WINDOW_MS) {
+    for (const [bucketKey, value] of buckets) {
+      if (now - value.windowStart >= WINDOW_MS) buckets.delete(bucketKey);
+    }
+    lastCleanup = now;
+  }
 
   let bucket = buckets.get(key);
   if (!bucket || now - bucket.windowStart >= WINDOW_MS) {
@@ -29,6 +37,12 @@ export function rateLimit(req: Request, res: Response, next: NextFunction) {
   }
 
   bucket.count++;
+
+  const remaining = Math.max(0, MAX_REQUESTS_PER_WINDOW - bucket.count);
+  const resetAt = Math.ceil((bucket.windowStart + WINDOW_MS) / 1000);
+  res.setHeader("RateLimit-Limit", String(MAX_REQUESTS_PER_WINDOW));
+  res.setHeader("RateLimit-Remaining", String(remaining));
+  res.setHeader("RateLimit-Reset", String(resetAt));
 
   if (bucket.count > MAX_REQUESTS_PER_WINDOW) {
     const retryAfterSec = Math.ceil((bucket.windowStart + WINDOW_MS - now) / 1000);

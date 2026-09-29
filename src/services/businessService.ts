@@ -1,4 +1,4 @@
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { appendEvent, getLedger, verifyChainIntegrity } from "./ledgerService";
 import { computeTrustScore } from "./scoreService";
@@ -28,7 +28,7 @@ export async function createBusiness(input: {
 }): Promise<Business> {
   const now = new Date().toISOString();
   const business = {
-    id: uuid(),
+    id: randomUUID(),
     legal_name: input.legal_name,
     trading_name: input.trading_name,
     registration_number: input.registration_number,

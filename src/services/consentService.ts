@@ -1,4 +1,4 @@
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { appendEvent } from "./ledgerService";
 
@@ -14,6 +14,18 @@ export interface Consent {
   revoked_at?: string;
 }
 
+export const CONSENT_SCOPES = ["all", "trust_score", "financial_profile", "insights", "query"] as const;
+export type ConsentScope = (typeof CONSENT_SCOPES)[number];
+
+function parseScopes(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((scope): scope is string => typeof scope === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function grantConsent(input: {
   subject_type: "business" | "person";
   subject_id: string;
@@ -23,7 +35,7 @@ export async function grantConsent(input: {
 }): Promise<Consent> {
   const now = new Date().toISOString();
   const consent: Consent = {
-    id: uuid(),
+    id: randomUUID(),
     subject_type: input.subject_type,
     subject_id: input.subject_id,
     grantee: input.grantee,
@@ -77,4 +89,24 @@ export async function isConsentActive(subjectType: string, subjectId: string, gr
     [subjectType, subjectId, grantee]
   );
   return !!row;
+}
+
+/** Enforces purpose-specific consent. An active grant for one capability
+ * must not silently unlock every other sensitive endpoint. `all` remains
+ * available for explicit broad grants in trusted sandbox/test flows. */
+export async function hasActiveConsentScope(
+  subjectType: string,
+  subjectId: string,
+  grantee: string,
+  requiredScope: Exclude<ConsentScope, "all">
+): Promise<boolean> {
+  const rows = await dbAll<Consent>(
+    `SELECT * FROM consents WHERE subject_type = ? AND subject_id = ? AND grantee = ? AND status = 'active' ORDER BY granted_at DESC`,
+    [subjectType, subjectId, grantee]
+  );
+
+  return rows.some((row) => {
+    const scopes = parseScopes(row.scope);
+    return scopes.includes("all") || scopes.includes(requiredScope);
+  });
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { grantConsent, revokeConsent, listConsents } from "../services/consentService";
+import { CONSENT_SCOPES, grantConsent, revokeConsent, listConsents } from "../services/consentService";
 
 const router = Router();
 
@@ -9,7 +9,7 @@ const grantSchema = z.object({
   subject_id: z.string().uuid(),
   grantee: z.string().min(1),
   purpose: z.string().min(1),
-  scope: z.array(z.string()).min(1),
+  scope: z.array(z.enum(CONSENT_SCOPES)).min(1),
 });
 
 router.post("/", async (req, res) => {

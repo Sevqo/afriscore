@@ -1,4 +1,4 @@
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { getBusiness } from "./businessService";
 import { appendEvent } from "./ledgerService";
@@ -28,7 +28,7 @@ export async function createInvoice(input: {
 
   const now = new Date().toISOString();
   const invoice: Invoice = {
-    id: uuid(),
+    id: randomUUID(),
     business_id: input.business_id,
     customer_reference: input.customer_reference,
     amount: input.amount,

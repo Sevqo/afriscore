@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { createBusiness, getBusiness, runVerificationChecks, getTrustRecord } from "../services/businessService";
-import { isConsentActive } from "../services/consentService";
+import { hasActiveConsentScope } from "../services/consentService";
 import { verifyChainIntegrity } from "../services/ledgerService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
 
@@ -40,11 +40,12 @@ router.post("/:id/verify", async (req, res) => {
 });
 
 router.get("/:id/trust-record", requireApiKey, async (req: AuthedRequest, res) => {
-  if (!(await isConsentActive("business", req.params.id, req.client!.name))) {
-    return res.status(403).json({ error: "consent_required", detail: "No active consent for this grantee" });
+  const businessId = String(req.params.id);
+  if (!(await hasActiveConsentScope("business", businessId, req.client!.name, "trust_score"))) {
+    return res.status(403).json({ error: "consent_required", required_scope: "trust_score" });
   }
 
-  const record = await getTrustRecord(req.params.id);
+  const record = await getTrustRecord(businessId);
   if (!record) return res.status(404).json({ error: "not_found" });
   res.json(record);
 });

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 
 const GENESIS_HASH = "0".repeat(64);
@@ -36,7 +36,7 @@ export async function appendEvent(subjectType: "business" | "person", subjectId:
   const entryHash = hashEntry(prevHash, subjectType, subjectId, eventType, dataStr, createdAt);
 
   const entry: LedgerEntry = {
-    id: uuid(),
+    id: randomUUID(),
     subject_type: subjectType,
     subject_id: subjectId,
     event_type: eventType,

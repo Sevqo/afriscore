@@ -1,4 +1,4 @@
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { getBusiness } from "./businessService";
 import { appendEvent } from "./ledgerService";
@@ -25,7 +25,7 @@ export async function connectAccount(
   if (!business) throw new Error("business_not_found");
 
   const account: Account = {
-    id: uuid(),
+    id: randomUUID(),
     business_id: businessId,
     provider,
     account_identifier: accountIdentifier,

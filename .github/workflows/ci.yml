@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test-sqlite:
     name: Tests (SQLite)
@@ -18,20 +21,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run validate:openapi
 
   test-postgres:
     name: Tests (PostgreSQL)
     runs-on: ubuntu-latest
-
-    # The same suites that run on SQLite above, run against the engine
-    # this actually deploys on. Both must pass before a change ships.
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: africore_test
+          POSTGRES_DB: afriscore_test
         ports:
           - 5432:5432
         options: >-
@@ -39,7 +40,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,7 +49,7 @@ jobs:
       - run: npm ci
       - run: npm run test:pg
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/africore_test
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/afriscore_test
 
   typecheck:
     name: Type check
@@ -61,4 +61,4 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - run: npx tsc --noEmit
+      - run: npm run typecheck
