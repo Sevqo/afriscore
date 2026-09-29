@@ -4,6 +4,7 @@ import { createPerson, getPerson, runPersonVerification, getPersonTrustRecord } 
 import { hasActiveConsentScope } from "../services/consentService";
 import { verifyChainIntegrity } from "../services/ledgerService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -13,7 +14,7 @@ const createSchema = z.object({
   phone: z.string().min(7).optional(),
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
@@ -21,15 +22,15 @@ router.post("/", async (req, res) => {
   res.status(201).json(person);
 });
 
-router.get("/:id", async (req, res) => {
-  const person = await getPerson(req.params.id);
+router.get("/:id", requireAdmin, async (req, res) => {
+  const person = await getPerson(String(req.params.id));
   if (!person) return res.status(404).json({ error: "not_found" });
   res.json(person);
 });
 
-router.post("/:id/verify", async (req, res) => {
+router.post("/:id/verify", requireAdmin, async (req, res) => {
   try {
-    const result = await runPersonVerification(req.params.id);
+    const result = await runPersonVerification(String(req.params.id));
     res.json(result);
   } catch (e: any) {
     if (e.message === "person_not_found") return res.status(404).json({ error: "not_found" });
@@ -48,8 +49,8 @@ router.get("/:id/trust-record", requireApiKey, async (req: AuthedRequest, res) =
   res.json(record);
 });
 
-router.get("/:id/ledger/verify", async (req, res) => {
-  const result = await verifyChainIntegrity("person", req.params.id);
+router.get("/:id/ledger/verify", requireAdmin, async (req, res) => {
+  const result = await verifyChainIntegrity("person", String(req.params.id));
   res.json(result);
 });
 

@@ -13,7 +13,7 @@ let baseUrl: string;
 const originalLog = console.log;
 
 async function api(method: string, urlPath: string, opts: { body?: unknown; apiKey?: string } = {}) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { "Content-Type": "application/json", "x-admin-token": process.env.AFRISCORE_ADMIN_TOKEN! };
   if (opts.apiKey) headers["x-api-key"] = opts.apiKey;
   const res = await fetch(`${baseUrl}${urlPath}`, {
     method,

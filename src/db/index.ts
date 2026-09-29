@@ -62,7 +62,8 @@ const SCHEMA = `
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     api_key_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    revoked_at TEXT
   );
 
   CREATE TABLE IF NOT EXISTS accounts (
@@ -146,6 +147,7 @@ export async function migrate(): Promise<void> {
     await dbExec(`ALTER TABLE persons ADD COLUMN IF NOT EXISTS is_sandbox INTEGER DEFAULT 0;`);
     await dbExec(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS scenario TEXT;`);
     await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS expected_counterparty TEXT;`);
+    await dbExec(`ALTER TABLE api_clients ADD COLUMN IF NOT EXISTS revoked_at TEXT;`);
   } else {
     const guard = (table: string, column: string, ddl: string) => {
       const cols = rawSqliteDb!.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
@@ -159,6 +161,7 @@ export async function migrate(): Promise<void> {
     guard("persons", "is_sandbox", "is_sandbox INTEGER DEFAULT 0");
     guard("accounts", "scenario", "scenario TEXT");
     guard("invoices", "expected_counterparty", "expected_counterparty TEXT");
+    guard("api_clients", "revoked_at", "revoked_at TEXT");
   }
 }
 

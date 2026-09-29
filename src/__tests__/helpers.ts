@@ -13,6 +13,7 @@ import path from "path";
  * a real Postgres instance. Both must pass before a change ships.
  */
 export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath: string } {
+  process.env.AFRISCORE_ADMIN_TOKEN = "test-only-admin-token-at-least-32-characters";
   const pgUrl = process.env.TEST_DATABASE_URL;
 
   if (pgUrl) {

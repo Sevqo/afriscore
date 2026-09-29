@@ -14,7 +14,7 @@ export interface Consent {
   revoked_at?: string;
 }
 
-export const CONSENT_SCOPES = ["all", "trust_score", "financial_profile", "insights", "query"] as const;
+export const CONSENT_SCOPES = ["all", "trust_score", "financial_profile", "insights", "query", "accounts", "transactions", "invoices"] as const;
 export type ConsentScope = (typeof CONSENT_SCOPES)[number];
 
 function parseScopes(value: string): string[] {

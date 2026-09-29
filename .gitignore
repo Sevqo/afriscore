@@ -24,3 +24,7 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+
+# Local visual QA captures
+website/*-qa.png
+*.tsbuildinfo

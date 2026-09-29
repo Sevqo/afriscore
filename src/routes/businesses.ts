@@ -4,6 +4,7 @@ import { createBusiness, getBusiness, runVerificationChecks, getTrustRecord } fr
 import { hasActiveConsentScope } from "../services/consentService";
 import { verifyChainIntegrity } from "../services/ledgerService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const createSchema = z.object({
   industry: z.string().optional(),
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
@@ -23,15 +24,15 @@ router.post("/", async (req, res) => {
   res.status(201).json(business);
 });
 
-router.get("/:id", async (req, res) => {
-  const business = await getBusiness(req.params.id);
+router.get("/:id", requireAdmin, async (req, res) => {
+  const business = await getBusiness(String(req.params.id));
   if (!business) return res.status(404).json({ error: "not_found" });
   res.json(business);
 });
 
-router.post("/:id/verify", async (req, res) => {
+router.post("/:id/verify", requireAdmin, async (req, res) => {
   try {
-    const result = await runVerificationChecks(req.params.id);
+    const result = await runVerificationChecks(String(req.params.id));
     res.json(result);
   } catch (e: any) {
     if (e.message === "business_not_found") return res.status(404).json({ error: "not_found" });
@@ -50,8 +51,8 @@ router.get("/:id/trust-record", requireApiKey, async (req: AuthedRequest, res) =
   res.json(record);
 });
 
-router.get("/:id/ledger/verify", async (req, res) => {
-  const result = await verifyChainIntegrity("business", req.params.id);
+router.get("/:id/ledger/verify", requireAdmin, async (req, res) => {
+  const result = await verifyChainIntegrity("business", String(req.params.id));
   res.json(result);
 });
 

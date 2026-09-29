@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 import { CONSENT_SCOPES, grantConsent, revokeConsent, listConsents } from "../services/consentService";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const router = Router();
+router.use(requireAdmin);
 
 const grantSchema = z.object({
   subject_type: z.enum(["business", "person"]),

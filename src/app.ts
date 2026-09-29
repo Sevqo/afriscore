@@ -40,7 +40,7 @@ export function createApp() {
   });
 
   app.get("/v1/health", (_req, res) =>
-    res.json({ status: "ok", service: "afriscore", phase: 10, db_engine: isPostgres ? "postgres" : "sqlite" })
+    res.json({ status: "ok", service: "afriscore", db_engine: isPostgres ? "postgres" : "sqlite" })
   );
 
   app.use("/v1/businesses", businessRoutes);

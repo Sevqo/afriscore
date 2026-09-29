@@ -6,6 +6,7 @@
     "description": "Consent-gated identity, financial data, operations and intelligence infrastructure for African businesses."
   },
   "servers": [{ "url": "http://localhost:4000/v1", "description": "Local development" }],
+  "security": [{ "AdminToken": [] }],
   "tags": [
     { "name": "Platform" },
     { "name": "Businesses" },
@@ -19,11 +20,19 @@
   ],
   "paths": {
     "/health": {
-      "get": { "tags": ["Platform"], "summary": "Check service health", "responses": { "200": { "description": "Healthy" } } }
+      "get": { "tags": ["Platform"], "summary": "Check service health", "security": [], "responses": { "200": { "description": "Healthy" } } }
     },
     "/clients": {
       "post": { "tags": ["Platform"], "summary": "Create an API client", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Client and one-time API key created" }, "400": { "$ref": "#/components/responses/BadRequest" } } },
       "get": { "tags": ["Platform"], "summary": "List API clients without key material", "responses": { "200": { "description": "Client list" } } }
+    },
+    "/clients/{id}/rotate": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "tags": ["Platform"], "summary": "Rotate a client key; previous key becomes invalid", "responses": { "200": { "description": "New one-time API key" } } }
+    },
+    "/clients/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "delete": { "tags": ["Platform"], "summary": "Revoke a client key", "responses": { "200": { "description": "Key revoked" } } }
     },
     "/businesses": {
       "post": { "tags": ["Businesses"], "summary": "Register a business", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Business registered" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
@@ -96,6 +105,9 @@
       "post": { "tags": ["Webhooks"], "summary": "Create a signed webhook subscription", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Subscription and one-time signing secret" } } },
       "get": { "tags": ["Webhooks"], "summary": "List caller webhook subscriptions", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Subscriptions" } } }
     },
+    "/webhooks/events": {
+      "get": { "tags": ["Webhooks"], "summary": "List webhook events for administrators", "responses": { "200": { "description": "Events" } } }
+    },
     "/sandbox/businesses": {
       "post": { "tags": ["Sandbox"], "summary": "Create an isolated synthetic business", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Sandbox business" } } },
       "get": { "tags": ["Sandbox"], "summary": "List sandbox businesses", "responses": { "200": { "description": "Sandbox businesses" } } }
@@ -106,7 +118,8 @@
   },
   "components": {
     "securitySchemes": {
-      "ApiKey": { "type": "apiKey", "in": "header", "name": "x-api-key" }
+      "ApiKey": { "type": "apiKey", "in": "header", "name": "x-api-key" },
+      "AdminToken": { "type": "apiKey", "in": "header", "name": "x-admin-token" }
     },
     "parameters": {
       "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },

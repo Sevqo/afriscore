@@ -1,6 +1,6 @@
 import { Router, Request } from "express";
 import { z } from "zod";
-import { connectAccount, disconnectAccount, listAccountsForBusiness } from "../services/accountService";
+import { connectAccount, disconnectAccount, getAccount, listAccountsForBusiness } from "../services/accountService";
 import { syncAccountTransactions, listTransactionsForBusiness } from "../services/transactionService";
 import { computeFinancialProfile } from "../services/analyticsService";
 import { hasActiveConsentScope } from "../services/consentService";
@@ -9,6 +9,7 @@ import { createInvoice, listInvoicesForBusiness } from "../services/invoiceServi
 import { reconcileBusiness } from "../services/reconciliationService";
 import { getOverdueInvoices, getCashFlowForecast, getUnusualTransactions, getCustomerConcentration } from "../services/insightsService";
 import { answerQuestion } from "../services/queryService";
+import { requireAdmin } from "../middleware/adminAuth";
 
 type BizParams = { id: string; accountId: string };
 type BizRequest = Request<BizParams>;
@@ -21,7 +22,7 @@ const connectSchema = z.object({
   scenario: z.enum(["success", "failure", "duplicate", "mixed"]).optional(),
 });
 
-router.post("/accounts/connect", async (req: BizRequest, res) => {
+router.post("/accounts/connect", requireAdmin, async (req: BizRequest, res) => {
   const parsed = connectSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
@@ -34,9 +35,9 @@ router.post("/accounts/connect", async (req: BizRequest, res) => {
   }
 });
 
-router.post("/accounts/:accountId/disconnect", async (req: BizRequest, res) => {
+router.post("/accounts/:accountId/disconnect", requireAdmin, async (req: BizRequest, res) => {
   try {
-    const account = await disconnectAccount(req.params.accountId);
+    const account = await disconnectAccount(req.params.accountId, req.params.id);
     res.json(account);
   } catch (e: any) {
     if (e.message === "account_not_found") return res.status(404).json({ error: "not_found" });
@@ -44,12 +45,14 @@ router.post("/accounts/:accountId/disconnect", async (req: BizRequest, res) => {
   }
 });
 
-router.get("/accounts", async (req: BizRequest, res) => {
+router.get("/accounts", requireAdmin, async (req: BizRequest, res) => {
   res.json(await listAccountsForBusiness(req.params.id));
 });
 
-router.post("/accounts/:accountId/sync", async (req: BizRequest, res) => {
+router.post("/accounts/:accountId/sync", requireAdmin, async (req: BizRequest, res) => {
   try {
+    const account = await getAccount(req.params.accountId);
+    if (!account || account.business_id !== req.params.id) return res.status(404).json({ error: "not_found" });
     const result = await syncAccountTransactions(req.params.accountId);
     res.json(result);
   } catch (e: any) {
@@ -59,7 +62,7 @@ router.post("/accounts/:accountId/sync", async (req: BizRequest, res) => {
   }
 });
 
-router.get("/transactions", async (req: BizRequest, res) => {
+router.get("/transactions", requireAdmin, async (req: BizRequest, res) => {
   res.json(await listTransactionsForBusiness(req.params.id));
 });
 
@@ -79,7 +82,7 @@ const invoiceSchema = z.object({
   expected_counterparty: z.string().optional(),
 });
 
-router.post("/invoices", async (req: BizRequest, res) => {
+router.post("/invoices", requireAdmin, async (req: BizRequest, res) => {
   const parsed = invoiceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
@@ -92,12 +95,12 @@ router.post("/invoices", async (req: BizRequest, res) => {
   }
 });
 
-router.get("/invoices", async (req: BizRequest, res) => {
+router.get("/invoices", requireAdmin, async (req: BizRequest, res) => {
   const status = req.query.status ? String(req.query.status) : undefined;
   res.json(await listInvoicesForBusiness(req.params.id, status));
 });
 
-router.post("/reconcile", async (req: BizRequest, res) => {
+router.post("/reconcile", requireAdmin, async (req: BizRequest, res) => {
   const result = await reconcileBusiness(req.params.id);
   res.json(result);
 });

@@ -4,6 +4,7 @@ import { createBusiness, listSandboxBusinesses } from "../services/businessServi
 import { createPerson, listSandboxPersons } from "../services/personService";
 import { testWebhookDelivery } from "../services/webhookService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
+import { requireAdmin } from "../middleware/adminAuth";
 
 /**
  * Sandbox environment (spec section 33). Every business/person created
@@ -21,7 +22,7 @@ const businessSchema = z.object({
   kra_pin: z.string().optional(),
 });
 
-router.post("/businesses", async (req, res) => {
+router.post("/businesses", requireAdmin, async (req, res) => {
   const parsed = businessSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
@@ -29,7 +30,7 @@ router.post("/businesses", async (req, res) => {
   res.status(201).json(business);
 });
 
-router.get("/businesses", async (_req, res) => {
+router.get("/businesses", requireAdmin, async (_req, res) => {
   res.json(await listSandboxBusinesses());
 });
 
@@ -38,7 +39,7 @@ const personSchema = z.object({
   national_id: z.string().min(4).optional(),
 });
 
-router.post("/persons", async (req, res) => {
+router.post("/persons", requireAdmin, async (req, res) => {
   const parsed = personSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
@@ -46,7 +47,7 @@ router.post("/persons", async (req, res) => {
   res.status(201).json(person);
 });
 
-router.get("/persons", async (_req, res) => {
+router.get("/persons", requireAdmin, async (_req, res) => {
   res.json(await listSandboxPersons());
 });
 

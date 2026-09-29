@@ -49,9 +49,9 @@ export async function connectAccount(
 /** Disconnects an account. Historical transactions stay (they already
  *  happened), but the account can no longer be synced — fills in the
  *  `disconnected_at` column the schema always had but nothing set. */
-export async function disconnectAccount(accountId: string): Promise<Account> {
+export async function disconnectAccount(accountId: string, businessId?: string): Promise<Account> {
   const account = await getAccount(accountId);
-  if (!account) throw new Error("account_not_found");
+  if (!account || (businessId && account.business_id !== businessId)) throw new Error("account_not_found");
 
   const now = new Date().toISOString();
   await dbRun(`UPDATE accounts SET status = 'disconnected', disconnected_at = ? WHERE id = ?`, [now, accountId]);

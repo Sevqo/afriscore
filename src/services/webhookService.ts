@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { randomUUID } from "node:crypto";
+import { isIP } from "node:net";
 import { dbAll, dbRun } from "../db";
 
 interface WebhookSubscription {
@@ -16,6 +17,19 @@ function matchesPattern(eventType: string, pattern: string): boolean {
   if (pattern === eventType) return true;
   if (pattern.endsWith(".*")) return eventType.startsWith(pattern.slice(0, -1));
   return false;
+}
+
+/** HTTPS-only delivery. Production additionally requires an explicit host
+ * allowlist to avoid arbitrary outbound requests from an API server. */
+export function isAllowedWebhookTarget(raw: string): boolean {
+  let url: URL;
+  try { url = new URL(raw); } catch { return false; }
+  if (url.protocol !== "https:" || !!url.username || !!url.password || !!url.port) return false;
+  const host = url.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || isIP(host)) return false;
+  const allowed = (process.env.AFRISCORE_WEBHOOK_ALLOWED_HOSTS || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (process.env.NODE_ENV === "production" && allowed.length === 0) return false;
+  return allowed.length === 0 || allowed.includes(host);
 }
 
 /** Generates a per-subscription signing secret, returned once at subscribe
@@ -63,10 +77,13 @@ export async function testWebhookDelivery(targetUrl: string): Promise<{ delivere
   const signature = sign(secret, body);
 
   try {
+    if (!isAllowedWebhookTarget(targetUrl)) return { delivered: false, error: "target_not_allowed", signature };
     const res = await fetch(targetUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-africore-signature": signature },
       body,
+      signal: AbortSignal.timeout(5000),
+      redirect: "error",
     });
     return { delivered: res.ok, status_code: res.status, signature };
   } catch (err: any) {
@@ -99,14 +116,18 @@ export async function emitEvent(eventType: string, payload: object): Promise<voi
     const signature = sign(sub.secret, body);
 
     try {
-      await fetch(sub.target_url, {
+      if (!isAllowedWebhookTarget(sub.target_url)) throw new Error("target_not_allowed");
+      const response = await fetch(sub.target_url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-africore-signature": signature,
         },
         body,
+        signal: AbortSignal.timeout(5000),
+        redirect: "error",
       });
+      if (!response.ok) throw new Error(`delivery_http_${response.status}`);
       await dbRun(`UPDATE webhook_events SET delivery_attempts = delivery_attempts + 1, last_delivery_status = 'delivered' WHERE id = ?`, [id]);
     } catch (err) {
       await dbRun(`UPDATE webhook_events SET delivery_attempts = delivery_attempts + 1, last_delivery_status = 'failed' WHERE id = ?`, [id]);

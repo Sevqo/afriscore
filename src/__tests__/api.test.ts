@@ -15,8 +15,9 @@ let baseUrl: string;
 // Silence per-request logging so test output stays readable.
 const originalLog = console.log;
 
-async function api(method: string, urlPath: string, opts: { body?: unknown; apiKey?: string } = {}) {
+async function api(method: string, urlPath: string, opts: { body?: unknown; apiKey?: string; admin?: boolean } = {}) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (opts.admin !== false) headers["x-admin-token"] = process.env.AFRISCORE_ADMIN_TOKEN!;
   if (opts.apiKey) headers["x-api-key"] = opts.apiKey;
 
   const res = await fetch(`${baseUrl}${urlPath}`, {
@@ -66,6 +67,38 @@ describe("API routes", () => {
     assert.strictEqual(res.headers.get("x-content-type-options"), "nosniff");
     assert.strictEqual(res.headers.get("x-powered-by"), null);
     assert.strictEqual(res.headers.get("ratelimit-limit"), "120");
+  });
+
+  test("admin routes reject anonymous access", async () => {
+    for (const [method, path] of [["GET", "/v1/clients"], ["POST", "/v1/consents"], ["POST", "/v1/businesses"], ["GET", "/v1/sandbox/businesses"]]) {
+      const res = await api(method, path, { admin: false });
+      assert.strictEqual(res.status, 401, `${method} ${path}`);
+    }
+  });
+
+  test("API key rotation and revocation invalidate old credentials", async () => {
+    const created = await api("POST", "/v1/clients", { body: { name: "lifecycle-client" } });
+    const oldKey = created.body.api_key;
+    const rotated = await api("POST", `/v1/clients/${created.body.id}/rotate`);
+    assert.strictEqual(rotated.status, 200);
+    assert.notStrictEqual(rotated.body.api_key, oldKey);
+    const old = await api("GET", "/v1/webhooks", { apiKey: oldKey });
+    assert.strictEqual(old.status, 401);
+    const current = await api("GET", "/v1/webhooks", { apiKey: rotated.body.api_key });
+    assert.strictEqual(current.status, 200);
+    await api("DELETE", `/v1/clients/${created.body.id}`);
+    const revoked = await api("GET", "/v1/webhooks", { apiKey: rotated.body.api_key });
+    assert.strictEqual(revoked.status, 401);
+  });
+
+  test("account actions reject another business's account", async () => {
+    const a = await api("POST", "/v1/businesses", { body: { legal_name: "Owner A Ltd" } });
+    const b = await api("POST", "/v1/businesses", { body: { legal_name: "Owner B Ltd" } });
+    const account = await api("POST", `/v1/businesses/${a.body.id}/accounts/connect`, { body: { provider: "sandbox", account_identifier: "OWN-A" } });
+    const sync = await api("POST", `/v1/businesses/${b.body.id}/accounts/${account.body.id}/sync`);
+    const disconnect = await api("POST", `/v1/businesses/${b.body.id}/accounts/${account.body.id}/disconnect`);
+    assert.strictEqual(sync.status, 404);
+    assert.strictEqual(disconnect.status, 404);
   });
 
   test("unknown route returns a structured 404", async () => {
@@ -349,6 +382,18 @@ describe("API routes", () => {
     for (const s of list.body) {
       assert.strictEqual(s.secret, undefined, "secret must not be re-exposed on listing");
     }
+  });
+
+  test("webhook targets and event audit are protected", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "webhook-guard-client" } });
+    const rejected = await api("POST", "/v1/webhooks", {
+      apiKey: client.body.api_key,
+      body: { event_pattern: "transaction.*", target_url: "http://127.0.0.1:4000/internal" },
+    });
+    assert.strictEqual(rejected.status, 400);
+    assert.strictEqual(rejected.body.error, "target_not_allowed");
+    const events = await api("GET", "/v1/webhooks/events", { apiKey: client.body.api_key, admin: false });
+    assert.strictEqual(events.status, 401);
   });
 
   test("full data pipeline: connect, sync, normalize, reconcile", async () => {

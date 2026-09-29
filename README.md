@@ -9,11 +9,10 @@ Kenyan businesses run across fragmented systems: M-Pesa, banks, POS,
 government tax and registration systems, spreadsheets, WhatsApp.
 Every lender, marketplace, or fintech that wants to understand a
 business currently has to integrate with all of them separately, or
-just guess. AfriCore connects to those sources, normalizes what they
-return into one consistent schema, and exposes it through a single
-consent-gated API — so a developer building a lending product, a
-marketplace, or an insurer's underwriting tool doesn't have to become
-an expert in Kenyan payment infrastructure first.
+just guess. AfriScore is building a layer that can normalize authorized
+source data into one consistent schema and expose useful capabilities
+through a consent-gated API. Current provider connectors are synthetic;
+live institutional connections are not yet available.
 
 ## What it does
 
@@ -23,8 +22,8 @@ hash-chained — provably unaltered, not just claimed), and compute an
 explainable trust score. Nothing about a subject's record is visible
 to a third party without their explicit, revocable consent.
 
-**Data Infrastructure.** Connect a business's M-Pesa or bank accounts,
-pull their transactions, and normalize them into one canonical shape —
+**Data Infrastructure.** Exercise M-Pesa- and bank-shaped feeds in the
+synthetic sandbox and normalize their transactions into one canonical shape —
 regardless of whether the source called it `CR`, `CREDIT`, or
 `CREDIT_TRANSACTION`. From that, compute a standard financial profile:
 revenue, expenses, cash flow, growth.
@@ -94,22 +93,25 @@ simulated and institution-dependent capabilities explicit.
 npm install
 npm run build
 npm start
-# No DATABASE_URL set -> SQLite file at ./africore.db (local dev)
+# No DATABASE_URL set -> SQLite file at ./afriscore.db (local dev)
 # DATABASE_URL set     -> PostgreSQL
 ```
 
 ```bash
+# Set AFRISCORE_ADMIN_TOKEN to a random 32+ character secret first.
+# Administrative routes require x-admin-token; never expose it to browsers.
+
 # Register a client and get an API key
-curl -X POST localhost:4000/v1/clients -H "Content-Type: application/json" \
+curl -X POST localhost:4000/v1/clients -H "Content-Type: application/json" -H "x-admin-token: $AFRISCORE_ADMIN_TOKEN" \
   -d '{"name": "my-app"}'
 
 # Register and verify a business
-curl -X POST localhost:4000/v1/businesses -H "Content-Type: application/json" \
+curl -X POST localhost:4000/v1/businesses -H "Content-Type: application/json" -H "x-admin-token: $AFRISCORE_ADMIN_TOKEN" \
   -d '{"legal_name": "Jua Kali Traders Ltd", "registration_number": "PVT-ABC123", "kra_pin": "P051234567X"}'
-curl -X POST localhost:4000/v1/businesses/{id}/verify
+curl -X POST localhost:4000/v1/businesses/{id}/verify -H "x-admin-token: $AFRISCORE_ADMIN_TOKEN"
 
 # Grant your client access, then pull its financial profile
-curl -X POST localhost:4000/v1/consents -H "Content-Type: application/json" \
+curl -X POST localhost:4000/v1/consents -H "Content-Type: application/json" -H "x-admin-token: $AFRISCORE_ADMIN_TOKEN" \
   -d '{"subject_type": "business", "subject_id": "{id}", "grantee": "my-app", "purpose": "underwriting", "scope": ["financial_profile"]}'
 curl localhost:4000/v1/businesses/{id}/financial-profile -H "x-api-key: {your key}"
 ```
@@ -144,24 +146,24 @@ catches it.
 ## API reference
 
 Full reference: [`openapi.json`](./openapi.json) (OpenAPI 3.0 — import
-it into Swagger or Redoc, or run `npm run validate:openapi` to confirm
-its structure). Every endpoint below requires no auth unless
-marked (lock), in which case it also needs an active consent grant for
-the subject being accessed.
+it into Swagger or Redoc, or run `npm run validate:openapi`). All routes
+except health and the explicitly marked partner endpoints require the
+bootstrap `x-admin-token`. Partner routes use `x-api-key` and, where
+business/person data is involved, an active purpose-specific consent grant.
 
 | Area | Endpoints |
 |---|---|
-| Developer Platform | `POST/GET /clients` |
-| Identity & Trust | `POST /businesses`, `GET /businesses/:id`, `POST /businesses/:id/verify`, `GET /businesses/:id/trust-record` [auth], `GET /businesses/:id/ledger/verify` (public), same for `/persons` |
+| Developer Platform | `POST/GET /clients`, `POST /clients/:id/rotate`, `DELETE /clients/:id` |
+| Identity & Trust | `POST /businesses`, `GET /businesses/:id`, `POST /businesses/:id/verify`, `GET /businesses/:id/trust-record` [partner], `GET /businesses/:id/ledger/verify`, same for `/persons` |
 | Consent | `POST /consents`, `DELETE /consents/:id`, `GET /consents` |
-| Data Infrastructure | `POST /businesses/:id/accounts/connect`, `POST .../accounts/:accountId/disconnect`, `GET .../accounts`, `POST .../accounts/:accountId/sync`, `GET .../transactions`, `GET .../financial-profile` [auth] |
+| Data Infrastructure | `POST /businesses/:id/accounts/connect`, `POST .../accounts/:accountId/disconnect`, `GET .../accounts`, `POST .../accounts/:accountId/sync`, `GET .../transactions`, `GET .../financial-profile` [partner] |
 | Business Operations | `POST/GET /businesses/:id/invoices`, `POST /businesses/:id/reconcile` |
-| Business Intelligence | `GET /businesses/:id/insights` [auth] |
-| Query Layer | `POST /businesses/:id/ask` [auth] |
-| Webhooks | `POST/GET /webhooks` [auth], `GET /webhooks/events` [auth] |
-| Sandbox | `POST/GET /sandbox/businesses`, `POST/GET /sandbox/persons`, `POST /sandbox/webhook-test` [auth] |
+| Business Intelligence | `GET /businesses/:id/insights` [partner] |
+| Query Layer | `POST /businesses/:id/ask` [partner] |
+| Webhooks | `POST/GET /webhooks` [API key], `GET /webhooks/events` [admin] |
+| Sandbox | `POST/GET /sandbox/businesses`, `POST/GET /sandbox/persons`, `POST /sandbox/webhook-test` [API key] |
 
-`[auth]` = requires a valid `x-api-key` header AND an active consent grant for the subject being accessed.
+`[partner]` = requires a valid `x-api-key` header AND an active consent grant for the subject being accessed.
 
 A few things worth knowing before integrating:
 
@@ -178,6 +180,17 @@ A few things worth knowing before integrating:
   without holding the underlying PII.
 - **Webhook deliveries are signed** (`x-africore-signature`, HMAC-SHA256)
   and the signing secret is shown exactly once, at subscribe time.
+- **Webhook targets are HTTPS-only.** Production requires an exact
+  `AFRISCORE_WEBHOOK_ALLOWED_HOSTS` allowlist. Network-level egress
+  controls are still recommended before accepting untrusted partners.
+
+## Website
+
+The public site lives in [`website/`](./website) and is separate from
+the API. Run `cd website && npm ci && npm run dev` locally, or
+`npm run build` for a static production bundle in `website/dist`.
+It describes the working sandbox honestly and does not claim live
+institutional integrations.
 
 ## Not built yet
 
@@ -192,6 +205,11 @@ A few things worth knowing before integrating:
 - A real migration framework — the current guard in `src/db/index.ts`
   works for a handful of added columns but won't scale indefinitely.
 - A secrets manager for production (currently environment variables).
+- A partner-grade control plane with delegated authorization and
+  independently verified consent capture. The current admin token is a
+  bootstrap operator credential, not a public end-user consent flow.
+- Durable per-subscription webhook retry queue, idempotency keys,
+  observability and a formal security/compliance review before real data.
 
 ## Project structure
 
