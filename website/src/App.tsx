@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-const repo = 'https://github.com/Veris-Africa/afriscore'
+const repo = 'https://github.com/Sevqo/afriscore'
 const steps = [
   { number: '01', label: 'Connect', title: 'Meet the data where it lives.', body: 'Financial activity is spread across mobile money, bank records and operational systems. AfriScore provides a common entry point for authorized sources. Today, our sandbox and provider-shaped sample feeds let builders test the full flow.', note: 'AUTHORIZED SOURCES / SYNTHETIC SANDBOX', color: 'mint' },
   { number: '02', label: 'Normalize', title: 'Give every record the same language.', body: 'Different providers describe the same event in different ways. We standardize direction, amount, status, counterparty and time, then deduplicate imports so downstream applications can rely on a consistent transaction model.', note: 'RAW INPUT → CONSISTENT MODEL', color: 'blue' },
@@ -61,7 +61,7 @@ function HeroGraphic() {
 }
 
 function Hero() {
-  return <section className="hero" id="top"><div className="container hero-grid"><div className="hero-copy"><div className="eyebrow"><i /> BUILT BY VERIS / AFRICAN BUSINESS INFRASTRUCTURE</div><h1>Business data,<br /><em>made useful.</em></h1><p>One programmable layer for fragmented financial records, meaningful consent and intelligence you can actually build on.</p><div className="hero-actions"><Button href="#how-it-works">Explore the platform</Button><a className="text-link" href="#developers">See the developer layer <span>↗</span></a></div><div className="hero-foot"><span>01 / CONNECT</span><span>02 / UNDERSTAND</span><span>03 / BUILD</span></div></div><HeroGraphic /></div></section>
+  return <section className="hero" id="top"><div className="container hero-grid"><div className="hero-copy"><div className="eyebrow"><i /> BUILT BY SEVQO / AFRICAN BUSINESS INFRASTRUCTURE</div><h1>Business data,<br /><em>made useful.</em></h1><p>One programmable layer for fragmented financial records, meaningful consent and intelligence you can actually build on.</p><div className="hero-actions"><Button href="#how-it-works">Explore the platform</Button><a className="text-link" href="#developers">See the developer layer <span>↗</span></a></div><div className="hero-foot"><span>01 / CONNECT</span><span>02 / UNDERSTAND</span><span>03 / BUILD</span></div></div><HeroGraphic /></div></section>
 }
 
 function Manifesto() {
@@ -111,7 +111,7 @@ function Status() {
 }
 
 function Footer() {
-  return <><section className="final-section"><div className="container final-inner"><span>AFRISCORE / BY VERIS</span><h2>See the full picture.<br /><em>Build what comes next.</em></h2><p>Good infrastructure makes possibility practical. Start with the API, explore the sandbox, and help shape a better foundation for African business.</p><div><Button href={repo} light>Explore the project</Button><a href="https://github.com/Veris-Africa/veris" target="_blank" rel="noreferrer">Meet Veris ↗</a></div><div className="final-rings" /></div></section><footer className="footer"><div className="container"><div className="footer-grid"><div><Brand /><p>Programmable infrastructure for clearer business decisions.</p></div><div><span>EXPLORE</span><a href="#platform">Platform</a><a href="#how-it-works">How it works</a><a href="#use-cases">Use cases</a></div><div><span>BUILD</span><a href={repo} target="_blank" rel="noreferrer">GitHub repository</a><a href={`${repo}/blob/main/openapi.json`} target="_blank" rel="noreferrer">OpenAPI</a><a href="#developers">Developer layer</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} AFRISCORE, A VERIS VENTURE</span><span>BUILT FOR AFRICAN BUSINESS ↗</span></div></div></footer></>
+  return <><section className="final-section"><div className="container final-inner"><span>AFRISCORE / BY SEVQO</span><h2>See the full picture.<br /><em>Build what comes next.</em></h2><p>Good infrastructure makes possibility practical. Start with the API, explore the sandbox, and help shape a better foundation for African business.</p><div><Button href={repo} light>Explore the project</Button><a href="https://github.com/Sevqo/sevqo" target="_blank" rel="noreferrer">Meet Sevqo ↗</a></div><div className="final-rings" /></div></section><footer className="footer"><div className="container"><div className="footer-grid"><div><Brand /><p>Programmable infrastructure for clearer business decisions.</p></div><div><span>EXPLORE</span><a href="#platform">Platform</a><a href="#how-it-works">How it works</a><a href="#use-cases">Use cases</a></div><div><span>BUILD</span><a href={repo} target="_blank" rel="noreferrer">GitHub repository</a><a href={`${repo}/blob/main/openapi.json`} target="_blank" rel="noreferrer">OpenAPI</a><a href="#developers">Developer layer</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} AFRISCORE, A SEVQO VENTURE</span><span>BUILT FOR AFRICAN BUSINESS ↗</span></div></div></footer></>
 }
 
 export function App() {
