@@ -14,6 +14,27 @@ const cases = [
   { name: 'For developers', mark: '03', title: 'Prototype the hard parts early.', text: 'Test success, failure and duplicate transaction paths in a synthetic sandbox. Explore the API, consent model, signed webhooks and reconciliation before connecting live partners.' },
 ]
 
+const codeExamples = [
+  {
+    label: 'Request',
+    copy: 'curl -H "x-api-key: <your-key>" http://localhost:4000/v1/businesses/<id>/financial-profile',
+    note: 'A consent-scoped financial profile request',
+    code: <><span className="code-comment">// Ask for a grounded business profile</span>{'\n'}<span className="code-method">GET</span> /v1/businesses/:id/financial-profile{'\n'}<span className="code-key">x-api-key</span>: ak_••••••••••••••••{'\n'}<span className="code-key">x-consent-id</span>: cns_••••••••••••••••</>,
+  },
+  {
+    label: 'Consent',
+    copy: '{"business_id":"<id>","purpose":"financial_profile","scopes":["transactions:read","invoices:read"]}',
+    note: 'Purpose-specific access that can be revoked',
+    code: <><span className="code-comment">// Permission stays explicit and narrow</span>{'\n'}{'{'}{'\n'}  <span className="code-key">"purpose"</span>: <span className="code-string">"financial_profile"</span>,{'\n'}  <span className="code-key">"scopes"</span>: ["transactions:read", "invoices:read"],{'\n'}  <span className="code-key">"expires_at"</span>: <span className="code-string">"2027-01-31T23:59:59Z"</span>{'\n'}{'}'}</>,
+  },
+  {
+    label: 'Response',
+    copy: '{"total_revenue":854000,"transaction_count":128,"currency":"KES"}',
+    note: 'Illustrative sandbox values with source context',
+    code: <><span className="code-comment">// Evidence-backed, explainable output</span>{'\n'}{'{'}{'\n'}  <span className="code-key">"total_revenue"</span>: 854000,{'\n'}  <span className="code-key">"transaction_count"</span>: 128,{'\n'}  <span className="code-key">"currency"</span>: <span className="code-string">"KES"</span>,{'\n'}  <span className="code-key">"source_count"</span>: 3{'\n'}{'}'}</>,
+  },
+]
+
 function useReveal() {
   useEffect(() => {
     const nodes = document.querySelectorAll<HTMLElement>('[data-reveal]')
@@ -44,9 +65,11 @@ function Header() {
   }, [])
   useEffect(() => {
     if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); button.current?.focus() } }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = previousOverflow }
   }, [open])
   const links = [['Platform', 'platform'], ['How it works', 'how-it-works'], ['Use cases', 'use-cases'], ['Developers', 'developers']]
   return <header className={`header ${scrolled ? 'header-scrolled' : ''}`}><div className="container header-inner"><Brand /><nav className="desktop-nav" aria-label="Primary navigation">{links.map(([name, id]) => <a href={`#${id}`} key={id}>{name}</a>)}</nav><div className="header-actions"><a className="header-link" href={repo} target="_blank" rel="noreferrer">View the API <span aria-hidden="true">↗</span></a><button ref={button} className="menu-button" aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)}>{open ? '×' : '☰'}</button></div></div><nav id="mobile-nav" className={`mobile-nav ${open ? 'open' : ''}`} aria-label="Mobile navigation" inert={!open}>{links.map(([name, id]) => <a href={`#${id}`} key={id} onClick={() => setOpen(false)}>{name}<span>↗</span></a>)}<a href={repo} target="_blank" rel="noreferrer">View the API <span>↗</span></a></nav></header>
@@ -87,7 +110,7 @@ function Story() {
     update(); window.addEventListener('scroll', update, { passive: true }); window.addEventListener('resize', update)
     return () => { window.removeEventListener('scroll', update); window.removeEventListener('resize', update) }
   }, [])
-  return <section id="how-it-works" className="story section-pad"><div className="container"><div className="section-line"><span>02 / HOW IT WORKS</span><span>FROM FRAGMENTED ACTIVITY TO USEFUL INFRASTRUCTURE</span></div><div className="story-heading"><h2 data-reveal>A clearer picture,<br /><em>one layer at a time.</em></h2><p data-reveal>Follow the path from an authorized source to an actionable signal. The story moves as you scroll; choose a stage to explore it directly.</p></div><div className="story-grid"><div className="stage-sticky"><StageVisual active={active} /><div className="stage-dots" aria-label="Select a platform stage">{steps.map((step, i) => <button key={step.number} aria-label={`Show ${step.label} stage`} aria-pressed={active === i} onClick={() => setActive(i)} />)}</div></div><div className="story-steps">{steps.map((step, i) => <article key={step.number} ref={el => { nodes.current[i] = el }} className={`story-step ${active === i ? 'active' : ''}`} onClick={() => setActive(i)}><span>{step.number} / {step.label.toUpperCase()}</span><h3>{step.title}</h3><p>{step.body}</p><small>{step.note} <b>↗</b></small></article>)}</div></div></div></section>
+  return <section id="how-it-works" className="story section-pad"><div className="container"><div className="section-line"><span>02 / HOW IT WORKS</span><span>FROM FRAGMENTED ACTIVITY TO USEFUL INFRASTRUCTURE</span></div><div className="story-heading"><h2 data-reveal>A clearer picture,<br /><em>one layer at a time.</em></h2><p data-reveal>Follow the path from an authorized source to an actionable signal. The story moves as you scroll; choose a stage to explore it directly.</p></div><div className="story-grid"><div className="stage-sticky"><StageVisual active={active} /><div className="stage-dots" aria-label="Select a platform stage">{steps.map((step, i) => <button key={step.number} aria-label={`Show ${step.label} stage`} aria-pressed={active === i} onClick={() => setActive(i)} />)}</div></div><div className="story-steps">{steps.map((step, i) => <article key={step.number} ref={el => { nodes.current[i] = el }} className={`story-step ${active === i ? 'active' : ''}`} role="button" tabIndex={0} aria-pressed={active === i} onClick={() => setActive(i)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActive(i) } }}><span>{step.number} / {step.label.toUpperCase()}</span><h3>{step.title}</h3><p>{step.body}</p><small>{step.note} <b>↗</b></small></article>)}</div></div></div></section>
 }
 
 function Capabilities() {
@@ -101,9 +124,10 @@ function UseCases() {
 
 function Developers() {
   const [copied, setCopied] = useState(false)
-  const command = `curl -H "x-api-key: <your-key>" http://localhost:4000/v1/businesses/<id>/financial-profile`
-  async function copy() { try { await navigator.clipboard.writeText(command); setCopied(true); window.setTimeout(() => setCopied(false), 2000) } catch { setCopied(false) } }
-  return <section id="developers" className="developers section-pad"><div className="container"><div className="section-line"><span>05 / FOR DEVELOPERS</span><span>AN API TO BUILD WITH</span></div><div className="dev-grid"><div className="dev-copy"><div className="eyebrow"><i /> BUILD WITH CONTEXT</div><h2 data-reveal>From first request<br /><em>to real utility.</em></h2><p data-reveal>Explore a documented REST API, synthetic sandbox scenarios, scoped consent and signed webhooks. The public repository includes the OpenAPI specification and runnable tests.</p><div className="dev-links"><Button href={repo}>Explore on GitHub</Button><a href={`${repo}/blob/main/openapi.json`} target="_blank" rel="noreferrer">View OpenAPI specification ↗</a></div></div><div className="code-window" data-reveal><div className="code-head"><span><i /><i /><i /></span><span>API / QUICK LOOK</span><span>REST · JSON</span></div><div className="code-tabs"><span>01 / REQUEST</span><span>02 / CONSENT</span><span>03 / RESPONSE</span></div><pre><code><span className="code-comment">// A consent-scoped financial profile</span>{'\n'}<span className="code-method">GET</span> /v1/businesses/:id/financial-profile{'\n'}<span className="code-key">x-api-key</span>: ak_••••••••••••••••{'\n\n'}<span className="code-comment">// Only with active financial_profile consent</span>{'\n'}{'{'}{'\n'}  <span className="code-key">"total_revenue"</span>: 854000,{'\n'}  <span className="code-key">"transaction_count"</span>: 128,{'\n'}  <span className="code-key">"currency"</span>: <span className="code-string">"KES"</span>{'\n'}{'}'}</code></pre><button className="copy-button" onClick={copy}>{copied ? 'Copied example request ✓' : 'Copy example request ↗'}</button><div className="code-foot">Illustrative response • sandbox values only</div></div></div><div className="dev-rail"><div><strong>01</strong><span>Synthetic sandbox</span><p>Test success, failure, duplicate and mixed transaction scenarios.</p></div><div><strong>02</strong><span>Purpose-specific consent</span><p>Keep application identity separate from a business's permission.</p></div><div><strong>03</strong><span>Signed event delivery</span><p>Receive webhook events with per-subscription signing secrets.</p></div></div></div></section>
+  const [example, setExample] = useState(0)
+  const activeExample = codeExamples[example]
+  async function copy() { try { await navigator.clipboard.writeText(activeExample.copy); setCopied(true); window.setTimeout(() => setCopied(false), 2000) } catch { setCopied(false) } }
+  return <section id="developers" className="developers section-pad"><div className="container"><div className="section-line"><span>05 / FOR DEVELOPERS</span><span>AN API TO BUILD WITH</span></div><div className="dev-grid"><div className="dev-copy"><div className="eyebrow"><i /> BUILD WITH CONTEXT</div><h2 data-reveal>From first request<br /><em>to real utility.</em></h2><p data-reveal>Explore a documented REST API, synthetic sandbox scenarios, scoped consent and signed webhooks. The public repository includes the OpenAPI specification and runnable tests.</p><div className="dev-links"><Button href={repo}>Explore on GitHub</Button><a href={`${repo}/blob/main/openapi.json`} target="_blank" rel="noreferrer">View OpenAPI specification ↗</a></div></div><div className="code-window" data-reveal><div className="code-head"><span><i /><i /><i /></span><span>API / QUICK LOOK</span><span>REST · JSON</span></div><div className="code-tabs" role="tablist" aria-label="API example">{codeExamples.map((item, index) => <button key={item.label} role="tab" aria-selected={example === index} aria-controls="code-example" onClick={() => { setExample(index); setCopied(false) }}>{String(index + 1).padStart(2, '0')} / {item.label.toUpperCase()}</button>)}</div><pre id="code-example" role="tabpanel"><code>{activeExample.code}</code></pre><button className="copy-button" onClick={copy}>{copied ? `Copied ${activeExample.label.toLowerCase()} ✓` : `Copy ${activeExample.label.toLowerCase()} ↗`}</button><div className="code-foot"><span>{activeExample.note}</span><span>Sandbox-safe example</span></div></div></div><div className="dev-rail"><div><strong>01</strong><span>Synthetic sandbox</span><p>Test success, failure, duplicate and mixed transaction scenarios.</p></div><div><strong>02</strong><span>Purpose-specific consent</span><p>Keep application identity separate from a business's permission.</p></div><div><strong>03</strong><span>Signed event delivery</span><p>Receive webhook events with per-subscription signing secrets.</p></div></div></div></section>
 }
 
 function Status() {
