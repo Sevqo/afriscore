@@ -1,5 +1,10 @@
 import { dbAll, dbRun, dbTransaction } from "../db";
-import { Invoice, listInvoicesForBusiness, markInvoicePaid } from "./invoiceService";
+import {
+  Invoice,
+  createInvoicePaymentRow,
+  listOpenInvoicesForBusiness,
+  markInvoicePaid,
+} from "./invoiceService";
 import { Transaction } from "./transactionService";
 import { appendEvent } from "./ledgerService";
 import { emitEvent } from "./webhookService";
@@ -35,6 +40,13 @@ const TOLERANCE_MAX_KES = 100;
 
 function toleranceFor(amount: number): number {
   return Math.min(amount * TOLERANCE_PCT, TOLERANCE_MAX_KES);
+}
+
+/** Maps a transaction source to the receipt method recorded on an invoice. */
+export function paymentMethodForProvider(provider: string): string {
+  if (provider.startsWith("mpesa")) return "mpesa";
+  if (provider === "bank") return "bank";
+  return "other";
 }
 
 function normalizeCounterparty(value: string): string {
@@ -151,7 +163,7 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
   const matches: Array<{ invoice: Invoice; match: Match }> = [];
 
   const result = await dbTransaction(async () => {
-    const unpaidInvoices = await listInvoicesForBusiness(businessId, "unpaid");
+    const unpaidInvoices = await listOpenInvoicesForBusiness(businessId);
     const matched: Match[] = [];
     const unmatched: ReconciliationResult["unmatched_invoices"] = [];
 
@@ -162,6 +174,7 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
          ORDER BY occurred_at ASC`,
         [businessId]
       );
+      const amountById = new Map(candidates.map((txn) => [txn.id, txn]));
 
       const match = findMatch(invoice, candidates);
 
@@ -206,6 +219,22 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
         }
         unmatched.push({ invoice_id: invoice.id, amount: invoice.amount, reason: "invoice_already_settled" });
         continue;
+      }
+
+      // Mirror the claimed transactions as receipt rows so the receivables
+      // module (DSO, review queue, decision card) sees a verifiable payment.
+      for (const txnId of match.transaction_ids) {
+        const txn = amountById.get(txnId);
+        if (!txn) continue;
+        await createInvoicePaymentRow({
+          business_id: businessId,
+          invoice_id: invoice.id,
+          transaction_id: txnId,
+          amount: txn.amount,
+          method: paymentMethodForProvider(txn.source_provider),
+          reference: txn.external_id,
+          paid_at: new Date().toISOString(),
+        });
       }
 
       await appendEvent("business", businessId, "invoice.paid", {

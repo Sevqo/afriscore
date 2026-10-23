@@ -1,6 +1,7 @@
 import { dbAll } from "../db";
 import { getBusiness, Business } from "./businessService";
 import { Transaction } from "./transactionService";
+import { getReceivablesSummary, ReceivablesSummary } from "./receivablesService";
 
 /**
  * Business dashboard analytics.
@@ -138,6 +139,8 @@ export interface BusinessDashboard {
   totals: BusinessMetrics["totals"];
   health_score: BusinessHealthScore;
   tips: string[];
+  /** Null when the business has no invoice data — never fabricated. */
+  receivables: ReceivablesSummary | null;
 }
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -617,6 +620,7 @@ export async function loadBusinessContext(businessId: string, options: MetricsOp
 /** Loads the business and its transactions, then computes the dashboard. */
 export async function getBusinessDashboard(businessId: string, options: MetricsOptions = {}): Promise<BusinessDashboard> {
   const { business, metrics, health, tips } = await loadBusinessContext(businessId, options);
+  const receivables = await getReceivablesSummary(businessId);
 
   return {
     business: {
@@ -634,6 +638,7 @@ export async function getBusinessDashboard(businessId: string, options: MetricsO
     totals: metrics.totals,
     health_score: health,
     tips,
+    receivables,
   };
 }
 

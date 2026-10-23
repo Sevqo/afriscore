@@ -8,6 +8,7 @@ import {
   MetricsOptions,
 } from "./businessMetricsService";
 import { listShortcodes } from "./businessOnboardingService";
+import { getReceivablesSummary, ReceivablesSummary } from "./receivablesService";
 
 /**
  * Lender-facing decision cards.
@@ -42,14 +43,6 @@ export interface DecisionConfidence {
   data_completeness: number;
   months_of_history: number;
   method: string;
-}
-
-export interface ReceivablesSummary {
-  open_invoice_count: number;
-  open_invoice_value: number;
-  dso_days: number | null;
-  /** Share of open invoices matched to a verified payment/receipt. */
-  matched_payment_ratio: number | null;
 }
 
 export interface DecisionCard {
@@ -332,9 +325,9 @@ export async function issueBusinessDecisionCard(
   const statementRow = await dbGet<{ c: number | string }>(`SELECT COUNT(*) AS c FROM statements WHERE business_id = ?`, [businessId]);
   const statementsCount = Number(statementRow?.c ?? 0);
 
-  // Receivables are wired in step (d); until invoice data exists this stays
-  // null rather than being estimated.
-  const receivables: ReceivablesSummary | null = null;
+  // Receivables are computed from recorded invoice payments; null means the
+  // business has no invoice data, in which case DSO is not fabricated.
+  const receivables = await getReceivablesSummary(businessId);
 
   const draft = buildBusinessDecisionCard({
     business,

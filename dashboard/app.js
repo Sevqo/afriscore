@@ -222,6 +222,7 @@ function renderMonthly(monthly) {
 
 function renderDashboard(dashboard) {
   const { business, cash_flow: cash, counterparties, totals, health_score: health, tips, window } = dashboard;
+  const receivables = dashboard.receivables;
 
   const customers = counterparties.top_customers
     .map(
@@ -300,6 +301,23 @@ function renderDashboard(dashboard) {
         <table><thead><tr><th>Supplier</th><th class="num">Outflow</th><th class="num">Payments</th></tr></thead><tbody>${suppliers || `<tr><td colspan="3" class="muted">No outgoing payments yet.</td></tr>`}</tbody></table>
         <p class="muted small">Repeat suppliers: ${escapeHtml(counterparties.supplier.repeat_supplier_count)} · regularity ${fmtPct(counterparties.supplier.regularity_score * 100)}</p>
       </div>
+    </div>
+
+    <div class="panel">
+      <h3>Receivables</h3>
+      ${
+        receivables === null
+          ? `<p class="muted">No invoice data — DSO and receivables metrics are intentionally not estimated.</p>`
+          : `<div class="stat-grid">
+              <div class="stat"><div class="label">Open invoices</div><div class="value">${escapeHtml(receivables.open_invoice_count)}</div></div>
+              <div class="stat"><div class="label">Open value</div><div class="value">${fmtMoney(receivables.open_invoice_value)}</div></div>
+              <div class="stat"><div class="label">Overdue</div><div class="value">${escapeHtml(receivables.overdue_invoice_count)}</div></div>
+              <div class="stat"><div class="label">DSO</div><div class="value">${receivables.dso_days === null ? "n/a" : `${escapeHtml(receivables.dso_days)} days`}</div></div>
+              <div class="stat"><div class="label">Avg days to pay</div><div class="value">${receivables.average_days_to_pay === null ? "n/a" : `${escapeHtml(receivables.average_days_to_pay)} days`}</div></div>
+              <div class="stat"><div class="label">Matched receipts</div><div class="value">${receivables.matched_payment_ratio === null ? "n/a" : fmtPct(receivables.matched_payment_ratio * 100)}</div></div>
+            </div>
+            <p class="muted small">${escapeHtml(receivables.method)}</p>`
+      }
     </div>
 
     <div class="panel">

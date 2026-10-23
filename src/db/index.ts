@@ -157,20 +157,44 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS invoices (
     id TEXT PRIMARY KEY,
     business_id TEXT NOT NULL,
+    invoice_number TEXT,
     customer_reference TEXT NOT NULL,
     amount NUMERIC(18,2) NOT NULL,
     currency TEXT DEFAULT 'KES',
     issue_date TEXT NOT NULL,
     due_date TEXT,
-    status TEXT DEFAULT 'unpaid',
+    -- Invoice lifecycle: draft -> sent -> partially_paid -> paid, with overdue
+    -- derived from due_date. Legacy rows used 'unpaid', treated as 'sent'.
+    status TEXT DEFAULT 'sent',
     matched_transaction_id TEXT,
     expected_counterparty TEXT,
     paid_amount NUMERIC(18,2),
+    attachment_file_name TEXT,
+    attachment_sha256 TEXT,
+    attachment_size_bytes INTEGER,
     created_at TEXT NOT NULL,
     paid_at TEXT
   );
 
   CREATE INDEX IF NOT EXISTS idx_invoices_business ON invoices (business_id, status);
+
+  -- One row per recorded receipt (manual or auto-matched from a transaction).
+  -- Sum(amount) is the authoritative amount paid on an invoice; invoices
+  -- .paid_amount mirrors it for cheap reads.
+  CREATE TABLE IF NOT EXISTS invoice_payments (
+    id TEXT PRIMARY KEY,
+    business_id TEXT NOT NULL,
+    invoice_id TEXT NOT NULL,
+    transaction_id TEXT,
+    amount NUMERIC(18,2) NOT NULL,
+    method TEXT NOT NULL,
+    reference TEXT,
+    paid_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (invoice_id, transaction_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice ON invoice_payments (invoice_id, paid_at);
 
   -- Business track: a business can have several M-Pesa till/paybill shortcodes
   -- (and bank accounts), each of which can have statements uploaded over time.
@@ -236,6 +260,10 @@ export async function migrate(): Promise<void> {
     await dbExec(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS scenario TEXT;`);
     await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS expected_counterparty TEXT;`);
     await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(18,2);`);
+    await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number TEXT;`);
+    await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS attachment_file_name TEXT;`);
+    await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS attachment_sha256 TEXT;`);
+    await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS attachment_size_bytes INTEGER;`);
     await dbExec(`ALTER TABLE api_clients ADD COLUMN IF NOT EXISTS revoked_at TEXT;`);
     await dbExec(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS expires_at TEXT;`);
     await dbExec(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS sector TEXT;`);
@@ -268,6 +296,10 @@ export async function migrate(): Promise<void> {
     guard("accounts", "scenario", "scenario TEXT");
     guard("invoices", "expected_counterparty", "expected_counterparty TEXT");
     guard("invoices", "paid_amount", "paid_amount NUMERIC(18,2)");
+    guard("invoices", "invoice_number", "invoice_number TEXT");
+    guard("invoices", "attachment_file_name", "attachment_file_name TEXT");
+    guard("invoices", "attachment_sha256", "attachment_sha256 TEXT");
+    guard("invoices", "attachment_size_bytes", "attachment_size_bytes INTEGER");
     guard("api_clients", "revoked_at", "revoked_at TEXT");
     guard("consents", "expires_at", "expires_at TEXT");
     guard("businesses", "sector", "sector TEXT");

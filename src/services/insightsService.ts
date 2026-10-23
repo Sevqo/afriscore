@@ -17,7 +17,9 @@ export interface OverdueInvoice extends Invoice {
 export async function getOverdueInvoices(businessId: string): Promise<OverdueInvoice[]> {
   const now = Date.now();
   const invoices = await dbAll<Invoice>(
-    `SELECT * FROM invoices WHERE business_id = ? AND status = 'unpaid' AND due_date IS NOT NULL`,
+    `SELECT * FROM invoices
+     WHERE business_id = ? AND status IN ('unpaid', 'sent', 'partially_paid', 'overdue')
+       AND due_date IS NOT NULL`,
     [businessId]
   );
 

@@ -2201,6 +2201,351 @@
           }
         }
       }
+    },
+    "/businesses/{id}/invoices/{invoiceId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        },
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Get an invoice with its recorded payments",
+        "operationId": "getBusinessInvoice",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice and payments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invoice": {
+                      "$ref": "#/components/schemas/Invoice"
+                    },
+                    "payments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InvoicePayment"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/invoices/{invoiceId}/send": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        },
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Send a draft invoice (makes it collectable)",
+        "operationId": "sendBusinessInvoice",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/invoices/{invoiceId}/payments": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        },
+        {
+          "$ref": "#/components/parameters/InvoiceId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Record a payment against an invoice",
+        "description": "Records a manual receipt, or links a completed incoming transaction. Payments above the outstanding balance are rejected; a fully-paid invoice gets status paid.",
+        "operationId": "recordInvoicePayment",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoicePaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invoice": {
+                      "$ref": "#/components/schemas/Invoice"
+                    },
+                    "payment": {
+                      "$ref": "#/components/schemas/InvoicePayment"
+                    },
+                    "fully_paid": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/receivables/match": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Auto-match incoming payments to open invoices",
+        "description": "Runs full-settlement reconciliation first, then applies partial receipts where the counterparty agrees with the expected payer/customer. Leftover payments remain in the review queue.",
+        "operationId": "autoMatchBusinessPayments",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Match summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoMatchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/receivables/review-queue": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "List unmatched incoming payments for human review",
+        "operationId": "getReceivablesReviewQueue",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unmatched payments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewQueue"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/receivables/summary": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Intelligence"
+        ],
+        "summary": "Receivables summary and DSO (honest null without invoices)",
+        "operationId": "getReceivablesSummary",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Receivables summary; null when the business has no invoices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "receivables": {
+                      "$ref": "#/components/schemas/ReceivablesSummary"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2244,6 +2589,16 @@
         "in": "path",
         "required": true,
         "description": "Webhook subscription UUID owned by the calling API client",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "InvoiceId": {
+        "name": "invoiceId",
+        "in": "path",
+        "required": true,
+        "description": "Invoice UUID",
         "schema": {
           "type": "string",
           "format": "uuid"
@@ -3199,8 +3554,12 @@
           "status": {
             "type": "string",
             "enum": [
-              "unpaid",
-              "paid"
+              "draft",
+              "sent",
+              "partially_paid",
+              "paid",
+              "overdue",
+              "unpaid"
             ]
           },
           "matched_transaction_id": {
@@ -3214,8 +3573,7 @@
           },
           "paid_amount": {
             "type": "number",
-            "nullable": true,
-            "description": "Amount actually received (can differ within tolerance)"
+            "nullable": true
           },
           "created_at": {
             "type": "string",
@@ -3224,6 +3582,22 @@
           "paid_at": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "invoice_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachment_file_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachment_sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachment_size_bytes": {
+            "type": "integer",
             "nullable": true
           }
         }
@@ -4532,7 +4906,8 @@
           "counterparties",
           "totals",
           "health_score",
-          "tips"
+          "tips",
+          "receivables"
         ],
         "properties": {
           "business": {
@@ -4721,6 +5096,9 @@
             },
             "minItems": 3,
             "maxItems": 3
+          },
+          "receivables": {
+            "$ref": "#/components/schemas/ReceivablesSummary"
           }
         }
       },
@@ -4801,8 +5179,12 @@
         "required": [
           "open_invoice_count",
           "open_invoice_value",
+          "overdue_invoice_count",
           "dso_days",
-          "matched_payment_ratio"
+          "average_days_to_pay",
+          "matched_payment_ratio",
+          "window_days",
+          "method"
         ],
         "properties": {
           "open_invoice_count": {
@@ -4811,13 +5193,26 @@
           "open_invoice_value": {
             "type": "number"
           },
+          "overdue_invoice_count": {
+            "type": "integer"
+          },
           "dso_days": {
+            "type": "number",
+            "nullable": true
+          },
+          "average_days_to_pay": {
             "type": "number",
             "nullable": true
           },
           "matched_payment_ratio": {
             "type": "number",
             "nullable": true
+          },
+          "window_days": {
+            "type": "integer"
+          },
+          "method": {
+            "type": "string"
           }
         }
       },
@@ -4990,6 +5385,152 @@
             }
           }
         ]
+      },
+      "InvoicePaymentRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "method"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "mpesa",
+              "bank",
+              "manual",
+              "cash"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InvoicePayment": {
+        "type": "object",
+        "required": [
+          "id",
+          "business_id",
+          "invoice_id",
+          "amount",
+          "method",
+          "paid_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "business_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoice_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AutoMatchResult": {
+        "type": "object",
+        "required": [
+          "settled_invoices",
+          "partially_paid_invoices",
+          "unmatched_transactions",
+          "payments_recorded"
+        ],
+        "properties": {
+          "settled_invoices": {
+            "type": "integer"
+          },
+          "partially_paid_invoices": {
+            "type": "integer"
+          },
+          "unmatched_transactions": {
+            "type": "integer"
+          },
+          "payments_recorded": {
+            "type": "integer"
+          }
+        }
+      },
+      "ReviewQueue": {
+        "type": "object",
+        "required": [
+          "count",
+          "transactions"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "counterparty": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "occurred_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "source_provider": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

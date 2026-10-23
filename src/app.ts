@@ -12,6 +12,7 @@ import businessDataRoutes from "./routes/businessData";
 import businessOnboardingRoutes from "./routes/businessOnboarding";
 import businessDashboardRoutes from "./routes/businessDashboard";
 import businessDecisionRoutes from "./routes/businessDecision";
+import receivablesRoutes from "./routes/receivables";
 import webhookRoutes from "./routes/webhooks";
 import sandboxRoutes from "./routes/sandbox";
 import { ipRateLimit } from "./middleware/rateLimit";
@@ -95,6 +96,7 @@ export function createApp() {
   app.use("/v1/businesses/:id", businessOnboardingRoutes);
   app.use("/v1/businesses/:id", businessDashboardRoutes);
   app.use("/v1/businesses/:id", businessDecisionRoutes);
+  app.use("/v1/businesses/:id", receivablesRoutes);
   app.use("/v1/persons", personRoutes);
   app.use("/v1/consents", consentRoutes);
   app.use("/v1/clients", clientRoutes);
