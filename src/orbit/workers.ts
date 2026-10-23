@@ -144,11 +144,23 @@ async function recordIncomingPayment(
 }
 
 async function findMatchedInvoiceId(businessId: string, transactionId: string, reference?: string): Promise<string | undefined> {
+  // Note: PostgreSQL cannot infer the type of a bare `? IS NOT NULL`
+  // parameter, so the reference branch is built only when a reference exists.
+  if (reference) {
+    const rows = await dbAll<{ invoice_id: string }>(
+      `SELECT invoice_id FROM invoice_payments
+       WHERE business_id = ? AND (transaction_id = ? OR reference = ?)
+       LIMIT 1`,
+      [businessId, transactionId, reference]
+    );
+    return rows[0]?.invoice_id;
+  }
+
   const rows = await dbAll<{ invoice_id: string }>(
     `SELECT invoice_id FROM invoice_payments
-     WHERE business_id = ? AND (transaction_id = ? OR (? IS NOT NULL AND reference = ?))
+     WHERE business_id = ? AND transaction_id = ?
      LIMIT 1`,
-    [businessId, transactionId, reference ?? null, reference ?? null]
+    [businessId, transactionId]
   );
   return rows[0]?.invoice_id;
 }

@@ -13,153 +13,249 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <header class="site-header">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="site-header reveal">
       <div class="shell header-inner">
         <a class="brand" href="#top" aria-label="AfriScore Orbit Console">
           <span class="brand-glyph" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span>AfriScore<b>.</b> <em>Orbit</em></span>
+          <span>afriscore<b>.</b></span>
         </a>
-        <span class="header-note mono">BUSINESS INFRASTRUCTURE / ORBIT CORE</span>
-        <a class="header-link pill-link" href="/dashboard/#top">Console <span aria-hidden="true">↗</span></a>
+        <nav class="desktop-nav" aria-label="Sections">
+          <a href="#system-map">System map</a>
+          <a href="#principles">Principles</a>
+          <a href="#console">Console</a>
+        </nav>
+        <a class="header-link" href="#console">Open console <span aria-hidden="true">↗</span></a>
       </div>
     </header>
 
     <main id="top">
+      <!-- HERO -->
       <section class="hero shell">
-        <div class="section-line"><span>01 / ORBIT CONSOLE</span><span>ASYNC INGESTION · MATCHING · SCORING</span></div>
         <div class="hero-grid">
           <div class="hero-copy">
-            <div class="eyebrow"><i></i> ORCHESTRATION LAYER</div>
-            <h1>From statement<br /><em>to decision.</em></h1>
-            <p>
-              Upload a statement, then watch Orbit move it through consent, parsing, normalization, ledger and scoring
-              queues — deterministically, idempotently, and with every step auditable.
-            </p>
-            <nav class="tabs" id="tabs" aria-label="Console views">
-              <button class="tab active" data-view="onboarding"><b>01</b> Onboard</button>
-              <button class="tab" data-view="owner"><b>02</b> Business dashboard</button>
-              <button class="tab" data-view="lender"><b>03</b> Lender card</button>
-            </nav>
+            <div class="eyebrow reveal"><i></i> ORBIT CORE / ORCHESTRATION LAYER</div>
+            <h1 class="reveal" data-delay="1">Watch the data<br /><em>move.</em></h1>
           </div>
-          <aside class="hero-card" aria-label="Orbit status">
-            <div class="hero-card-top mono"><span>ORBIT CORE</span><span class="dot-live">LIVE</span></div>
-            <div class="orbit-ring">
-              <div class="orbit-core"><strong>∞</strong><span>QUEUES</span></div>
-              <ol class="orbit-steps">
-                <li>CONSENT_VERIFIED</li>
-                <li>PARSING</li>
-                <li>NORMALIZING</li>
-                <li>LEDGER</li>
-                <li>SCORING</li>
-                <li>READY</li>
-              </ol>
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section class="panel plain" id="connect-panel">
-        <div class="section-line"><span>02 / CONNECTION</span><span>CREDENTIALS STAY IN THIS BROWSER</span></div>
-        <div class="grid connect-grid">
-          <label>Business ID <input id="business-id" placeholder="uuid from onboarding" /></label>
-          <label>API key (partner) <input id="api-key" placeholder="ak_…" autocomplete="off" /></label>
-          <label>Admin token (local only) <input id="admin-token" type="password" placeholder="x-admin-token" autocomplete="off" /></label>
-        </div>
-        <p class="muted small">
-          The console is served by the API itself, so calls stay same-origin. Credentials are stored in this tab's
-          localStorage and never sent anywhere else.
-        </p>
-      </section>
-
-      <!-- View 1: onboarding -->
-      <section class="view" id="view-onboarding">
-        <div class="section-line"><span>03 / ONBOARD</span><span>CONSENT BEFORE PARSING</span></div>
-        <div class="cards">
-          <article class="card">
-            <div class="card-kicker mono">STEP 01</div>
-            <h2>Create business</h2>
-            <label>Legal name <input id="legal-name" value="Jua Kali Traders Ltd" /></label>
-            <label>Sector <input id="sector" value="retail" /></label>
-            <button id="create-business" class="pill-button">Create business <b>↗</b></button>
-            <p class="muted small" id="create-result"></p>
-          </article>
-
-          <article class="card">
-            <div class="card-kicker mono">STEP 02</div>
-            <h2>Record consent</h2>
-            <p class="muted small">
-              No statement is read until the business owner's consent grant exists. Revoking it blocks further
-              ingestion.
+          <div class="hero-side reveal" data-delay="2">
+            <p class="hero-lead">
+              A statement upload becomes a queue, a parsed transaction, a hash-chained ledger entry and a lender-ready
+              decision — in one observable pipeline.
             </p>
-            <button id="record-consent" class="pill-button">Record business consent <b>↗</b></button>
-            <p class="muted small" id="consent-result"></p>
-          </article>
-
-          <article class="card wide">
-            <div class="card-kicker mono">STEP 03</div>
-            <h2>Upload statement</h2>
-            <div class="row">
-              <label
-                >Type
-                <select id="source-type">
-                  <option value="business_till">M-Pesa business till</option>
-                  <option value="business_paybill">M-Pesa paybill</option>
-                  <option value="bank">Bank statement</option>
-                  <option value="individual_mpesa">Individual M-Pesa (individual track)</option>
-                </select>
-              </label>
-              <label>Shortcode (till/paybill) <input id="shortcode" value="123456" /></label>
-              <label>CSV file <input id="statement-file" type="file" accept=".csv,text/csv" /></label>
+            <p class="muted">
+              Orbit runs ingestion, normalization, ledger and scoring as separate workers. Every state transition is
+              stored, every retry is idempotent, and every failure lands in a dead-letter queue instead of a stack trace.
+            </p>
+            <div class="hero-actions">
+              <button id="run-demo" class="pill-button">Run live demo <b>↗</b></button>
+              <a class="inline-link" href="#console">Open the console <span>↗</span></a>
             </div>
-            <label
-              >…or paste CSV content
-              <textarea
-                id="statement-content"
-                rows="6"
-                placeholder="Receipt No.,Completion Time,Details,Transaction Status,Paid In,Withdrawn,Balance"
-              ></textarea>
-            </label>
-            <button id="upload-statement" class="pill-button">Queue for Orbit ingestion <b>↗</b></button>
-            <p class="muted small" id="upload-result"></p>
+            <p class="muted small" id="demo-status" role="status"></p>
+          </div>
+        </div>
 
-            <div class="workflow" id="workflow-progress" hidden>
-              <div class="workflow-head">
-                <span class="workflow-title mono">ORBIT WORKFLOW</span>
-                <span class="workflow-id" id="workflow-id"></span>
-              </div>
-              <ol class="workflow-track" id="workflow-track"></ol>
-              <p class="muted small" id="workflow-note"></p>
-            </div>
-          </article>
+        <div class="hero-foot mono reveal" data-delay="3">
+          <span>01 / INGEST</span><span>02 / NORMALIZE</span><span>03 / LEDGER</span><span>04 / SCORE</span><span>05 / DECIDE</span>
         </div>
       </section>
 
-      <!-- View 2: owner dashboard -->
-      <section class="view" id="view-owner">
-        <div class="section-line"><span>04 / BUSINESS DASHBOARD</span><span>CONSENT-GATED, DETERMINISTIC</span></div>
-        <button id="load-dashboard" class="pill-button">Load business dashboard <b>↗</b></button>
-        <p class="muted small">Requires an API key whose client has an active <code>business_profile</code> consent grant.</p>
-        <div id="dashboard-output"></div>
+      <!-- SYSTEM MAP -->
+      <section class="system-wrap section-pad" id="system-map">
+        <div class="shell">
+          <div class="section-line reveal"><span>02 / SYSTEM MAP</span><span>EVIDENCE IN · USEFUL SIGNAL OUT</span></div>
+          <div class="system-grid">
+            <div class="system-map reveal" data-delay="1" aria-label="Animated Orbit pipeline">
+              <div class="map-top mono"><span>AFRISCORE / ORBIT</span><span>LIVE PIPELINE</span></div>
+              <div class="map-stage">
+                <div class="map-inputs">
+                  <span class="mono map-label">INPUT LAYER</span>
+                  <div class="source-pill" data-pulse="0">M-PESA ·</div>
+                  <div class="source-pill" data-pulse="1">BANK ·</div>
+                  <div class="source-pill" data-pulse="2">INVOICE</div>
+                </div>
+
+                <div class="map-flow" aria-hidden="true">
+                  <i class="dot" style="--d: 0s"></i><i class="dot" style="--d: 1.1s"></i><i class="dot" style="--d: 2.2s"></i>
+                </div>
+
+                <div class="map-core">
+                  <div class="ring ring-1"></div>
+                  <div class="ring ring-2"></div>
+                  <div class="ring ring-3"></div>
+                  <div class="core-ball">
+                    <strong>↗</strong>
+                    <span class="mono">ORBIT</span>
+                  </div>
+                </div>
+
+                <div class="map-flow" aria-hidden="true">
+                  <i class="dot" style="--d: 0.4s"></i><i class="dot" style="--d: 1.5s"></i><i class="dot" style="--d: 2.6s"></i>
+                </div>
+
+                <div class="map-output">
+                  <span class="mono map-label">OUTPUT LAYER</span>
+                  <div class="output-card">
+                    <span class="mono">READY STATE</span>
+                    <strong>Decision card</strong>
+                    <div class="output-bars"><i></i><i></i><i></i><i></i><i></i></div>
+                  </div>
+                </div>
+              </div>
+              <div class="map-foot mono"><span>EVIDENCE IN / USEFUL SIGNAL OUT</span><span class="dot-live">SYNTHETIC DATA TODAY</span></div>
+            </div>
+
+            <div class="system-copy reveal" data-delay="2">
+              <div class="eyebrow"><i></i> WHY IT MATTERS</div>
+              <h2>Move from records<br /><em>to decisions.</em></h2>
+              <p class="muted">
+                Each stage is an isolated queue with its own worker, retry policy and idempotency key. The API returns a
+                workflow id immediately; the console watches the state machine walk from <code>PENDING</code> to
+                <code>READY</code>.
+              </p>
+              <ul class="clean system-list">
+                <li><strong>ingestion</strong> — consent verified, raw text extracted</li>
+                <li><strong>normalization</strong> — parse, dedupe by receipt, insert</li>
+                <li><strong>ledger</strong> — hash-chain append, once per event</li>
+                <li><strong>scoring</strong> — health, DSO and decision card</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <!-- View 3: lender card -->
-      <section class="view" id="view-lender">
-        <div class="section-line"><span>05 / LENDER CARD</span><span>EVERY METRIC LEDGERED</span></div>
-        <button id="issue-card" class="pill-button">Issue decision card <b>↗</b></button>
-        <p class="muted small">
-          Issuing writes every derived metric and the decision to the hash-chained ledger; the card carries the
-          decision's audit reference.
-        </p>
-        <div id="lender-output"></div>
+      <!-- PRINCIPLES -->
+      <section class="principles section-pad" id="principles">
+        <div class="shell">
+          <div class="section-line reveal"><span>03 / PRINCIPLES</span><span>HOW THE ENGINE BEHAVES</span></div>
+          <div class="principle-grid">
+            <article class="principle reveal" data-delay="1">
+              <span class="mono">01 / DETERMINISM</span>
+              <div class="principle-icon target"><i></i><i></i><i></i></div>
+              <h3>Same inputs, same answers.</h3>
+              <p>Metrics, health bands and limits are explicit formulas — never model guesswork.</p>
+            </article>
+            <article class="principle reveal" data-delay="2">
+              <span class="mono">02 / CONTROL</span>
+              <div class="principle-icon spark"><i></i></div>
+              <h3>Consent before parsing.</h3>
+              <p>A valid key proves the caller; a separate grant proves the subject allowed it.</p>
+            </article>
+            <article class="principle reveal" data-delay="3">
+              <span class="mono">03 / AUDIT</span>
+              <div class="principle-icon arrow"><i></i></div>
+              <h3>Every step leaves a hash.</h3>
+              <p>Workflows are stored, retries are idempotent, failures are quarantined in a dead-letter queue.</p>
+            </article>
+          </div>
+        </div>
       </section>
 
-      <p class="error" id="error" hidden></p>
+      <!-- CONSOLE -->
+      <section class="console section-pad" id="console">
+        <div class="shell">
+          <div class="section-line reveal"><span>04 / CONSOLE</span><span>RUN THE PIPELINE END-TO-END</span></div>
+
+          <div class="console-head reveal">
+            <h2>Run it<br /><em>yourself.</em></h2>
+            <p class="muted">
+              One click seeds a demo business, records consent, ingests a statement through Orbit and renders the
+              dashboard and lender card. Everything you see is written to the local SQLite database.
+            </p>
+            <button id="run-demo-2" class="pill-button pill-light">Run live demo <b>↗</b></button>
+          </div>
+
+          <div class="panel plain reveal" id="connect-panel">
+            <div class="grid connect-grid">
+              <label>Business ID <input id="business-id" placeholder="uuid from onboarding" /></label>
+              <label>API key (partner) <input id="api-key" placeholder="ak_…" autocomplete="off" /></label>
+              <label>Admin token (local only) <input id="admin-token" type="password" placeholder="x-admin-token" autocomplete="off" /></label>
+            </div>
+            <p class="muted small">
+              Served by the API itself, so calls stay same-origin. Credentials live only in this tab's localStorage.
+            </p>
+          </div>
+
+          <nav class="tabs" id="tabs" aria-label="Console views">
+            <button class="tab active" data-view="onboarding"><b>01</b> Onboard</button>
+            <button class="tab" data-view="owner"><b>02</b> Business dashboard</button>
+            <button class="tab" data-view="lender"><b>03</b> Lender card</button>
+          </nav>
+
+          <section class="view active" id="view-onboarding">
+            <div class="cards">
+              <article class="card reveal" data-delay="1">
+                <div class="card-kicker mono">STEP 01</div>
+                <h2>Create business</h2>
+                <label>Legal name <input id="legal-name" value="Jua Kali Traders Ltd" /></label>
+                <label>Sector <input id="sector" value="retail" /></label>
+                <button id="create-business" class="pill-button">Create business <b>↗</b></button>
+                <p class="muted small" id="create-result"></p>
+              </article>
+
+              <article class="card reveal" data-delay="2">
+                <div class="card-kicker mono">STEP 02</div>
+                <h2>Record consent</h2>
+                <p class="muted small">No statement is read until the owner's consent grant exists.</p>
+                <button id="record-consent" class="pill-button">Record business consent <b>↗</b></button>
+                <p class="muted small" id="consent-result"></p>
+              </article>
+
+              <article class="card wide reveal" data-delay="3">
+                <div class="card-kicker mono">STEP 03</div>
+                <h2>Upload statement</h2>
+                <div class="row">
+                  <label>Type
+                    <select id="source-type">
+                      <option value="business_till">M-Pesa business till</option>
+                      <option value="business_paybill">M-Pesa paybill</option>
+                      <option value="bank">Bank statement</option>
+                      <option value="individual_mpesa">Individual M-Pesa (individual track)</option>
+                    </select>
+                  </label>
+                  <label>Shortcode (till/paybill) <input id="shortcode" value="123456" /></label>
+                  <label>CSV file <input id="statement-file" type="file" accept=".csv,text/csv" /></label>
+                </div>
+                <label>…or paste CSV content
+                  <textarea id="statement-content" rows="6" placeholder="Receipt No.,Completion Time,Details,Transaction Status,Paid In,Withdrawn,Balance"></textarea>
+                </label>
+                <button id="upload-statement" class="pill-button">Queue for Orbit ingestion <b>↗</b></button>
+                <p class="muted small" id="upload-result"></p>
+
+                <div class="workflow" id="workflow-progress" hidden>
+                  <div class="workflow-head">
+                    <span class="workflow-title mono">ORBIT WORKFLOW</span>
+                    <span class="workflow-id" id="workflow-id"></span>
+                  </div>
+                  <ol class="workflow-track" id="workflow-track"></ol>
+                  <p class="muted small" id="workflow-note"></p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" id="view-owner">
+            <button id="load-dashboard" class="pill-button">Load business dashboard <b>↗</b></button>
+            <p class="muted small">Requires an API key whose client has an active <code>business_profile</code> consent grant.</p>
+            <div id="dashboard-output"></div>
+          </section>
+
+          <section class="view" id="view-lender">
+            <button id="issue-card" class="pill-button">Issue decision card <b>↗</b></button>
+            <p class="muted small">Issuing writes every derived metric and the decision to the hash-chained ledger.</p>
+            <div id="lender-output"></div>
+          </section>
+
+          <p class="error" id="error" hidden></p>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer">
       <div class="shell footer-inner">
-        <span class="mono">AFRISCORE / ORBIT CORE</span>
-        <span class="muted small">Queue workers: <code>npm run worker</code> · in-memory dev mode without REDIS_URL</span>
+        <div class="brand small-brand"><span class="brand-glyph"><i></i><i></i><i></i></span> afriscore<b>.</b></div>
+        <span class="mono">ORBIT CORE · INGESTION / NORMALIZATION / LEDGER / SCORING</span>
+        <span class="muted small">workers: <code>npm run worker</code></span>
       </div>
     </footer>
 

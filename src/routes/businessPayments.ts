@@ -13,7 +13,6 @@ import { OnboardingError } from "../services/businessOnboardingService";
  * scoring queues.
  */
 const router = Router({ mergeParams: true });
-router.use(requireAdmin);
 
 type BusinessParams = { id: string };
 type BusinessRequest = Request<BusinessParams>;
@@ -25,7 +24,7 @@ const paymentSchema = z.object({
   transaction_id: z.string().uuid().optional(),
 });
 
-router.post("/payments/simulate", async (req: BusinessRequest, res) => {
+router.post("/payments/simulate", requireAdmin, async (req: BusinessRequest, res) => {
   const parsed = paymentSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 400, "invalid_input", { details: parsed.error.flatten() });
 

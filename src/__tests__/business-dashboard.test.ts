@@ -291,6 +291,18 @@ describe("business dashboard endpoint", () => {
     assert.ok(["strong", "stable", "watch", "at_risk"].includes(res.body.health_score.band));
     assert.strictEqual(res.body.tips.length, 3);
     assert.ok(res.body.tips.every((tip: string) => typeof tip === "string" && tip.length > 10));
+
+    // Partner endpoints must be reachable with ONLY the API key — sibling
+    // admin-only routers mounted on the same prefix must not intercept them.
+    const partnerOnly = await api("GET", `/v1/businesses/${businessId}/business-profile`, {
+      apiKey: client.body.api_key,
+      admin: false,
+    });
+    assert.strictEqual(partnerOnly.status, 200, "a partner read must not require the admin token");
+
+    // …while the operator routes on the same prefix still reject anonymous callers.
+    const adminRoute = await api("GET", `/v1/businesses/${businessId}/links`, { admin: false });
+    assert.strictEqual(adminRoute.status, 401, "admin-only sibling routes must stay protected");
   });
 
   test("an unknown business returns 404 only after consent is resolved", async () => {

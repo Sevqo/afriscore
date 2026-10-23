@@ -212,6 +212,13 @@ workflow id. Poll `GET /v1/orbit/workflows/:id` (admin) for the current state,
 transition history and dead-letter errors. The local console at `/dashboard`
 polls that endpoint and renders the pipeline live.
 
+The console follows the landing page's design system (paper/mint/ink palette,
+Sora + DM Sans + Space Mono, animated system map) and includes a one-click
+**Run live demo**: it creates a demo business and API client, records consent,
+queues a statement through Orbit, animates the state machine to `READY`, creates
+a partially-paid invoice, then renders the owner dashboard and lender card.
+Credentials can be pre-filled with `?business=…&key=…&admin=…` (local demo only).
+
 **Running it**
 
 ```bash

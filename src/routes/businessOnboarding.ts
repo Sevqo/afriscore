@@ -13,7 +13,6 @@ import { startStatementIngestionWorkflow } from "../orbit/orbitService";
  * dashboard endpoints and are consent-gated per grantee.
  */
 const router = Router({ mergeParams: true });
-router.use(requireAdmin);
 
 type BusinessParams = { id: string };
 type BusinessRequest = Request<BusinessParams>;
@@ -27,7 +26,7 @@ const consentSchema = z.object({
     .optional(),
 });
 
-router.post("/onboarding/consent", async (req: BusinessRequest, res) => {
+router.post("/onboarding/consent", requireAdmin, async (req: BusinessRequest, res) => {
   const parsed = consentSchema.safeParse(req.body ?? {});
   if (!parsed.success) return sendError(res, 400, "invalid_input", { details: parsed.error.flatten() });
 
@@ -56,7 +55,7 @@ const uploadSchema = z.object({
   content: z.string().min(10).max(1_000_000),
 });
 
-router.post("/statements", async (req: BusinessRequest, res) => {
+router.post("/statements", requireAdmin, async (req: BusinessRequest, res) => {
   const parsed = uploadSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 400, "invalid_input", { details: parsed.error.flatten() });
 
@@ -91,11 +90,11 @@ router.post("/statements", async (req: BusinessRequest, res) => {
   }
 });
 
-router.get("/statements", async (req: BusinessRequest, res) => {
+router.get("/statements", requireAdmin, async (req: BusinessRequest, res) => {
   res.json(await listStatements(String(req.params.id)));
 });
 
-router.get("/shortcodes", async (req: BusinessRequest, res) => {
+router.get("/shortcodes", requireAdmin, async (req: BusinessRequest, res) => {
   res.json(await listShortcodes(String(req.params.id)));
 });
 

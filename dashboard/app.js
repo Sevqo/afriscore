@@ -550,7 +550,184 @@ $("issue-card").addEventListener("click", async () => {
   }
 });
 
+/* ---------------- Motion ---------------- */
+
+function attachMotion() {
+  const elements = Array.from(document.querySelectorAll(".reveal"));
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!("IntersectionObserver" in window) || reduced) {
+    elements.forEach((element) => element.classList.add("visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add("visible");
+        observer.unobserve(entry.target);
+      }
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+  );
+  elements.forEach((element) => observer.observe(element));
+}
+
+/* ---------------- One-click live demo ---------------- */
+
+const DEMO_CSV = [
+  "Receipt No.,Completion Time,Details,Transaction Status,Paid In,Withdrawn,Balance",
+  'QDEMO001,2026-01-05 09:12:00,Customer payment from 254712345678 ACME WHOLESALERS LTD,Completed,"6,500.00",,106500.00',
+  'QDEMO002,2026-01-07 11:40:00,Customer payment from 254798765432 JANE WANJIKU,Completed,"3,200.00",,109700.00',
+  'QDEMO003,2026-01-09 08:05:00,Supplier payment to NAIROBI SUPPLIES,Completed,,"2,100.00",107600.00',
+  'QDEMO004,2026-01-14 14:22:00,Customer payment from 254733344455 KENYA HARDWARE,Completed,"5,750.00",,113350.00',
+  'QDEMO005,2026-01-19 16:45:00,Customer payment from 254712345678 ACME WHOLESALERS LTD,Completed,"4,200.00",,117550.00',
+  'QDEMO006,2026-01-23 09:30:00,Customer payment from 254722233344 MAMA MBOGA GROCERS,Completed,"2,650.00",,120200.00',
+  'QDEMO007,2026-01-28 08:00:00,Supplier payment to NAIROBI SUPPLIES,Completed,,"2,400.00",117800.00',
+  'QDEMO008,2026-02-03 15:35:00,Customer payment from 254712345678 ACME WHOLESALERS LTD,Completed,"7,100.00",,124900.00',
+  'QDEMO009,2026-02-08 10:50:00,Customer payment from 254733344455 KENYA HARDWARE,Completed,"3,050.00",,127950.00',
+  'QDEMO010,2026-02-12 17:20:00,Supplier payment to EASTLAND SUPPLIERS,Completed,,"3,200.00",124750.00',
+  'QDEMO011,2026-02-18 09:05:00,Customer payment from 254711122233 BRIGHT FUTURE SCHOOLS,Completed,"9,400.00",,134150.00',
+  'QDEMO012,2026-02-24 13:40:00,Customer payment from 254798765432 JANE WANJIKU,Completed,"2,800.00",,136950.00',
+  'QDEMO013,2026-03-02 11:10:00,Supplier payment to EASTLAND SUPPLIERS,Completed,,"2,900.00",134050.00',
+  'QDEMO014,2026-03-06 09:45:00,Customer payment from 254712345678 ACME WHOLESALERS LTD,Completed,"5,300.00",,139350.00',
+  'QDEMO015,2026-03-11 14:05:00,Customer payment from 254722233344 MAMA MBOGA GROCERS,Completed,"1,950.00",,141300.00',
+  'QDEMO016,2026-03-16 10:30:00,Supplier payment to NAIROBI SUPPLIES,Completed,,"2,200.00",139100.00',
+  'QDEMO017,2026-03-20 09:15:00,Customer payment from 254711122233 BRIGHT FUTURE SCHOOLS,Completed,"4,600.00",,143700.00',
+].join("\n");
+
+const DEMO_DAYS = 24 * 60 * 60 * 1000;
+const daysAgo = (days) => new Date(Date.now() - days * DEMO_DAYS).toISOString();
+const daysAhead = (days) => new Date(Date.now() + days * DEMO_DAYS).toISOString();
+
+let demoRunning = false;
+
+function setDemoStatus(text, busy) {
+  const target = $("demo-status");
+  if (target) target.innerHTML = text ? `${busy ? '<span class="dot-live mono">RUNNING</span> ' : ""}${escapeHtml(text)}` : "";
+}
+
+function setDemoButtonsDisabled(disabled) {
+  for (const id of ["run-demo", "run-demo-2"]) {
+    const button = $(id);
+    if (button) button.disabled = disabled;
+  }
+}
+
+async function runDemo() {
+  if (demoRunning) return;
+  clearError();
+  demoRunning = true;
+  setDemoButtonsDisabled(true);
+
+  try {
+    if (!state.adminToken) {
+      throw new Error("Enter the admin token above (or open the pre-filled demo link) to run the demo.");
+    }
+
+    setDemoStatus("Creating a demo API client and business…", true);
+    const clientName = `console-demo-${Math.random().toString(36).slice(2, 7)}`;
+    const client = await callApi("POST", "/clients", { auth: "admin", body: { name: clientName } });
+    state.apiKey = client.api_key;
+    $("api-key").value = state.apiKey;
+
+    const business = await callApi("POST", "/businesses", {
+      auth: "admin",
+      body: { legal_name: "Jua Kali Traders Ltd", sector: "retail", registration_number: `DEMO-${Date.now().toString().slice(-6)}` },
+    });
+    state.businessId = business.id;
+    $("business-id").value = business.id;
+    persist();
+    $("create-result").innerHTML = `Created <code>${escapeHtml(business.id)}</code>`;
+    selectView("onboarding");
+
+    setDemoStatus("Recording the business owner's consent…", true);
+    const consent = await callApi("POST", `/businesses/${business.id}/onboarding/consent`, { auth: "admin", body: {} });
+    $("consent-result").innerHTML = `Consent <code>${escapeHtml(consent.consent.id)}</code> active.`;
+
+    setDemoStatus("Queueing the statement — watch the Orbit pipeline below…", true);
+    $("statement-content").value = DEMO_CSV;
+    $("upload-result").innerHTML = "";
+    const accepted = await callApi("POST", `/businesses/${business.id}/statements`, {
+      auth: "admin",
+      body: { source_type: "business_till", shortcode: "123456", content: DEMO_CSV, file_name: "demo-till.csv" },
+    });
+
+    const view = await pollWorkflow(accepted.workflow_id);
+    if (view.workflow.state.startsWith("FAILED")) {
+      throw new Error(`Orbit pipeline failed in ${view.workflow.state}: ${view.workflow.error_message || "unknown error"}`);
+    }
+    $("upload-result").innerHTML = `<span class="ok">Statement ingested and scored — workflow reached READY.</span>`;
+
+    setDemoStatus("Granting the lender read consent and creating a receivable…", true);
+    await callApi("POST", "/consents", {
+      auth: "admin",
+      body: {
+        subject_type: "business",
+        subject_id: business.id,
+        grantee: clientName,
+        purpose: "underwriting",
+        scope: ["business_profile"],
+      },
+    });
+
+    const invoice = await callApi("POST", `/businesses/${business.id}/invoices`, {
+      auth: "admin",
+      body: { customer_reference: "ACME WHOLESALERS LTD", amount: 8000, issue_date: daysAgo(20), due_date: daysAhead(10) },
+    });
+    await callApi("POST", `/businesses/${business.id}/invoices/${invoice.id}/payments`, {
+      auth: "admin",
+      body: { amount: 3000, method: "mpesa", reference: "DEMO-PAY-001" },
+    });
+
+    setDemoStatus("Rendering the business dashboard…", true);
+    selectView("owner");
+    await loadDashboard();
+    document.getElementById("dashboard-output")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    setDemoStatus("Issuing the lender decision card…", true);
+    const card = await callApi("POST", `/businesses/${business.id}/decision-card`, { auth: "apikey" });
+    renderLenderCard(card);
+
+    setDemoStatus(`Demo ready — business ${business.id}. Dashboard and lender card are populated.`, false);
+    document.getElementById("console")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    setDemoStatus("Demo failed — see the error below.", false);
+    showError(error.message);
+  } finally {
+    demoRunning = false;
+    setDemoButtonsDisabled(false);
+  }
+}
+
+function attachDemo() {
+  for (const id of ["run-demo", "run-demo-2"]) {
+    const button = $(id);
+    if (button) button.addEventListener("click", runDemo);
+  }
+}
+
+/* ---------------- URL prefill (demo links) ---------------- */
+
+function prefillFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const map = { business: "businessId", key: "apiKey", admin: "adminToken" };
+  let changed = false;
+  for (const [parameter, field] of Object.entries(map)) {
+    const value = params.get(parameter);
+    if (value) {
+      state[field] = value;
+      changed = true;
+    }
+  }
+  if (changed) persist();
+}
+
 /* ---------------- Init ---------------- */
 
+prefillFromUrl();
 syncInputs();
 selectView("onboarding");
+attachMotion();
+attachDemo();
+

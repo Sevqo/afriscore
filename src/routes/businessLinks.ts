@@ -16,14 +16,13 @@ import {
  * isolated. It never merges ledgers, scores or transaction streams.
  */
 const router = Router({ mergeParams: true });
-router.use(requireAdmin);
 
 type BusinessParams = { id: string; personId: string };
 type BusinessRequest = Request<BusinessParams>;
 
 const linkSchema = z.object({ person_id: z.string().uuid(), requested_by: z.string().max(120).optional() });
 
-router.post("/links", async (req: BusinessRequest, res) => {
+router.post("/links", requireAdmin, async (req: BusinessRequest, res) => {
   const parsed = linkSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 400, "invalid_input", { details: parsed.error.flatten() });
 
@@ -38,7 +37,7 @@ router.post("/links", async (req: BusinessRequest, res) => {
   }
 });
 
-router.delete("/links/:personId", async (req: BusinessRequest, res) => {
+router.delete("/links/:personId", requireAdmin, async (req: BusinessRequest, res) => {
   try {
     await unlinkProfiles(String(req.params.id), String(req.params.personId));
     res.json({ unlinked: true });
@@ -48,11 +47,11 @@ router.delete("/links/:personId", async (req: BusinessRequest, res) => {
   }
 });
 
-router.get("/links", async (req: BusinessRequest, res) => {
+router.get("/links", requireAdmin, async (req: BusinessRequest, res) => {
   res.json(await listLinksForBusiness(String(req.params.id)));
 });
 
-router.get("/linked-profiles", async (req: BusinessRequest, res) => {
+router.get("/linked-profiles", requireAdmin, async (req: BusinessRequest, res) => {
   const view = await getLinkedProfilesView(String(req.params.id));
   if (!view) return sendError(res, 404, "not_found");
   res.json(view);
