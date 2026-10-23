@@ -150,15 +150,87 @@ $("record-consent").addEventListener("click", async () => {
   }
 });
 
+/* ---------------- Orbit workflow progress ---------------- */
+
+const ORBIT_PIPELINE = ["PENDING", "CONSENT_VERIFIED", "PARSING", "NORMALIZING", "RECONCILING", "SCORING", "READY"];
+const FAILED_PHASE = {
+  FAILED_PARSING: "PARSING",
+  FAILED_NORMALIZATION: "NORMALIZING",
+  FAILED_LEDGER: "RECONCILING",
+  FAILED_RECONCILING: "RECONCILING",
+  FAILED_SCORING: "SCORING",
+};
+
+async function getWorkflow(workflowId) {
+  const res = await fetch(`/v1/orbit/workflows/${encodeURIComponent(workflowId)}`, {
+    headers: { "x-admin-token": state.adminToken },
+  });
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    /* empty */
+  }
+  if (!res.ok) {
+    throw new Error(`${body?.error || `http_${res.status}`}${body?.message ? `: ${body.message}` : ""}`);
+  }
+  return body;
+}
+
+function renderWorkflow(workflowId, view) {
+  const box = $("workflow-progress");
+  box.hidden = false;
+  $("workflow-id").textContent = workflowId;
+
+  const current = view.workflow.state;
+  const reached = new Set(view.history.map((entry) => entry.to_state));
+  const failedPhase = FAILED_PHASE[current] || (current === "FAILED" ? "PARSING" : null);
+
+  $("workflow-track").innerHTML = ORBIT_PIPELINE.map((state) => {
+    let cls = "";
+    if (state === current) cls = "active";
+    else if (reached.has(state)) cls = "done";
+    if (failedPhase && state === failedPhase) cls = "failed";
+    return `<li class="${cls}">${escapeHtml(state)}</li>`;
+  }).join("");
+
+  if (current.startsWith("FAILED")) {
+    const dead = view.dead_letter?.[0];
+    $("workflow-note").innerHTML =
+      `<span class="danger">${escapeHtml(current)}</span>` +
+      (view.workflow.error_message ? ` — ${escapeHtml(view.workflow.error_message)}` : "") +
+      (dead ? ` <span class="muted">(DLQ: ${escapeHtml(dead.queue)}, ${escapeHtml(dead.attempts_made)} attempts)</span>` : "");
+  } else {
+    $("workflow-note").innerHTML = `<span class="muted">${escapeHtml(current)}</span> · ${view.history.length} transition(s) recorded`;
+  }
+}
+
+async function pollWorkflow(workflowId, { intervalMs = 700, timeoutMs = 20000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const view = await getWorkflow(workflowId);
+    renderWorkflow(workflowId, view);
+    const state = view.workflow.state;
+    if (state === "READY" || state.startsWith("FAILED")) return view;
+    if (Date.now() > deadline) throw new Error("Timed out waiting for the Orbit workflow to finish.");
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+}
+
 $("upload-statement").addEventListener("click", async () => {
   clearError();
+  const button = $("upload-statement");
   try {
     if (!state.businessId) throw new Error("Create or paste a business id first.");
     const file = $("statement-file").files?.[0];
     const content = file ? await file.text() : $("statement-content").value;
     if (!content || content.trim().length < 10) throw new Error("Choose a CSV file or paste statement content.");
     const sourceType = $("source-type").value;
-    const result = await callApi("POST", `/businesses/${encodeURIComponent(state.businessId)}/statements`, {
+
+    button.disabled = true;
+    $("upload-result").innerHTML = `<span class="muted">Accepted — running the Orbit pipeline…</span>`;
+
+    const accepted = await callApi("POST", `/businesses/${encodeURIComponent(state.businessId)}/statements`, {
       auth: "admin",
       body: {
         source_type: sourceType,
@@ -167,15 +239,35 @@ $("upload-statement").addEventListener("click", async () => {
         content,
       },
     });
-    $("upload-result").innerHTML =
-      `Ingested <strong>${escapeHtml(result.transactions_imported)}</strong> transaction(s), ` +
-      `skipped ${escapeHtml(result.duplicates_skipped)} duplicate(s). ` +
-      `Period ${escapeHtml(String(result.period_start).slice(0, 10))} → ${escapeHtml(String(result.period_end).slice(0, 10))}. ` +
-      (result.warnings?.length ? `<span class="warn">${escapeHtml(result.warnings.length)} row warning(s).</span>` : "");
+
+    const view = await pollWorkflow(accepted.workflow_id);
+    const failed = view.workflow.state.startsWith("FAILED");
+
+    if (failed) {
+      $("upload-result").innerHTML = `<span class="danger">Ingestion failed (${escapeHtml(view.workflow.state)}).</span> It was moved to the dead-letter queue for review.`;
+      return;
+    }
+
+    // Summarise the stored statement once the workflow is READY.
+    let summary = "Ingestion complete.";
+    try {
+      const statements = await callApi("GET", `/businesses/${encodeURIComponent(state.businessId)}/statements`, { auth: "admin" });
+      const latest = Array.isArray(statements) ? statements[0] : null;
+      if (latest) {
+        summary =
+          `Ingested <strong>${escapeHtml(latest.imported_count)}</strong> transaction(s), ` +
+          `skipped ${escapeHtml(latest.duplicate_count)} duplicate(s).`;
+      }
+    } catch {
+      /* summary is best-effort */
+    }
+    $("upload-result").innerHTML = summary + (accepted.duplicate ? ` <span class="warn">(duplicate upload — no new work)</span>` : "");
     selectView("owner");
     await loadDashboard();
   } catch (error) {
     showError(error.message);
+  } finally {
+    button.disabled = false;
   }
 });
 

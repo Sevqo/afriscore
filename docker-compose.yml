@@ -1,4 +1,5 @@
-# Local development stack: the API container plus PostgreSQL.
+# Local development stack: the API container, a standalone Orbit worker, Redis
+# (BullMQ) and PostgreSQL.
 #
 #   docker compose up --build
 #   curl localhost:4000/v1/health
@@ -23,20 +24,51 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: development
       PORT: "4000"
       DATABASE_URL: postgres://afriscore:afriscore-dev-only@postgres:5432/afriscore
+      REDIS_URL: redis://redis:6379
       AFRISCORE_ADMIN_TOKEN: ${AFRISCORE_ADMIN_TOKEN:-dev-only-admin-token-change-before-deploy}
       ID_HASH_SALT: ${ID_HASH_SALT:-dev-only-id-hash-salt-change-before-deploy}
       LEDGER_HMAC_KEY: ${LEDGER_HMAC_KEY:-dev-only-ledger-hmac-key-change-before-deploy}
     ports:
       - "4000:4000"
+
+  # Standalone Orbit worker: consumes ingestion/normalization/ledger/scoring/
+  # matching queues. Scale with `docker compose up --scale worker=3`.
+  worker:
+    build: .
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://afriscore:afriscore-dev-only@postgres:5432/afriscore
+      REDIS_URL: redis://redis:6379
+      AFRISCORE_ADMIN_TOKEN: ${AFRISCORE_ADMIN_TOKEN:-dev-only-admin-token-change-before-deploy}
+      ID_HASH_SALT: ${ID_HASH_SALT:-dev-only-id-hash-salt-change-before-deploy}
+      LEDGER_HMAC_KEY: ${LEDGER_HMAC_KEY:-dev-only-ledger-hmac-key-change-before-deploy}
 
 volumes:
   postgres-data:

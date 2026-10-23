@@ -9,6 +9,7 @@ const { sqlitePath } = configureTestEnv("business-decision");
 
 import { migrate, dbRun } from "../db";
 import { createApp } from "../app";
+import { drainOrbit } from "./orbit-test-utils";
 import { createBusiness, Business } from "../services/businessService";
 import {
   buildBusinessDecisionCard,
@@ -255,7 +256,8 @@ describe("decision card endpoint and ledger wiring", () => {
     const upload = await api("POST", `/v1/businesses/${biz.id}/statements`, {
       body: { source_type: "business_till", shortcode: "888888", content: fixture("till-clean.csv") },
     });
-    assert.strictEqual(upload.status, 201);
+    assert.strictEqual(upload.status, 202);
+    await drainOrbit();
 
     const client = await api("POST", "/v1/clients", { body: { name: "lender-client" } });
     await api("POST", "/v1/consents", {

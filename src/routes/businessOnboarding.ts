@@ -2,14 +2,8 @@ import { Router, Request } from "express";
 import { z } from "zod";
 import { requireAdmin } from "../middleware/adminAuth";
 import { sendError } from "../middleware/errorHandler";
-import { StatementParseError } from "../services/statement/parser";
-import {
-  ingestStatement,
-  listShortcodes,
-  listStatements,
-  OnboardingError,
-  recordOnboardingConsent,
-} from "../services/businessOnboardingService";
+import { listShortcodes, listStatements, OnboardingError, recordOnboardingConsent } from "../services/businessOnboardingService";
+import { startStatementIngestionWorkflow } from "../orbit/orbitService";
 
 /**
  * Business onboarding endpoints. Mounted under /v1/businesses/:id.
@@ -67,7 +61,10 @@ router.post("/statements", async (req: BusinessRequest, res) => {
   if (!parsed.success) return sendError(res, 400, "invalid_input", { details: parsed.error.flatten() });
 
   try {
-    const result = await ingestStatement(String(req.params.id), {
+    // Orbit ingestion: the request only validates consent and queues the work.
+    // Parsing/normalizing/ledger/scoring happen in the async pipeline (see
+    // GET /v1/orbit/workflows/:id for progress).
+    const result = await startStatementIngestionWorkflow(String(req.params.id), {
       sourceType: parsed.data.source_type,
       shortcode: parsed.data.shortcode,
       fileName: parsed.data.file_name,
@@ -75,24 +72,20 @@ router.post("/statements", async (req: BusinessRequest, res) => {
       content: parsed.data.content,
     });
 
-    res.status(201).json({
-      statement_id: result.statement.id,
-      period_start: result.statement.period_start,
-      period_end: result.statement.period_end,
-      transactions_imported: result.transactionsImported,
-      duplicates_skipped: result.duplicatesSkipped,
-      warnings: result.warnings,
+    res.status(202).json({
+      workflow_id: result.workflowId,
+      job_id: result.jobId,
+      duplicate: result.duplicate,
+      workflow_url: `/v1/orbit/workflows/${result.workflowId}`,
+      status: "accepted",
     });
   } catch (err) {
-    if (err instanceof StatementParseError) {
-      return sendError(res, 400, err.code, { message: err.message, details: err.details });
-    }
     if (err instanceof OnboardingError) {
       if (err.code === "business_not_found") return sendError(res, 404, "not_found");
       if (err.code === "consent_required") {
         return sendError(res, 403, "consent_required", { extra: { required_scope: "statements" } });
       }
-      return sendError(res, 409, err.code, { message: err.message });
+      return sendError(res, 400, err.code, { message: err.message });
     }
     throw err;
   }

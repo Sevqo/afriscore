@@ -19,6 +19,8 @@ export const WEBHOOK_EVENT_TYPES = [
   "account.disconnected",
   "invoice.paid",
   "invoice.payment_recorded",
+  "profile.ready",
+  "workflow.failed",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
@@ -35,6 +37,8 @@ const EVENT_SCOPES: Record<string, Exclude<ConsentScope, "all">> = {
   "account.disconnected": "accounts",
   "invoice.paid": "invoices",
   "invoice.payment_recorded": "invoices",
+  "profile.ready": "business_profile",
+  "workflow.failed": "business_profile",
 };
 
 interface WebhookSubscription {

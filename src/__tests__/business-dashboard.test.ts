@@ -9,6 +9,7 @@ const { sqlitePath } = configureTestEnv("business-dashboard");
 
 import { migrate, dbRun } from "../db";
 import { createApp } from "../app";
+import { drainOrbit } from "./orbit-test-utils";
 import { computeBusinessMetrics, computeBusinessHealth, buildBusinessTips } from "../services/businessMetricsService";
 import { Transaction } from "../services/transactionService";
 
@@ -260,11 +261,12 @@ describe("business dashboard endpoint", () => {
     const till = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "business_till", shortcode: "777777", content: fixture("till-clean.csv") },
     });
-    assert.strictEqual(till.status, 201);
+    assert.strictEqual(till.status, 202);
     const bank = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "bank", content: fixture("bank-clean.csv") },
     });
-    assert.strictEqual(bank.status, 201);
+    assert.strictEqual(bank.status, 202);
+    await drainOrbit();
 
     const client = await api("POST", "/v1/clients", { body: { name: "dashboard-data-client" } });
     const consent = await api("POST", "/v1/consents", {

@@ -12,6 +12,7 @@ import { createApp } from "../app";
 import { getLedger, verifyChainIntegrity } from "../services/ledgerService";
 import { parseStatement, StatementParseError } from "../services/statement/parser";
 import { parseCsv } from "../services/statement/csv";
+import { drainOrbit } from "./orbit-test-utils";
 
 const FIXTURES = path.join(__dirname, "../../test-fixtures");
 const fixture = (name: string): string => fs.readFileSync(path.join(FIXTURES, name), "utf8");
@@ -111,6 +112,19 @@ describe("statement parsing", () => {
   });
 });
 
+async function uploadStatement(businessId: string, body: Record<string, unknown>) {
+  const res = await api("POST", `/v1/businesses/${businessId}/statements`, { body });
+  assert.strictEqual(res.status, 202, JSON.stringify(res.body));
+  await drainOrbit();
+  return res.body as { workflow_id: string; job_id: string; duplicate: boolean };
+}
+
+async function statementRows(businessId: string): Promise<any[]> {
+  const res = await api("GET", `/v1/businesses/${businessId}/statements`);
+  assert.strictEqual(res.status, 200);
+  return res.body;
+}
+
 describe("business onboarding flow", () => {
   before(async () => {
     await migrate();
@@ -139,22 +153,29 @@ describe("business onboarding flow", () => {
     assert.strictEqual(blocked.body.required_scope, "statements");
 
     await onboard(businessId);
-    const allowed = await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "business_till", shortcode: "111111", content: fixture("till-clean.csv") },
+    const accepted = await uploadStatement(businessId, {
+      source_type: "business_till",
+      shortcode: "111111",
+      content: fixture("till-clean.csv"),
     });
-    assert.strictEqual(allowed.status, 201);
-    assert.ok(allowed.body.transactions_imported >= 20);
+    assert.ok(accepted.workflow_id, "upload returns a workflow id immediately");
+
+    const rows = await statementRows(businessId);
+    assert.ok(rows[0].imported_count >= 20, "the async pipeline imported the rows");
   });
 
   test("ingested rows are canonical, tagged and deduplicated on re-upload", async () => {
     const businessId = await createBusiness("Tagger Ltd");
     await onboard(businessId);
 
-    const first = await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "business_till", shortcode: "222222", content: fixture("till-clean.csv"), file_name: "statement.csv" },
+    await uploadStatement(businessId, {
+      source_type: "business_till",
+      shortcode: "222222",
+      content: fixture("till-clean.csv"),
+      file_name: "statement.csv",
     });
-    assert.strictEqual(first.status, 201);
-    const imported = first.body.transactions_imported as number;
+    const imported = (await statementRows(businessId))[0].imported_count as number;
+    assert.ok(imported > 0);
 
     const txns = await api("GET", `/v1/businesses/${businessId}/transactions`);
     assert.strictEqual(txns.status, 200);
@@ -164,38 +185,45 @@ describe("business onboarding flow", () => {
     assert.strictEqual(firstTxn.source_provider, "mpesa_till");
     assert.ok(firstTxn.statement_id);
 
+    // Identical re-upload: same workflow, duplicate flagged, no new rows.
     const second = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "business_till", shortcode: "222222", content: fixture("till-clean.csv") },
     });
-    assert.strictEqual(second.status, 201);
-    assert.strictEqual(second.body.transactions_imported, 0);
-    assert.strictEqual(second.body.duplicates_skipped, imported);
+    assert.strictEqual(second.status, 202);
+    assert.strictEqual(second.body.duplicate, true);
+    await drainOrbit();
+
+    const txnsAfter = await api("GET", `/v1/businesses/${businessId}/transactions`);
+    assert.strictEqual(txnsAfter.body.length, imported, "duplicate upload must not create transactions");
   });
 
-  test("a failed upload is rejected with a code and still audited", async () => {
+  test("a failed upload fails gracefully through Orbit and is still audited", async () => {
     const businessId = await createBusiness("Sparse History Ltd");
     await onboard(businessId);
 
-    const res = await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "business_till", shortcode: "333333", content: fixture("till-sparse.csv") },
+    const accepted = await uploadStatement(businessId, {
+      source_type: "business_till",
+      shortcode: "333333",
+      content: fixture("till-sparse.csv"),
     });
-    assert.strictEqual(res.status, 400);
-    assert.strictEqual(res.body.error, "insufficient_history");
-    assert.ok(res.body.message.includes("of history"));
+    assert.ok(accepted.workflow_id);
 
-    const statements = await api("GET", `/v1/businesses/${businessId}/statements`);
-    assert.strictEqual(statements.body[0].status, "failed");
-    assert.strictEqual(statements.body[0].error_code, "insufficient_history");
+    const workflowRes = await api("GET", `/v1/orbit/workflows/${accepted.workflow_id}`);
+    assert.strictEqual(workflowRes.status, 200);
+    assert.strictEqual(workflowRes.body.workflow.state, "FAILED_PARSING");
+    assert.ok(workflowRes.body.dead_letter.length >= 1);
+
+    const rows = await statementRows(businessId);
+    assert.strictEqual(rows[0].status, "failed");
+    assert.strictEqual(rows[0].error_code, "insufficient_history");
   });
 
   test("every imported transaction is written to the hash-chained ledger", async () => {
     const businessId = await createBusiness("Ledgered Business Ltd");
     await onboard(businessId);
-    const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "bank", content: fixture("bank-clean.csv") },
-    });
-    assert.strictEqual(upload.status, 201);
-    const imported = upload.body.transactions_imported as number;
+    await uploadStatement(businessId, { source_type: "bank", content: fixture("bank-clean.csv") });
+    const imported = (await statementRows(businessId))[0].imported_count as number;
+    assert.ok(imported > 0);
 
     const ledger = await getLedger("business", businessId);
     const ingested = ledger.filter((entry) => entry.event_type === "business.transaction.ingested");
@@ -209,10 +237,7 @@ describe("business onboarding flow", () => {
   test("revoking business consent stops further statement reads", async () => {
     const businessId = await createBusiness("Revoke Business Ltd");
     const consentId = await onboard(businessId);
-    const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "bank", content: fixture("bank-clean.csv") },
-    });
-    assert.strictEqual(upload.status, 201);
+    await uploadStatement(businessId, { source_type: "bank", content: fixture("bank-clean.csv") });
 
     const revoked = await api("DELETE", `/v1/consents/${consentId}`);
     assert.strictEqual(revoked.status, 200);
@@ -235,12 +260,12 @@ describe("business onboarding flow", () => {
   test("shortcodes are registered per business and listed", async () => {
     const businessId = await createBusiness("Shortcode Ltd");
     await onboard(businessId);
-    await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "business_till", shortcode: "444444", content: fixture("till-clean.csv") },
+    await uploadStatement(businessId, {
+      source_type: "business_till",
+      shortcode: "444444",
+      content: fixture("till-clean.csv"),
     });
-    await api("POST", `/v1/businesses/${businessId}/statements`, {
-      body: { source_type: "bank", content: fixture("bank-clean.csv") },
-    });
+    await uploadStatement(businessId, { source_type: "bank", content: fixture("bank-clean.csv") });
 
     const shortcodes = await api("GET", `/v1/businesses/${businessId}/shortcodes`);
     assert.strictEqual(shortcodes.status, 200);

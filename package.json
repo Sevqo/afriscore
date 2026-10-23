@@ -7,7 +7,10 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:dev": "ts-node src/index.ts",
     "dev": "ts-node src/index.ts",
+    "worker": "node dist/worker.js",
+    "worker:dev": "ts-node src/worker.ts",
     "clean:test": "node scripts/clean-test-db.js",
     "test": "npm run clean:test && npm run build && node --test --test-concurrency=1 \"dist/__tests__/*.test.js\"",
     "test:pg": "npm run build && node --test --test-concurrency=1 \"dist/__tests__/*.test.js\"",
@@ -16,7 +19,9 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "bullmq": "^6.4.0",
     "express": "^5.1.0",
+    "ioredis": "^6.0.0",
     "pg": "^8.23.0",
     "zod": "^3.23.8"
   },
