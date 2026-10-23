@@ -61,6 +61,10 @@ if (isPostgres) {
     connectionTimeoutMillis: envInt("PG_CONNECTION_TIMEOUT_MS", 5_000, 100, 120_000),
     idleTimeoutMillis: envInt("PG_IDLE_TIMEOUT_MS", 30_000, 1_000, 600_000),
     query_timeout: envInt("PG_QUERY_TIMEOUT_MS", 30_000, 0, 600_000),
+    // Do not keep a process alive just because idle pooled clients exist.
+    // The API stays up via its HTTP server; CLI/worker/test processes can exit
+    // promptly instead of lingering until idleTimeoutMillis.
+    allowExitOnIdle: true,
   });
   // A pool error listener is mandatory: an unhandled 'error' event on an idle
   // client crashes the process.

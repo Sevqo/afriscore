@@ -18,7 +18,6 @@ import {
  * decision card, which are consent-gated.
  */
 const router = Router({ mergeParams: true });
-router.use(requireAdmin);
 
 type BusinessParams = { id: string; invoiceId: string };
 type BusinessRequest = Request<BusinessParams>;
@@ -49,7 +48,7 @@ function handleReceivablesError(res: Parameters<typeof sendError>[0], err: unkno
   return false;
 }
 
-router.post("/invoices/:invoiceId/payments", async (req: BusinessRequest, res) => {
+router.post("/invoices/:invoiceId/payments", requireAdmin, async (req: BusinessRequest, res) => {
   const parsed = paymentSchema.safeParse(req.body);
   if (!parsed.success) return sendError(res, 400, "invalid_input", { details: parsed.error.flatten() });
 
@@ -66,7 +65,7 @@ router.post("/invoices/:invoiceId/payments", async (req: BusinessRequest, res) =
   }
 });
 
-router.post("/invoices/:invoiceId/send", async (req: BusinessRequest, res) => {
+router.post("/invoices/:invoiceId/send", requireAdmin, async (req: BusinessRequest, res) => {
   try {
     const invoice = await sendInvoice(String(req.params.invoiceId));
     if (invoice.business_id !== String(req.params.id)) return sendError(res, 404, "not_found");
@@ -80,13 +79,13 @@ router.post("/invoices/:invoiceId/send", async (req: BusinessRequest, res) => {
   }
 });
 
-router.get("/invoices/:invoiceId", async (req: BusinessRequest, res) => {
+router.get("/invoices/:invoiceId", requireAdmin, async (req: BusinessRequest, res) => {
   const invoice = await getInvoice(String(req.params.invoiceId));
   if (!invoice || invoice.business_id !== String(req.params.id)) return sendError(res, 404, "not_found");
   res.json({ invoice, payments: await listInvoicePayments(invoice.id) });
 });
 
-router.post("/receivables/match", async (req: BusinessRequest, res) => {
+router.post("/receivables/match", requireAdmin, async (req: BusinessRequest, res) => {
   try {
     res.json(await autoMatchPayments(String(req.params.id)));
   } catch (err) {
@@ -95,11 +94,11 @@ router.post("/receivables/match", async (req: BusinessRequest, res) => {
   }
 });
 
-router.get("/receivables/review-queue", async (req: BusinessRequest, res) => {
+router.get("/receivables/review-queue", requireAdmin, async (req: BusinessRequest, res) => {
   res.json(await getReviewQueue(String(req.params.id)));
 });
 
-router.get("/receivables/summary", async (req: BusinessRequest, res) => {
+router.get("/receivables/summary", requireAdmin, async (req: BusinessRequest, res) => {
   try {
     const receivables = await getReceivablesSummary(String(req.params.id));
     res.json({
