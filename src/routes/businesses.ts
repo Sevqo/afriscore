@@ -14,6 +14,7 @@ const createSchema = z.object({
   registration_number: z.string().optional(),
   kra_pin: z.string().optional(),
   industry: z.string().optional(),
+  sector: z.string().optional(),
 });
 
 router.post("/", requireAdmin, async (req, res) => {

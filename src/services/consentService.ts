@@ -15,7 +15,18 @@ export interface Consent {
   expires_at?: string | null;
 }
 
-export const CONSENT_SCOPES = ["all", "trust_score", "financial_profile", "insights", "query", "accounts", "transactions", "invoices"] as const;
+export const CONSENT_SCOPES = [
+  "all",
+  "trust_score",
+  "financial_profile",
+  "insights",
+  "query",
+  "accounts",
+  "transactions",
+  "invoices",
+  "statements",
+  "business_profile",
+] as const;
 export type ConsentScope = (typeof CONSENT_SCOPES)[number];
 
 function parseScopes(value: string): string[] {

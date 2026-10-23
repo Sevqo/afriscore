@@ -12,6 +12,8 @@ export interface Business {
   kra_pin?: string;
   jurisdiction: string;
   industry?: string;
+  /** Business sector for the business track (e.g. retail, hospitality). */
+  sector?: string;
   status: string;
   trust_score: number;
   is_sandbox: boolean;
@@ -25,6 +27,7 @@ export async function createBusiness(input: {
   registration_number?: string;
   kra_pin?: string;
   industry?: string;
+  sector?: string;
   is_sandbox?: boolean;
 }): Promise<Business> {
   const now = new Date().toISOString();
@@ -36,6 +39,7 @@ export async function createBusiness(input: {
     kra_pin: input.kra_pin,
     jurisdiction: "KE",
     industry: input.industry,
+    sector: input.sector,
     status: "pending_verification",
     trust_score: 0,
     is_sandbox: input.is_sandbox ? 1 : 0,
@@ -44,14 +48,15 @@ export async function createBusiness(input: {
   };
 
   await dbRun(
-    `INSERT INTO businesses (id, legal_name, trading_name, registration_number, kra_pin, jurisdiction, industry, status, trust_score, is_sandbox, created_at, updated_at)
-     VALUES (@id, @legal_name, @trading_name, @registration_number, @kra_pin, @jurisdiction, @industry, @status, @trust_score, @is_sandbox, @created_at, @updated_at)`,
+    `INSERT INTO businesses (id, legal_name, trading_name, registration_number, kra_pin, jurisdiction, industry, sector, status, trust_score, is_sandbox, created_at, updated_at)
+     VALUES (@id, @legal_name, @trading_name, @registration_number, @kra_pin, @jurisdiction, @industry, @sector, @status, @trust_score, @is_sandbox, @created_at, @updated_at)`,
     business
   );
 
   await appendEvent("business", business.id, "business.created", {
     legal_name: business.legal_name,
     registration_number: business.registration_number,
+    sector: business.sector,
     is_sandbox: !!business.is_sandbox,
   });
 

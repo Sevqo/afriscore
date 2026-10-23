@@ -13,6 +13,7 @@ const SCHEMA = `
     kra_pin TEXT,
     jurisdiction TEXT DEFAULT 'KE',
     industry TEXT,
+    sector TEXT,
     status TEXT DEFAULT 'pending_verification',
     trust_score REAL DEFAULT 0,
     is_sandbox INTEGER DEFAULT 0,
@@ -103,6 +104,10 @@ const SCHEMA = `
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL,
     business_id TEXT NOT NULL,
+    -- Discriminator for the dual-mode product: 'business' for merchant data,
+    -- 'individual' reserved for person-scoped statement ingestion. Existing
+    -- rows are business rows, hence the default.
+    subject_type TEXT NOT NULL DEFAULT 'business',
     external_id TEXT NOT NULL,
     -- NUMERIC(18,2) keeps money exact on PostgreSQL (REAL there is float4 and
     -- silently loses cents). SQLite maps NUMERIC to its numeric affinity, so
@@ -116,6 +121,8 @@ const SCHEMA = `
     source_provider TEXT NOT NULL,
     raw_status TEXT,
     occurred_at TEXT NOT NULL,
+    statement_id TEXT,
+    shortcode TEXT,
     created_at TEXT NOT NULL,
     UNIQUE (account_id, external_id)
   );
@@ -164,6 +171,51 @@ const SCHEMA = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_invoices_business ON invoices (business_id, status);
+
+  -- Business track: a business can have several M-Pesa till/paybill shortcodes
+  -- (and bank accounts), each of which can have statements uploaded over time.
+  CREATE TABLE IF NOT EXISTS business_shortcodes (
+    id TEXT PRIMARY KEY,
+    business_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    shortcode TEXT NOT NULL,
+    label TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE (business_id, type, shortcode)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_business_shortcodes_business ON business_shortcodes (business_id);
+
+  CREATE TABLE IF NOT EXISTS statements (
+    id TEXT PRIMARY KEY,
+    business_id TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    shortcode TEXT,
+    file_name TEXT,
+    content_sha256 TEXT NOT NULL,
+    period_start TEXT,
+    period_end TEXT,
+    status TEXT NOT NULL,
+    error_code TEXT,
+    error_message TEXT,
+    row_count INTEGER DEFAULT 0,
+    imported_count INTEGER DEFAULT 0,
+    duplicate_count INTEGER DEFAULT 0,
+    uploaded_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_statements_business ON statements (business_id, uploaded_at);
+
+  -- Explicit, opt-in link between an individual borrower profile and a
+  -- business profile. Absence of a row means the two profiles are isolated.
+  CREATE TABLE IF NOT EXISTS business_links (
+    id TEXT PRIMARY KEY,
+    person_id TEXT NOT NULL,
+    business_id TEXT NOT NULL,
+    requested_by TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE (person_id, business_id)
+  );
 `;
 
 export async function migrate(): Promise<void> {
@@ -186,6 +238,10 @@ export async function migrate(): Promise<void> {
     await dbExec(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(18,2);`);
     await dbExec(`ALTER TABLE api_clients ADD COLUMN IF NOT EXISTS revoked_at TEXT;`);
     await dbExec(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS expires_at TEXT;`);
+    await dbExec(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS sector TEXT;`);
+    await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS subject_type TEXT NOT NULL DEFAULT 'business';`);
+    await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS statement_id TEXT;`);
+    await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS shortcode TEXT;`);
 
     // Money precision: REAL on PostgreSQL is float4 and loses cents. These
     // rewrites are idempotent; existing values are rounded to 2 decimals.
@@ -214,6 +270,10 @@ export async function migrate(): Promise<void> {
     guard("invoices", "paid_amount", "paid_amount NUMERIC(18,2)");
     guard("api_clients", "revoked_at", "revoked_at TEXT");
     guard("consents", "expires_at", "expires_at TEXT");
+    guard("businesses", "sector", "sector TEXT");
+    guard("transactions", "subject_type", "subject_type TEXT NOT NULL DEFAULT 'business'");
+    guard("transactions", "statement_id", "statement_id TEXT");
+    guard("transactions", "shortcode", "shortcode TEXT");
   }
 
   // Service-level guards (both engines).

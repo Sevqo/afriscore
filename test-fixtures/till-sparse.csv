@@ -1,0 +1,6 @@
+Receipt No.,Completion Time,Details,Transaction Status,Paid In,Withdrawn,Balance
+QSP001,2026-05-01 09:00:00,Customer payment from 254712345678,Completed,"1,000.00",,10000.00
+QSP002,2026-05-03 10:00:00,Supplier payment,Completed,,"400.00",9600.00
+QSP003,2026-05-06 11:00:00,Customer payment from 254798765432,Completed,"1,200.00",,10800.00
+QSP004,2026-05-08 12:00:00,Supplier payment,Completed,,"300.00",10500.00
+QSP005,2026-05-10 13:00:00,Customer payment from 254712345678,Completed,"900.00",,11400.00
