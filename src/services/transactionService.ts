@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { dbAll, dbRun, dbTransaction, isPostgres } from "../db";
+import { dbAll, dbGet, dbRun, dbTransaction, isPostgres } from "../db";
 import { getAccount } from "./accountService";
 import { getBusiness } from "./businessService";
 import { fetchMpesaTransactions, fetchBankTransactions, fetchSandboxTransactions, SandboxScenario } from "./connectorService";
@@ -82,9 +82,14 @@ export async function syncAccountTransactions(accountId: string): Promise<{ sync
   return { synced: inserted.length, skipped_duplicates: skipped, transactions: inserted };
 }
 
-export async function listTransactionsForBusiness(businessId: string, limit = 100): Promise<Transaction[]> {
+export async function listTransactionsForBusiness(businessId: string, limit = 100, offset = 0): Promise<Transaction[]> {
   return dbAll<Transaction>(
-    `SELECT * FROM transactions WHERE business_id = ? ORDER BY occurred_at DESC LIMIT ?`,
-    [businessId, limit]
+    `SELECT * FROM transactions WHERE business_id = ? ORDER BY occurred_at DESC LIMIT ? OFFSET ?`,
+    [businessId, limit, offset]
   );
+}
+
+export async function countTransactionsForBusiness(businessId: string): Promise<number> {
+  const row = await dbGet<{ c: number | string }>(`SELECT COUNT(*) AS c FROM transactions WHERE business_id = ?`, [businessId]);
+  return Number(row?.c ?? 0);
 }

@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
-import { dbAll, dbRun } from "../db";
+import { lookup } from "node:dns/promises";
+import { dbAll, dbGet, dbRun } from "../db";
 import { hasActiveConsentScope, ConsentScope } from "./consentService";
 
 export interface WebhookSubject {
@@ -102,10 +103,60 @@ export function isAllowedWebhookTarget(raw: string): boolean {
   return allowed.length === 0 || allowed.includes(host);
 }
 
+function isPrivateAddress(address: string): boolean {
+  const version = isIP(address);
+  if (version === 4) {
+    const [a, b] = address.split(".").map(Number);
+    if (a === 10 || a === 127) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0) return true;
+    return false;
+  }
+  if (version === 6) {
+    const lower = address.toLowerCase();
+    if (lower === "::1" || lower === "::") return true;
+    if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // unique local
+    if (lower.startsWith("fe80")) return true; // link-local
+    if (lower.startsWith("::ffff:")) return isPrivateAddress(lower.slice("::ffff:".length)); // IPv4-mapped
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Delivery-time egress guard: the syntactic check above plus actual DNS
+ * resolution, rejecting hostnames that resolve to private/loopback/link-local
+ * addresses (DNS-rebinding style SSRF). Resolution failures are treated as
+ * not-deliverable rather than retried against a fresh resolution.
+ */
+export async function isDeliverableWebhookTarget(raw: string): Promise<{ allowed: boolean; reason?: string }> {
+  if (!isAllowedWebhookTarget(raw)) return { allowed: false, reason: "target_not_allowed" };
+
+  let hostname: string;
+  try {
+    hostname = new URL(raw).hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  } catch {
+    return { allowed: false, reason: "target_not_allowed" };
+  }
+
+  try {
+    const records = await lookup(hostname, { all: true });
+    if (records.length === 0) return { allowed: false, reason: "dns_resolution_failed" };
+    if (records.some((record) => isPrivateAddress(record.address))) {
+      return { allowed: false, reason: "private_address_resolution" };
+    }
+  } catch {
+    return { allowed: false, reason: "dns_resolution_failed" };
+  }
+
+  return { allowed: true };
+}
+
 /** Generates a per-subscription signing secret, returned once at subscribe
  *  time. Every delivery to this subscription is signed with it so the
- *  receiver can verify the payload came from AfriScore. */
-export async function subscribe(input: {
+ *  receiver can verify the payload came from AfriScore. */export async function subscribe(input: {
   client: { id: string; name: string };
   event_pattern: string;
   target_url: string;
@@ -181,7 +232,8 @@ export async function testWebhookDelivery(targetUrl: string): Promise<{ delivere
   const signature = sign(secret, timestamp, body);
 
   try {
-    if (!isAllowedWebhookTarget(targetUrl)) return { delivered: false, error: "target_not_allowed", signature, timestamp };
+    const target = await isDeliverableWebhookTarget(targetUrl);
+    if (!target.allowed) return { delivered: false, error: target.reason ?? "target_not_allowed", signature, timestamp };
     const res = await fetch(targetUrl, {
       method: "POST",
       headers: {
@@ -247,7 +299,8 @@ export async function emitEvent(eventType: string, payload: object, subject: Web
     const signature = sign(sub.secret, timestamp, body);
 
     try {
-      if (!isAllowedWebhookTarget(sub.target_url)) throw new Error("target_not_allowed");
+      const target = await isDeliverableWebhookTarget(sub.target_url);
+      if (!target.allowed) throw new Error(target.reason ?? "target_not_allowed");
       const response = await fetch(sub.target_url, {
         method: "POST",
         headers: {
@@ -274,9 +327,20 @@ export async function emitEvent(eventType: string, payload: object, subject: Web
   }
 }
 
-export async function listEvents(eventType?: string, limit = 50) {
+export async function listEvents(eventType?: string, limit = 50, offset = 0) {
   if (eventType) {
-    return dbAll(`SELECT * FROM webhook_events WHERE event_type = ? ORDER BY created_at DESC LIMIT ?`, [eventType, limit]);
+    return dbAll(`SELECT * FROM webhook_events WHERE event_type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`, [
+      eventType,
+      limit,
+      offset,
+    ]);
   }
-  return dbAll(`SELECT * FROM webhook_events ORDER BY created_at DESC LIMIT ?`, [limit]);
+  return dbAll(`SELECT * FROM webhook_events ORDER BY created_at DESC LIMIT ? OFFSET ?`, [limit, offset]);
+}
+
+export async function countEvents(eventType?: string): Promise<number> {
+  const row = eventType
+    ? await dbGet<{ c: number | string }>(`SELECT COUNT(*) AS c FROM webhook_events WHERE event_type = ?`, [eventType])
+    : await dbGet<{ c: number | string }>(`SELECT COUNT(*) AS c FROM webhook_events`);
+  return Number(row?.c ?? 0);
 }

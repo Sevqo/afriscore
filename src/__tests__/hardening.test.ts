@@ -165,7 +165,7 @@ describe("Phase 1 hardening", () => {
   });
 
   test("webhook target validator blocks IPv6, trailing-dot and private hosts", async () => {
-    const { isAllowedWebhookTarget } = await import("../services/webhookService");
+    const { isAllowedWebhookTarget, isDeliverableWebhookTarget } = await import("../services/webhookService");
     // These used to pass the name check before the hostname normalisation.
     assert.strictEqual(isAllowedWebhookTarget("https://[::1]/hook"), false);
     assert.strictEqual(isAllowedWebhookTarget("https://localhost./hook"), false);
@@ -173,5 +173,20 @@ describe("Phase 1 hardening", () => {
     assert.strictEqual(isAllowedWebhookTarget("https://metadata.internal/hook"), false);
     assert.strictEqual(isAllowedWebhookTarget("http://example.com/hook"), false);
     assert.strictEqual(isAllowedWebhookTarget("https://hooks.partner.example/hook"), true);
+
+    // Delivery additionally resolves DNS and refuses private/loopback targets
+    // and hostnames that do not resolve (SSRF / DNS-rebinding guard).
+    assert.strictEqual((await isDeliverableWebhookTarget("https://localhost./hook")).allowed, false);
+    assert.strictEqual((await isDeliverableWebhookTarget("https://127.0.0.1/hook")).allowed, false);
+    assert.strictEqual((await isDeliverableWebhookTarget("https://does-not-resolve.invalid/hook")).allowed, false);
+  });
+
+  test("partner-facing counterparties mask raw phone numbers", async () => {
+    const { maskPiiCounterparty } = await import("../services/insightsService");
+    assert.strictEqual(maskPiiCounterparty("254712345678"), "254***678");
+    assert.strictEqual(maskPiiCounterparty("+254 712 345 678"), "254***678");
+    assert.strictEqual(maskPiiCounterparty("0712345678"), "0***678");
+    assert.strictEqual(maskPiiCounterparty("ACME WHOLESALERS LTD"), "ACME WHOLESALERS LTD");
+    assert.strictEqual(maskPiiCounterparty(null), null);
   });
 });

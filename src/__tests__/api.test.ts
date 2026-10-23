@@ -575,6 +575,40 @@ describe("API routes", () => {
     assert.strictEqual(res.body.status_code, undefined, "must not expose internal reachability");
   });
 
+  test("list endpoints paginate with limit/offset and expose totals", async () => {
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Pagination Ltd" } });
+    const acc = await api("POST", `/v1/businesses/${biz.body.id}/accounts/connect`, {
+      body: { provider: "sandbox", account_identifier: "PAGE-1", scenario: "success" },
+    });
+    await api("POST", `/v1/businesses/${biz.body.id}/accounts/${acc.body.id}/sync`);
+
+    const page = await api("GET", `/v1/businesses/${biz.body.id}/transactions?limit=2&offset=1`);
+    assert.strictEqual(page.status, 200);
+    assert.strictEqual(page.body.length, 2);
+    assert.strictEqual(page.headers.get("x-limit"), "2");
+    assert.strictEqual(page.headers.get("x-offset"), "1");
+    assert.strictEqual(page.headers.get("x-total-count"), "5");
+
+    const beyond = await api("GET", `/v1/businesses/${biz.body.id}/transactions?limit=500&offset=100`);
+    assert.strictEqual(beyond.body.length, 0);
+
+    // Limits are clamped rather than rejected.
+    const clamped = await api("GET", `/v1/businesses/${biz.body.id}/transactions?limit=99999`);
+    assert.strictEqual(clamped.headers.get("x-limit"), "500");
+  });
+
+  test("metrics endpoint is admin-only and Prometheus-formatted", async () => {
+    const anonymous = await api("GET", "/v1/metrics", { admin: false });
+    assert.strictEqual(anonymous.status, 401);
+
+    const res = await api("GET", "/v1/metrics");
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.headers.get("content-type")?.includes("text/plain"));
+    const body = await (await fetch(`${baseUrl}/v1/metrics`, { headers: { "x-admin-token": process.env.AFRISCORE_ADMIN_TOKEN! } })).text();
+    assert.ok(body.includes("afriscore_http_requests_total"));
+    assert.ok(body.includes("afriscore_http_request_duration_ms_count"));
+  });
+
   test("full data pipeline: connect, sync, normalize, reconcile", async () => {
     const client = await api("POST", "/v1/clients", { body: { name: "pipeline-client" } });
     const biz = await api("POST", "/v1/businesses", {

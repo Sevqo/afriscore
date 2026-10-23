@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { subscribe, listSubscriptions, listEvents, isAllowedWebhookTarget, isValidEventPattern, rotateSubscriptionSecret } from "../services/webhookService";
+import { subscribe, listSubscriptions, listEvents, countEvents, isAllowedWebhookTarget, isValidEventPattern, rotateSubscriptionSecret } from "../services/webhookService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
 import { requireAdmin } from "../middleware/adminAuth";
+import { parsePagination, setPaginationHeaders } from "./pagination";
 
 const router = Router();
 
@@ -37,7 +38,13 @@ router.post("/:id/rotate", requireApiKey, async (req: AuthedRequest, res) => {
 
 router.get("/events", requireAdmin, async (req, res) => {
   const eventType = req.query.event_type ? String(req.query.event_type) : undefined;
-  res.json(await listEvents(eventType));
+  const pagination = parsePagination(req, { defaultLimit: 50, maxLimit: 500 });
+  const [events, total] = await Promise.all([
+    listEvents(eventType, pagination.limit, pagination.offset),
+    countEvents(eventType),
+  ]);
+  setPaginationHeaders(res, pagination, total);
+  res.json(events);
 });
 
 export default router;

@@ -369,6 +369,13 @@ where useful, `detail`, `details` or `required_scope`:
   verification and keyed by client id.
 - Responses include `RateLimit-Limit`, `RateLimit-Remaining` and
   `RateLimit-Reset`; a 429 also returns `Retry-After`.
+- **List endpoints paginate**: `GET /businesses/:id/transactions`,
+  `GET /businesses/:id/invoices` and `GET /webhooks/events` accept `limit`
+  (clamped to 500) and `offset`, return a plain array, and expose
+  `X-Total-Count`, `X-Limit` and `X-Offset` headers.
+- **Metrics**: `GET /v1/metrics` (admin token) returns per-instance
+  Prometheus-style counters and latency summaries. Per-process only; it is an
+  operational aid, not a full tracing pipeline.
 - Limiter state is in-memory and per-process — a multi-instance deployment
   needs the Redis-backed limiter in [Not built yet](#not-built-yet).
 
@@ -389,15 +396,19 @@ where useful, `detail`, `details` or `required_scope`:
 - `event_pattern` must be a known event type or a group prefix such as
   `transaction.*`; typos fail at subscribe time with
   `400 invalid_event_pattern`. Current catalogue: `transaction.created`,
-  `account.connected`, `account.disconnected`, `invoice.paid`.
+  `account.connected`, `account.disconnected`, `invoice.paid`,
+  `invoice.payment_recorded`.
 - Delivery requires an active consent grant from the event's subject to the
   subscriber's client covering the event's scope:
   `transaction.created` → `transactions`, `account.*` → `accounts`,
   `invoice.paid` → `invoices`. Unknown event types are recorded for audit but
   never delivered.
 - Targets must be HTTPS, with no credentials or explicit port; localhost,
-  `.local`/`.internal` names and IP literals are rejected. Production requires
-  an exact `AFRISCORE_WEBHOOK_ALLOWED_HOSTS` allowlist.
+  `.local`/`.internal` names and IP literals are rejected. At delivery time
+  the hostname is also resolved and deliveries to private/loopback/link-local
+  addresses (or hostnames that do not resolve) are refused, blocking
+  DNS-rebinding style SSRF. Production additionally requires an exact
+  `AFRISCORE_WEBHOOK_ALLOWED_HOSTS` allowlist.
 - Every delivery is signed: `x-africore-signature` is the hex HMAC-SHA256 of
   `` `${timestamp}.${body}` ``, and `x-africore-timestamp` is the Unix
   timestamp in seconds. Receivers should recompute the signature over the raw
@@ -582,11 +593,12 @@ free, same origin, no build step. The website remains the marketing surface.
   zero-dependency page served by the API at `/dashboard`, chosen to avoid
   duplicating the existing Vite frontend stack.
 - Reverse-factoring transaction modelling — only readiness signals are exposed.
-- Partner-facing pagination and read endpoints for accounts,
-  transactions and invoices — those management routes are admin-only
-  today.
-- Observability (metrics/tracing), automated backups and disaster
-  recovery documentation.
+- Partner-facing pagination and read endpoints for accounts and persons —
+  business-facing management lists (`transactions`, `invoices`, webhook
+  events) now support `limit`/`offset`, but those routes remain admin-only.
+- Full metrics/tracing pipeline (OpenTelemetry, dashboards, alerting);
+  `GET /v1/metrics` currently exposes in-process counters only.
+- Automated backups and disaster-recovery documentation.
 
 ## Packaging notes
 
@@ -603,6 +615,7 @@ src/
   index.ts              - config validation, migrate(), listen(), graceful shutdown
   config.ts             - environment parsing/validation + local .env loading
   logging.ts            - structured JSON logger and request access log
+  metrics.ts            - in-process Prometheus-style counters (/v1/metrics)
   db/
     adapter.ts           - dual-engine query functions (SQLite/Postgres)
     index.ts              - schema + migration guards

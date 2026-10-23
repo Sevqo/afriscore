@@ -1,15 +1,16 @@
 import { Router, Request } from "express";
 import { z } from "zod";
 import { connectAccount, disconnectAccount, getAccount, listAccountsForBusiness } from "../services/accountService";
-import { syncAccountTransactions, listTransactionsForBusiness } from "../services/transactionService";
+import { syncAccountTransactions, listTransactionsForBusiness, countTransactionsForBusiness } from "../services/transactionService";
 import { computeFinancialProfile } from "../services/analyticsService";
 import { hasActiveConsentScope } from "../services/consentService";
 import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
-import { createInvoice, listInvoicesForBusiness, markOverdueInvoices } from "../services/invoiceService";
+import { createInvoice, listInvoicesForBusiness, countInvoicesForBusiness, markOverdueInvoices } from "../services/invoiceService";
 import { reconcileBusiness } from "../services/reconciliationService";
-import { getOverdueInvoices, getCashFlowForecast, getUnusualTransactions, getCustomerConcentration } from "../services/insightsService";
+import { getOverdueInvoices, getCashFlowForecast, getUnusualTransactions, getCustomerConcentration, maskPiiCounterparty } from "../services/insightsService";
 import { answerQuestion, resolveIntent } from "../services/queryService";
 import { requireAdmin } from "../middleware/adminAuth";
+import { parsePagination, setPaginationHeaders } from "./pagination";
 
 type BizParams = { id: string; accountId: string };
 type BizRequest = Request<BizParams>;
@@ -66,7 +67,13 @@ router.post("/accounts/:accountId/sync", requireAdmin, async (req: BizRequest, r
 });
 
 router.get("/transactions", requireAdmin, async (req: BizRequest, res) => {
-  res.json(await listTransactionsForBusiness(req.params.id));
+  const pagination = parsePagination(req, { defaultLimit: 100, maxLimit: 500 });
+  const [transactions, total] = await Promise.all([
+    listTransactionsForBusiness(req.params.id, pagination.limit, pagination.offset),
+    countTransactionsForBusiness(req.params.id),
+  ]);
+  setPaginationHeaders(res, pagination, total);
+  res.json(transactions);
 });
 
 router.get("/financial-profile", requireApiKey, async (req: AuthedRequest & BizRequest, res) => {
@@ -112,7 +119,13 @@ router.post("/invoices", requireAdmin, async (req: BizRequest, res) => {
 router.get("/invoices", requireAdmin, async (req: BizRequest, res) => {
   await markOverdueInvoices(req.params.id);
   const status = req.query.status ? String(req.query.status) : undefined;
-  res.json(await listInvoicesForBusiness(req.params.id, status));
+  const pagination = parsePagination(req, { defaultLimit: 100, maxLimit: 500 });
+  const [invoices, total] = await Promise.all([
+    listInvoicesForBusiness(req.params.id, status, pagination.limit, pagination.offset),
+    countInvoicesForBusiness(req.params.id, status),
+  ]);
+  setPaginationHeaders(res, pagination, total);
+  res.json(invoices);
 });
 
 router.post("/reconcile", requireAdmin, async (req: BizRequest, res) => {
@@ -132,10 +145,17 @@ router.get("/insights", requireApiKey, async (req: AuthedRequest & BizRequest, r
     return res.status(403).json({ error: "consent_required", required_scope: "insights" });
   }
 
+  // Partner-facing: mask raw phone-number counterparties (PII) while leaving
+  // business names intact. Internal reconciliation keeps the raw value.
+  const unusual = (await getUnusualTransactions(req.params.id)).map((txn) => ({
+    ...txn,
+    counterparty: maskPiiCounterparty(txn.counterparty),
+  }));
+
   res.json({
     overdue_invoices: await getOverdueInvoices(req.params.id),
     cash_flow_forecast: await getCashFlowForecast(req.params.id),
-    unusual_transactions: await getUnusualTransactions(req.params.id),
+    unusual_transactions: unusual,
     customer_concentration: await getCustomerConcentration(req.params.id),
   });
 });

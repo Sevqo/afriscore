@@ -119,14 +119,30 @@ export async function getInvoice(id: string): Promise<Invoice | undefined> {
   return dbGet<Invoice>(`SELECT * FROM invoices WHERE id = ?`, [id]);
 }
 
-export async function listInvoicesForBusiness(businessId: string, status?: string): Promise<Invoice[]> {
+export async function listInvoicesForBusiness(
+  businessId: string,
+  status?: string,
+  limit = 100,
+  offset = 0
+): Promise<Invoice[]> {
   if (status) {
-    return dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ? AND status = ? ORDER BY issue_date DESC`, [
-      businessId,
-      status,
-    ]);
+    return dbAll<Invoice>(
+      `SELECT * FROM invoices WHERE business_id = ? AND status = ? ORDER BY issue_date DESC LIMIT ? OFFSET ?`,
+      [businessId, status, limit, offset]
+    );
   }
-  return dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ? ORDER BY issue_date DESC`, [businessId]);
+  return dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ? ORDER BY issue_date DESC LIMIT ? OFFSET ?`, [
+    businessId,
+    limit,
+    offset,
+  ]);
+}
+
+export async function countInvoicesForBusiness(businessId: string, status?: string): Promise<number> {
+  const row = status
+    ? await dbGet<{ c: number | string }>(`SELECT COUNT(*) AS c FROM invoices WHERE business_id = ? AND status = ?`, [businessId, status])
+    : await dbGet<{ c: number | string }>(`SELECT COUNT(*) AS c FROM invoices WHERE business_id = ?`, [businessId]);
+  return Number(row?.c ?? 0);
 }
 
 export async function listOpenInvoicesForBusiness(businessId: string): Promise<Invoice[]> {

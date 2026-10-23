@@ -85,6 +85,22 @@ export interface UnusualTransaction extends Transaction {
   deviation_from_mean: number;
 }
 
+/**
+ * Masks a counterparty that is a raw phone number before it is returned to a
+ * partner. Business names pass through unchanged. Raw MSISDNs are useful for
+ * reconciliation internally but are PII on an API response.
+ */
+export function maskPiiCounterparty(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const compact = value.replace(/[\s-]/g, "");
+  const digits = compact.replace(/^\+/, "");
+
+  if (/^2547\d{8}$/.test(digits)) return `254***${digits.slice(-3)}`;
+  if (/^07\d{8}$/.test(digits)) return `0***${digits.slice(-3)}`;
+  if (/^\+2547\d{8}$/.test(compact)) return `254***${compact.slice(-3)}`;
+  return value;
+}
+
 /** "Show me unusual transactions." Flags transactions more than 2 standard
  *  deviations from the business's own mean transaction size. Statistics are
  *  computed per direction: mixing KES 40,000 sales with KES 200 airtime

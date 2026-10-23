@@ -794,7 +794,16 @@
           "503": {
             "$ref": "#/components/responses/AdminNotConfigured"
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          }
+        ],
+        "description": "Supports limit/offset; totals are returned in X-Total-Count, X-Limit and X-Offset headers."
       }
     },
     "/businesses/{id}/financial-profile": {
@@ -923,6 +932,12 @@
                 "paid"
               ]
             }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
           }
         ],
         "responses": {
@@ -948,7 +963,8 @@
           "503": {
             "$ref": "#/components/responses/AdminNotConfigured"
           }
-        }
+        },
+        "description": "Supports limit/offset; totals are returned in X-Total-Count, X-Limit and X-Offset headers."
       }
     },
     "/businesses/{id}/reconcile": {
@@ -1649,6 +1665,12 @@
               "type": "string"
             },
             "description": "Filter by exact event type"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
           }
         ],
         "responses": {
@@ -1674,7 +1696,8 @@
           "503": {
             "$ref": "#/components/responses/AdminNotConfigured"
           }
-        }
+        },
+        "description": "Supports limit/offset; totals are returned in X-Total-Count, X-Limit and X-Offset headers."
       }
     },
     "/sandbox/businesses": {
@@ -2768,6 +2791,39 @@
           }
         }
       }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "Platform"
+        ],
+        "summary": "Prometheus-style in-process metrics (admin only)",
+        "description": "Per-instance counters and latency summaries; resets on restart. Admin-only because request mix and latency are operationally sensitive.",
+        "operationId": "getMetrics",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition format",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2834,6 +2890,27 @@
         "schema": {
           "type": "string",
           "format": "uuid"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "description": "Page size (default 100, max 500; webhook events default 50)",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "Offset": {
+        "name": "offset",
+        "in": "query",
+        "required": false,
+        "description": "Number of rows to skip",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

@@ -20,6 +20,8 @@ import { ipRateLimit } from "./middleware/rateLimit";
 import { requestContext, RequestWithContext } from "./middleware/requestContext";
 import { errorEnvelope, errorHandler } from "./middleware/errorHandler";
 import { logger, requestLogger } from "./logging";
+import { metricsMiddleware, renderMetrics } from "./metrics";
+import { requireAdmin } from "./middleware/adminAuth";
 
 /** Readiness must answer quickly; a hung DB check is itself "not ready". */
 const READINESS_TIMEOUT_MS = 3_000;
@@ -58,6 +60,7 @@ export function createApp() {
   // Normalises every 4xx/5xx body to {error, message, request_id, ...}.
   // Must precede the rate limiter so 429s carry the same envelope.
   app.use(errorEnvelope);
+  app.use(metricsMiddleware);
   app.use(requestLogger);
   // Limit before parsing: an unauthenticated flood should be rejected without
   // paying for JSON parsing (and its 1 MB body allowance).
@@ -85,6 +88,12 @@ export function createApp() {
       });
       res.status(503).json({ status: "error", checks: { database: "error" }, db_engine: dbEngine });
     }
+  });
+
+  // Prometheus-style metrics (admin-only: route mix and latency are
+  // operationally sensitive). Per-instance and resets on restart.
+  app.get("/v1/metrics", requireAdmin, (_req, res) => {
+    res.type("text/plain; version=0.0.4").send(renderMetrics());
   });
 
   // Local, dependency-free business-track UI (owner dashboard + lender card).
