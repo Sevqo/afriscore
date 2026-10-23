@@ -223,6 +223,7 @@ function renderMonthly(monthly) {
 function renderDashboard(dashboard) {
   const { business, cash_flow: cash, counterparties, totals, health_score: health, tips, window } = dashboard;
   const receivables = dashboard.receivables;
+  const readiness = dashboard.supply_chain_readiness;
 
   const customers = counterparties.top_customers
     .map(
@@ -321,6 +322,23 @@ function renderDashboard(dashboard) {
     </div>
 
     <div class="panel">
+      <h3>Supply-chain-finance readiness</h3>
+      ${
+        readiness
+          ? `<div class="stat-grid">
+              <div class="stat"><div class="label">Anchor buyer signal</div><div class="value">${escapeHtml(readiness.anchor_buyer.signal.replaceAll("_", " "))}</div></div>
+              <div class="stat"><div class="label">Anchor share</div><div class="value">${readiness.anchor_buyer.share_of_inflow_pct === null ? "n/a" : fmtPct(readiness.anchor_buyer.share_of_inflow_pct)}</div></div>
+              <div class="stat"><div class="label">Supplier relationship</div><div class="value">${escapeHtml(readiness.supplier_regularity.signal)}</div></div>
+              <div class="stat"><div class="label">Receivable verifiability</div><div class="value">${escapeHtml(readiness.receivable_verifiability.signal.replaceAll("_", " "))}</div></div>
+            </div>
+            ${readiness.concentration_warning ? `<p class="warn small">Concentration warning: one buyer dominates inflow without anchor-buyer evidence.</p>` : ""}
+            <p class="muted small">${escapeHtml(readiness.anchor_buyer.detail)}</p>
+            <p class="muted small">${escapeHtml(readiness.supplier_regularity.detail)} ${escapeHtml(readiness.receivable_verifiability.detail)}</p>`
+          : `<p class="muted">Not enough data for readiness signals.</p>`
+      }
+    </div>
+
+    <div class="panel">
       <h3>Three things worth acting on</h3>
       <ul class="clean">${tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>
     </div>
@@ -398,6 +416,17 @@ function renderLenderCard(card) {
         ${receivables}
         <p class="muted small">Trend: ${escapeHtml(card.revenue_trend.direction)}${card.revenue_trend.change_pct === null ? "" : ` (${fmtPct(card.revenue_trend.change_pct)})`} · volatility ${card.inflow_volatility === null ? "n/a" : fmtPct(card.inflow_volatility * 100)}</p>
       </div>
+    </div>
+
+    <div class="panel">
+      <h3>Supply-chain readiness</h3>
+      ${
+        card.supply_chain_readiness
+          ? `<p><strong>${escapeHtml(card.supply_chain_readiness.anchor_buyer.signal.replaceAll("_", " "))}</strong> · suppliers ${escapeHtml(card.supply_chain_readiness.supplier_regularity.signal)} · receivables ${escapeHtml(card.supply_chain_readiness.receivable_verifiability.signal.replaceAll("_", " "))}</p>
+             ${card.supply_chain_readiness.concentration_warning ? `<p class="warn small">Concentration warning: one unverified buyer dominates inflow.</p>` : ""}
+             <p class="muted small">${escapeHtml(card.supply_chain_readiness.summary)}</p>`
+          : `<p class="muted">No readiness signal available.</p>`
+      }
     </div>
 
     <div class="panel">

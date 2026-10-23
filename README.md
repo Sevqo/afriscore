@@ -82,6 +82,85 @@ logic — so a partner can integrate and test failure modes (a failed
 payment, a duplicate webhook, a disconnected account) without touching
 anything real.
 
+## Business track
+
+AfriScore serves two subject types on one schema: individual borrowers
+(`persons`) and businesses (`businesses`). The business track adds
+statement-driven onboarding, an owner dashboard, a lender decision card,
+receivables and supply-chain readiness — deterministic, auditable and
+consent-gated. Nothing here forks the individual path; the subject is a
+discriminator (`transactions.subject_type`), not a second product.
+
+**1. Onboarding (statement → normalized transactions).** Record the owner's
+consent first (`POST /v1/businesses/:id/onboarding/consent`), then upload a
+CSV statement (`POST /v1/businesses/:id/statements`) for an M-Pesa business
+till, an M-Pesa paybill or a bank account. A `StatementSource` interface
+parses each export shape into the canonical transaction schema, tagged with
+`subject_type=business`, the `shortcode` and the `statement_id`. Parse
+failures return explicit 400 codes (`unreadable_file`,
+`wrong_statement_type`, `insufficient_history` under 30 days,
+`missing_shortcode`, `invalid_rows`) and failed uploads are still audited.
+Ingestion is one DB transaction and writes one ledger entry per ingested
+transaction. CSV only for now; PDF is a deliberate seam, not shipped.
+
+**2. Owner dashboard.** `GET /v1/businesses/:id/business-profile` (API key +
+`business_profile` consent) returns a 12-month UTC cash-flow series, inflow
+volatility (coefficient of variation), revenue trend (newer-half vs
+older-half monthly inflow), peak weekday/hour, average ticket, top-5
+customers with concentration, repeat-customer ratio, supplier counts and
+cross-month regularity, a deterministic 0–100 health score with five exposed
+components, exactly three data-derived tips, receivables when invoices exist
+and supply-chain readiness signals. Every response carries its methodology.
+
+Health-score weights: cash-flow stability 30%, revenue trend 20%, payment
+discipline 20%, customer concentration 15%, liquidity buffer 15%. Liquidity
+is reported as unavailable — statements do not capture running balances — and
+excluded with renormalised weights rather than invented. Bands: Strong ≥80,
+Stable ≥60, Watch ≥40, At risk <40.
+
+**3. Lender decision card.** `POST /v1/businesses/:id/decision-card` (API key
++ `business_profile` consent) maps those metrics into the shared
+`DecisionCard` shape, extended with business fields: recommended limit, risk
+band, verdict, evidence, confidence, adverse indicators, receivables,
+supply-chain readiness and `audit_trail_ref`. Issuing a card writes the eight
+derived metrics plus the decision event to the hash-chained ledger in one
+transaction; `audit_trail_ref` is the decision entry id. Confidence's
+`reconciliation_score` stays `null` until invoice data exists. Limit formula:
+`avg monthly inflow × risk multiplier (low 1.5 / moderate 1.0 / elevated 0.5 /
+high 0.25) × concentration haircut × failed-payment haircut × health haircut`,
+rounded down to KES 1,000 and capped at KES 10,000,000.
+
+**4. Receivables.** Invoice lifecycle `draft → sent → partially_paid → paid`,
+with `overdue` derived from `due_date`. `POST .../invoices/:id/payments`
+records a manual receipt or links a completed incoming transaction;
+`POST .../receivables/match` runs full-settlement reconciliation first, then
+applies partial receipts where the counterparty agrees; anything left over
+appears in `GET .../receivables/review-queue`. `GET .../receivables/summary`
+computes DSO = open receivables ÷ invoiced sales in the trailing 365 days ×
+365, plus average days-to-pay and the matched-receipt ratio. With no invoices
+the summary is `null` and DSO is **not** fabricated. Invoice attachments are
+metadata-only (file name, SHA-256, size).
+
+**5. Supply-chain-finance readiness.** `supply_chain_readiness` on the
+dashboard and card is descriptive, not a financing decision: anchor-buyer
+candidate (repeat, regular buyer with ≥3 payments across ≥2 months and ≥25% of
+inflow), supplier-relationship regularity, receivable verifiability (share of
+open invoices backed by a matched receipt) and a concentration warning when one
+buyer exceeds 40% of inflow without anchor-buyer evidence.
+
+**6. Dual-mode linked profiles.** A person may also be a business owner.
+Linking is explicit and idempotent (`POST /v1/businesses/:id/links`), writes an
+auditable link to **both** ledgers, and never merges transaction streams,
+scores or consent grants. `GET /v1/businesses/:id/linked-profiles` shows the two
+side by side only when a link exists; without a link they stay isolated.
+Consent remains per subject: revoking business consent blocks business reads
+and leaves the linked person's reads untouched.
+
+**Local demo.** `npm start` serves a dependency-free dashboard at
+`http://localhost:4000/dashboard` (same origin, no CORS): onboarding → consent →
+CSV upload → owner dashboard → lender card. It calls only the documented API
+and never bypasses auth or consent.
+
 ## Architecture
 
 ```
@@ -212,6 +291,16 @@ actively tamper with the database (editing a stored score, deleting an entry)
 and assert the hash chain catches it — and further tests assert tail
 truncation and a rewritten chain are caught by the keyed head anchor.
 
+The business track has dedicated suites: `business-onboarding` (parser
+fixtures for clean/sparse till, bank and mixed sources; consent-before-parse;
+dedupe; per-transaction ledger writes), `business-dashboard` (monthly buckets,
+trend, concentration, health-component boundaries), `business-decision`
+(limit haircuts, band downgrade, ledger audit trail, static UI), `receivables`
+(lifecycle, partial/full payments, overdue, DSO math, auto-matching, review
+queue, dashboard/card integration) and `supply-chain-links` (readiness
+signals, explicit linking, per-subject consent isolation, person-flow
+regression).
+
 ## API reference
 
 Full reference: [`openapi.json`](./openapi.json) (OpenAPI 3.0 — import
@@ -232,6 +321,11 @@ business/person data is involved, an active purpose-specific consent grant.
 | Data Infrastructure | `POST /businesses/:id/accounts/connect`, `POST /businesses/:id/accounts/:accountId/disconnect`, `GET /businesses/:id/accounts`, `POST /businesses/:id/accounts/:accountId/sync`, `GET /businesses/:id/transactions` | admin |
 | Data Infrastructure (partner) | `GET /businesses/:id/financial-profile` | API key + `financial_profile` |
 | Business Operations | `POST/GET /businesses/:id/invoices`, `POST /businesses/:id/reconcile` | admin |
+| Business onboarding | `POST /businesses/:id/onboarding/consent`, `POST/GET /businesses/:id/statements`, `GET /businesses/:id/shortcodes` | admin |
+| Receivables | `GET /businesses/:id/invoices/:invoiceId`, `POST .../invoices/:invoiceId/send`, `POST .../invoices/:invoiceId/payments`, `POST /businesses/:id/receivables/match`, `GET /businesses/:id/receivables/review-queue`, `GET /businesses/:id/receivables/summary` | admin |
+| Linked profiles | `POST/GET /businesses/:id/links`, `DELETE /businesses/:id/links/:personId`, `GET /businesses/:id/linked-profiles` | admin |
+| Business intelligence (partner) | `GET /businesses/:id/business-profile` | API key + `business_profile` |
+| Business decision (partner) | `POST /businesses/:id/decision-card` | API key + `business_profile` |
 | Business Intelligence | `GET /businesses/:id/insights` | API key + `insights` |
 | Query Layer | `POST /businesses/:id/ask` | API key + `query` + intent scope |
 | Webhooks | `POST/GET /webhooks`, `POST /webhooks/:id/rotate` | API key |
@@ -247,7 +341,9 @@ where useful, `detail`, `details` or `required_scope`:
 
 | Status | Code | When |
 |---|---|---|
-| 400 | `invalid_input` | Request body/query fails validation, including a bad `expires_at` |
+| 400 | `invalid_input` | Request body/query fails validation, including a bad `expires_at` or `due_date` before `issue_date` |
+| 400 | `unreadable_file` / `wrong_statement_type` / `insufficient_history` / `missing_shortcode` / `invalid_rows` | Statement upload cannot be parsed safely |
+| 400 | `invalid_payment` / `amount_exceeds_balance` | Payment amount is invalid or exceeds the invoice balance |
 | 400 | `invalid_json` | Request body is not valid JSON |
 | 400 | `invalid_event_pattern` | Webhook pattern is not in the event catalogue |
 | 400 | `target_not_allowed` | Webhook target is not HTTPS, is a private/IP host, or is outside the allowlist |
@@ -257,6 +353,8 @@ where useful, `detail`, `details` or `required_scope`:
 | 404 | `not_found` | Unknown business/person/resource, including ledger verification of an unknown subject |
 | 409 | `account_already_connected` | Re-connecting the same provider account |
 | 409 | `account_disconnected` | Syncing a disconnected account |
+| 409 | `payment_already_recorded` / `transaction_already_matched` | Receipt already recorded / transaction already settled elsewhere |
+| 409 | `invoice_not_draft` | Sending an invoice that is not a draft |
 | 413 | `payload_too_large` | Request body exceeds the 1 MB limit |
 | 415 | `unsupported_media_type` | Unsupported request content type/encoding |
 | 429 | `rate_limited` | Rate limit exceeded; see `retry_after_seconds` |
@@ -431,6 +529,30 @@ It describes the working sandbox honestly and does not claim live
 institutional integrations. Its code samples mirror the request/response
 shapes documented here; keep them in sync when the API changes.
 
+The operational business dashboard and lender card are served by the API
+itself at `/dashboard` (see [Business track](#business-track)) — dependency
+free, same origin, no build step. The website remains the marketing surface.
+
+## Known limitations
+
+- **Ledger anchoring.** Tail truncation and chain rewrites are detectable
+  without `LEDGER_HMAC_KEY`, but not if the attacker holds the key, or can
+  replace the whole ledger *and* its anchor with a self-consistent forgery.
+  External anchoring (transparency log / notarised checkpoints) is not built.
+- **Synthetic connectors.** M-Pesa and bank live connectors are simulated;
+  uploaded statements (CSV) are the only real-data path, and PDF statements
+  are not parsed yet.
+- **Single-instance state.** Rate-limit buckets and webhook delivery are
+  in-process; multiple instances need Redis (or another shared store).
+- **Admin bootstrap credential.** The admin token is an operator credential,
+  not a partner-facing consent flow; business owners cannot self-serve
+  revocation through a portal yet.
+- **Invoice attachments** store metadata only (name, SHA-256, size); files are
+  not persisted by the platform.
+- **Supply-chain readiness is descriptive.** It surfaces signals for a factor
+  or lender; it does not model reverse-factoring cash flows or make a
+  financing decision.
+
 ## Not built yet
 
 - Real KRA / M-Pesa Daraja / bank open-banking integrations — every
@@ -453,6 +575,13 @@ shapes documented here; keep them in sync when the API changes.
 - Durable per-subscription webhook retry queue, delivery idempotency
   keys, a wider event catalogue, and a formal security/compliance review
   before real data.
+- PDF statement parsing and OCR (the `StatementSource` interface is ready for
+  a PDF implementation; only CSV/text shapes ship today).
+- Invoice attachment storage (metadata is recorded; file bytes are not stored).
+- A Next.js-based dashboard app: the current business/lender dashboard is a
+  zero-dependency page served by the API at `/dashboard`, chosen to avoid
+  duplicating the existing Vite frontend stack.
+- Reverse-factoring transaction modelling — only readiness signals are exposed.
 - Partner-facing pagination and read endpoints for accounts,
   transactions and invoices — those management routes are admin-only
   today.
@@ -478,9 +607,12 @@ src/
     adapter.ts           - dual-engine query functions (SQLite/Postgres)
     index.ts              - schema + migration guards
   services/               - one file per capability (see Architecture above)
+    statement/              - StatementSource parsers (CSV: M-Pesa, bank)
   routes/                  - one file per resource
   middleware/              - API-key auth, rate limiting, request context, errors
   __tests__/                - unit + route-level integration tests
+dashboard/                  - dependency-free owner dashboard + lender card (served at /dashboard)
+test-fixtures/              - statement parser fixtures (till, sparse till, bank, individual)
 openapi.json                - OpenAPI reference
 scripts/                    - OpenAPI validation and test-database cleanup
 website/                    - public marketing site (separate Vite app)

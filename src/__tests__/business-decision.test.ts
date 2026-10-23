@@ -280,7 +280,7 @@ describe("decision card endpoint and ledger wiring", () => {
     const ledger = await getLedger("business", biz.id);
     const metricEntries = ledger.filter((entry) => entry.event_type === "decision.metric_recorded");
     const decisionEntries = ledger.filter((entry) => entry.event_type === "decision.issued");
-    assert.strictEqual(metricEntries.length, 6, "every derived metric is ledgered");
+    assert.strictEqual(metricEntries.length, 8, "every derived metric is ledgered (including supply-chain signals)");
     assert.strictEqual(decisionEntries.length, 1);
     assert.strictEqual(decisionEntries[0].id, card.audit_trail_ref, "audit ref must identify the decision entry");
 

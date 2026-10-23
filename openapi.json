@@ -2546,6 +2546,228 @@
           }
         }
       }
+    },
+    "/businesses/{id}/links": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Business"
+        ],
+        "summary": "Link a person profile to a business (explicit, idempotent)",
+        "description": "Linking is the only way the two subjects become associated. It records an auditable link on both ledgers and never merges transaction streams, scores or consent grants.",
+        "operationId": "linkBusinessProfile",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "person_id"
+                ],
+                "properties": {
+                  "person_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "requested_by": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Link already existed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessLinkResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Link created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessLinkResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Business"
+        ],
+        "summary": "List explicit profile links for a business",
+        "operationId": "listBusinessProfileLinks",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessLink"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/links/{personId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        },
+        {
+          "$ref": "#/components/parameters/PersonId"
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Business"
+        ],
+        "summary": "Remove a profile link",
+        "operationId": "unlinkBusinessProfile",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Link removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unlinked": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/linked-profiles": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Business"
+        ],
+        "summary": "Side-by-side linked profiles view (only when a link exists)",
+        "operationId": "getLinkedProfiles",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Linked profiles, kept separate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedProfilesView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2599,6 +2821,16 @@
         "in": "path",
         "required": true,
         "description": "Invoice UUID",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "PersonId": {
+        "name": "personId",
+        "in": "path",
+        "required": true,
+        "description": "Person UUID",
         "schema": {
           "type": "string",
           "format": "uuid"
@@ -4907,7 +5139,8 @@
           "totals",
           "health_score",
           "tips",
-          "receivables"
+          "receivables",
+          "supply_chain_readiness"
         ],
         "properties": {
           "business": {
@@ -5017,6 +5250,9 @@
                     },
                     "share_of_inflow_pct": {
                       "type": "number"
+                    },
+                    "active_months": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -5099,6 +5335,9 @@
           },
           "receivables": {
             "$ref": "#/components/schemas/ReceivablesSummary"
+          },
+          "supply_chain_readiness": {
+            "$ref": "#/components/schemas/SupplyChainReadiness"
           }
         }
       },
@@ -5328,7 +5567,8 @@
               "top_customer_concentration",
               "business_health_score",
               "health_band",
-              "receivables"
+              "receivables",
+              "supply_chain_readiness"
             ],
             "properties": {
               "business_name": {
@@ -5381,6 +5621,9 @@
               },
               "receivables": {
                 "$ref": "#/components/schemas/ReceivablesSummary"
+              },
+              "supply_chain_readiness": {
+                "$ref": "#/components/schemas/SupplyChainReadiness"
               }
             }
           }
@@ -5529,6 +5772,231 @@
                 }
               }
             }
+          }
+        }
+      },
+      "BusinessLink": {
+        "type": "object",
+        "required": [
+          "id",
+          "person_id",
+          "business_id",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "business_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requested_by": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BusinessLinkResult": {
+        "type": "object",
+        "required": [
+          "link",
+          "created"
+        ],
+        "properties": {
+          "link": {
+            "$ref": "#/components/schemas/BusinessLink"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LinkedProfilesView": {
+        "type": "object",
+        "required": [
+          "business",
+          "persons",
+          "linked",
+          "isolation_note"
+        ],
+        "properties": {
+          "business": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "legal_name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "trust_score": {
+                "type": "number"
+              },
+              "is_sandbox": {
+                "type": "boolean"
+              }
+            }
+          },
+          "persons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "is_sandbox": {
+                  "type": "boolean"
+                },
+                "identifiers": {
+                  "type": "object",
+                  "properties": {
+                    "national_id_present": {
+                      "type": "boolean"
+                    },
+                    "phone_present": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "integrity": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "entry_count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "linked": {
+            "type": "boolean"
+          },
+          "isolation_note": {
+            "type": "string"
+          }
+        }
+      },
+      "SupplyChainReadiness": {
+        "type": "object",
+        "required": [
+          "available",
+          "anchor_buyer",
+          "supplier_regularity",
+          "receivable_verifiability",
+          "concentration_warning",
+          "summary"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "anchor_buyer": {
+            "type": "object",
+            "properties": {
+              "candidate": {
+                "type": "string",
+                "nullable": true
+              },
+              "share_of_inflow_pct": {
+                "type": "number",
+                "nullable": true
+              },
+              "repeat_payments": {
+                "type": "integer",
+                "nullable": true
+              },
+              "active_months": {
+                "type": "integer",
+                "nullable": true
+              },
+              "signal": {
+                "type": "string",
+                "enum": [
+                  "verified_anchor_candidate",
+                  "concentration_risk",
+                  "no_anchor"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          },
+          "supplier_regularity": {
+            "type": "object",
+            "properties": {
+              "repeat_supplier_count": {
+                "type": "integer"
+              },
+              "regularity_score": {
+                "type": "number"
+              },
+              "signal": {
+                "type": "string",
+                "enum": [
+                  "established",
+                  "developing",
+                  "none"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          },
+          "receivable_verifiability": {
+            "type": "object",
+            "properties": {
+              "matched_payment_ratio": {
+                "type": "number",
+                "nullable": true
+              },
+              "open_invoice_value": {
+                "type": "number",
+                "nullable": true
+              },
+              "signal": {
+                "type": "string",
+                "enum": [
+                  "verifiable",
+                  "partial",
+                  "unverifiable",
+                  "no_invoice_data"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          },
+          "concentration_warning": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
           }
         }
       }

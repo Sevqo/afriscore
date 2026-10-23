@@ -9,6 +9,7 @@ import {
 } from "./businessMetricsService";
 import { listShortcodes } from "./businessOnboardingService";
 import { getReceivablesSummary, ReceivablesSummary } from "./receivablesService";
+import { computeSupplyChainReadiness, SupplyChainReadiness } from "./supplyChainService";
 
 /**
  * Lender-facing decision cards.
@@ -75,6 +76,8 @@ export interface BusinessDecisionCard extends DecisionCard {
   business_health_score: number;
   health_band: string;
   receivables: ReceivablesSummary | null;
+  /** Descriptive supply-chain-finance readiness signals (not a financing decision). */
+  supply_chain_readiness: SupplyChainReadiness;
 }
 
 export type BusinessDecisionCardDraft = Omit<BusinessDecisionCard, "audit_trail_ref">;
@@ -306,6 +309,7 @@ export function buildBusinessDecisionCard(input: {
     business_health_score: health.score,
     health_band: health.band,
     receivables,
+    supply_chain_readiness: computeSupplyChainReadiness(metrics, receivables),
   };
 
   return card;
@@ -346,6 +350,8 @@ export async function issueBusinessDecisionCard(
     { key: "top_customer_concentration", value: draft.top_customer_concentration },
     { key: "business_health_score", value: draft.business_health_score },
     { key: "data_completeness", value: draft.confidence.data_completeness },
+    { key: "anchor_buyer_signal", value: draft.supply_chain_readiness.anchor_buyer.signal },
+    { key: "receivable_verifiability", value: draft.supply_chain_readiness.receivable_verifiability.signal },
   ];
 
   const auditTrailRef = await dbTransaction(async () => {

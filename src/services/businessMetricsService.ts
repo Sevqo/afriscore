@@ -2,6 +2,7 @@ import { dbAll } from "../db";
 import { getBusiness, Business } from "./businessService";
 import { Transaction } from "./transactionService";
 import { getReceivablesSummary, ReceivablesSummary } from "./receivablesService";
+import { computeSupplyChainReadiness, SupplyChainReadiness } from "./supplyChainService";
 
 /**
  * Business dashboard analytics.
@@ -57,6 +58,8 @@ export interface CustomerConcentrationEntry {
   counterparty: string;
   inflow: number;
   transaction_count: number;
+  /** Distinct UTC months in which this counterparty paid. */
+  active_months: number;
   share_of_inflow_pct: number;
 }
 
@@ -141,6 +144,7 @@ export interface BusinessDashboard {
   tips: string[];
   /** Null when the business has no invoice data — never fabricated. */
   receivables: ReceivablesSummary | null;
+  supply_chain_readiness: SupplyChainReadiness;
 }
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -231,12 +235,13 @@ export function computeBusinessMetrics(transactions: Transaction[], options: Met
   const totalInflow = credits.reduce((sum, txn) => sum + txn.amount, 0);
   const totalOutflow = debits.reduce((sum, txn) => sum + txn.amount, 0);
 
-  const creditByCounterparty = new Map<string, { amount: number; count: number }>();
+  const creditByCounterparty = new Map<string, { amount: number; count: number; months: Set<string> }>();
   for (const txn of credits) {
     const key = counterpartyKey(txn.counterparty);
-    const entry = creditByCounterparty.get(key) ?? { amount: 0, count: 0 };
+    const entry = creditByCounterparty.get(key) ?? { amount: 0, count: 0, months: new Set<string>() };
     entry.amount += txn.amount;
     entry.count += 1;
+    entry.months.add(monthKey(new Date(txn.occurred_at).getTime()));
     creditByCounterparty.set(key, entry);
   }
 
@@ -245,6 +250,7 @@ export function computeBusinessMetrics(transactions: Transaction[], options: Met
       counterparty,
       inflow: round2(entry.amount),
       transaction_count: entry.count,
+      active_months: entry.months.size,
       share_of_inflow_pct: totalInflow > 0 ? round1((entry.amount / totalInflow) * 100) : 0,
     }))
     .sort((a, b) => b.inflow - a.inflow)
@@ -621,6 +627,7 @@ export async function loadBusinessContext(businessId: string, options: MetricsOp
 export async function getBusinessDashboard(businessId: string, options: MetricsOptions = {}): Promise<BusinessDashboard> {
   const { business, metrics, health, tips } = await loadBusinessContext(businessId, options);
   const receivables = await getReceivablesSummary(businessId);
+  const supplyChainReadiness = computeSupplyChainReadiness(metrics, receivables);
 
   return {
     business: {
@@ -639,6 +646,7 @@ export async function getBusinessDashboard(businessId: string, options: MetricsO
     health_score: health,
     tips,
     receivables,
+    supply_chain_readiness: supplyChainReadiness,
   };
 }
 
