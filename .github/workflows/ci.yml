@@ -50,9 +50,23 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - run: npm run test:pg
+      - name: Tests (PostgreSQL)
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/afriscore_test
+        run: |
+          set +e
+          npm run test:pg 2>&1 | tee pg-tests.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            # Surface the failing tests as check-run annotations so failures are
+            # diagnosable from the public checks API (job logs need admin auth).
+            grep -E '^✖ |AssertionError|actual:|expected:|error:|Error:|code:' pg-tests.log | tail -80 | while IFS= read -r line; do
+              echo "::error title=postgres-test::${line}"
+            done
+            echo "----- tail of PostgreSQL test log -----"
+            tail -60 pg-tests.log
+          fi
+          exit "$status"
 
   typecheck:
     name: Type check
