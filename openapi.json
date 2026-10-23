@@ -2111,6 +2111,51 @@
           }
         }
       }
+    },
+    "/businesses/{id}/business-profile": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Business",
+          "Intelligence"
+        ],
+        "summary": "Business dashboard: cash flow, counterparties, health score and tips",
+        "description": "Deterministic metrics computed from normalized business transactions. Requires an active business_profile consent grant for the calling client. Liquidity is reported as unavailable when statements do not capture running balances rather than being invented.",
+        "operationId": "getBusinessDashboard",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Business dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDashboard"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/ConsentRequired"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4277,6 +4322,360 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "MonthlyCashFlow": {
+        "type": "object",
+        "required": [
+          "month",
+          "inflow",
+          "outflow",
+          "net",
+          "transaction_count"
+        ],
+        "properties": {
+          "month": {
+            "type": "string",
+            "example": "2026-07"
+          },
+          "inflow": {
+            "type": "number"
+          },
+          "outflow": {
+            "type": "number"
+          },
+          "net": {
+            "type": "number"
+          },
+          "transaction_count": {
+            "type": "integer"
+          }
+        }
+      },
+      "RevenueTrend": {
+        "type": "object",
+        "required": [
+          "available",
+          "direction",
+          "change_pct",
+          "method",
+          "detail"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "growing",
+              "flat",
+              "declining",
+              "insufficient_data"
+            ]
+          },
+          "change_pct": {
+            "type": "number",
+            "nullable": true
+          },
+          "method": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthComponent": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "score",
+          "weight",
+          "available",
+          "detail"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "cash_flow_stability",
+              "revenue_trend",
+              "payment_discipline",
+              "customer_concentration",
+              "liquidity_buffer"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "nullable": true
+          },
+          "weight": {
+            "type": "number"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "BusinessHealthScore": {
+        "type": "object",
+        "required": [
+          "score",
+          "band",
+          "band_label",
+          "components",
+          "excluded_components",
+          "method"
+        ],
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "strong",
+              "stable",
+              "watch",
+              "at_risk"
+            ]
+          },
+          "band_label": {
+            "type": "string"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HealthComponent"
+            }
+          },
+          "excluded_components": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "method": {
+            "type": "string"
+          }
+        }
+      },
+      "BusinessDashboard": {
+        "type": "object",
+        "required": [
+          "business",
+          "generated_at",
+          "window",
+          "cash_flow",
+          "counterparties",
+          "totals",
+          "health_score",
+          "tips"
+        ],
+        "properties": {
+          "business": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "legal_name": {
+                "type": "string"
+              },
+              "sector": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string"
+              },
+              "trust_score": {
+                "type": "number"
+              },
+              "is_sandbox": {
+                "type": "boolean"
+              }
+            }
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window": {
+            "type": "object",
+            "properties": {
+              "months": {
+                "type": "integer"
+              },
+              "from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "data_months": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "cash_flow": {
+            "type": "object",
+            "properties": {
+              "monthly": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MonthlyCashFlow"
+                }
+              },
+              "inflow_volatility": {
+                "type": "number",
+                "nullable": true
+              },
+              "volatility_method": {
+                "type": "string"
+              },
+              "revenue_trend": {
+                "$ref": "#/components/schemas/RevenueTrend"
+              },
+              "peak_activity": {
+                "type": "object",
+                "properties": {
+                  "busiest_weekday": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "busiest_hour": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "average_ticket": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "counterparties": {
+            "type": "object",
+            "properties": {
+              "top_customers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "counterparty": {
+                      "type": "string"
+                    },
+                    "inflow": {
+                      "type": "number"
+                    },
+                    "transaction_count": {
+                      "type": "integer"
+                    },
+                    "share_of_inflow_pct": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "anchor_buyer_risk": {
+                "type": "boolean"
+              },
+              "repeat_customer_ratio": {
+                "type": "number"
+              },
+              "supplier": {
+                "type": "object",
+                "properties": {
+                  "repeat_supplier_count": {
+                    "type": "integer"
+                  },
+                  "top_suppliers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "counterparty": {
+                          "type": "string"
+                        },
+                        "outflow": {
+                          "type": "number"
+                        },
+                        "payment_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "regularity_score": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "inflow": {
+                "type": "number"
+              },
+              "outflow": {
+                "type": "number"
+              },
+              "net": {
+                "type": "number"
+              },
+              "credit_count": {
+                "type": "integer"
+              },
+              "debit_count": {
+                "type": "integer"
+              },
+              "failed_count": {
+                "type": "integer"
+              },
+              "failed_ratio": {
+                "type": "number"
+              },
+              "months_of_history": {
+                "type": "integer"
+              }
+            }
+          },
+          "health_score": {
+            "$ref": "#/components/schemas/BusinessHealthScore"
+          },
+          "tips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 3,
+            "maxItems": 3
           }
         }
       }
