@@ -2,6 +2,7 @@
 // imported below, and the DB adapter snapshots DATABASE_URL at import time.
 import { config } from "./config";
 import express from "express";
+import path from "node:path";
 import { dbGet, isPostgres } from "./db";
 import businessRoutes from "./routes/businesses";
 import consentRoutes from "./routes/consents";
@@ -10,6 +11,7 @@ import clientRoutes from "./routes/clients";
 import businessDataRoutes from "./routes/businessData";
 import businessOnboardingRoutes from "./routes/businessOnboarding";
 import businessDashboardRoutes from "./routes/businessDashboard";
+import businessDecisionRoutes from "./routes/businessDecision";
 import webhookRoutes from "./routes/webhooks";
 import sandboxRoutes from "./routes/sandbox";
 import { ipRateLimit } from "./middleware/rateLimit";
@@ -83,10 +85,16 @@ export function createApp() {
     }
   });
 
+  // Local, dependency-free business-track UI (owner dashboard + lender card).
+  // Served from the API origin so browser calls need no CORS configuration.
+  // This is a local demo surface; it does not bypass API auth or consent.
+  app.use("/dashboard", express.static(path.join(process.cwd(), "dashboard"), { index: "index.html" }));
+
   app.use("/v1/businesses", businessRoutes);
   app.use("/v1/businesses/:id", businessDataRoutes);
   app.use("/v1/businesses/:id", businessOnboardingRoutes);
   app.use("/v1/businesses/:id", businessDashboardRoutes);
+  app.use("/v1/businesses/:id", businessDecisionRoutes);
   app.use("/v1/persons", personRoutes);
   app.use("/v1/consents", consentRoutes);
   app.use("/v1/clients", clientRoutes);

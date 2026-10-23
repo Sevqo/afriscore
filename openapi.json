@@ -2156,6 +2156,51 @@
           }
         }
       }
+    },
+    "/businesses/{id}/decision-card": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Business",
+          "Intelligence"
+        ],
+        "summary": "Issue a lender-facing business decision card",
+        "description": "Maps the deterministic business metrics and health score into the shared DecisionCard shape. Issuing is an auditable event: every derived metric and the decision are appended to the subject's hash-chained ledger and audit_trail_ref is the ledger entry id of the decision.",
+        "operationId": "issueBusinessDecisionCard",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Decision card issued and ledgered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDecisionCard"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/ConsentRequired"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4678,6 +4723,273 @@
             "maxItems": 3
           }
         }
+      },
+      "DecisionEvidence": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "value",
+          "impact",
+          "detail"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "neutral"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "DecisionConfidence": {
+        "type": "object",
+        "required": [
+          "overall",
+          "reconciliation_score",
+          "data_completeness",
+          "months_of_history",
+          "method"
+        ],
+        "properties": {
+          "overall": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "reconciliation_score": {
+            "type": "number",
+            "nullable": true
+          },
+          "data_completeness": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "months_of_history": {
+            "type": "integer"
+          },
+          "method": {
+            "type": "string"
+          }
+        }
+      },
+      "ReceivablesSummary": {
+        "type": "object",
+        "nullable": true,
+        "required": [
+          "open_invoice_count",
+          "open_invoice_value",
+          "dso_days",
+          "matched_payment_ratio"
+        ],
+        "properties": {
+          "open_invoice_count": {
+            "type": "integer"
+          },
+          "open_invoice_value": {
+            "type": "number"
+          },
+          "dso_days": {
+            "type": "number",
+            "nullable": true
+          },
+          "matched_payment_ratio": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "BusinessDecisionCard": {
+        "allOf": [
+          {
+            "type": "object",
+            "required": [
+              "subject",
+              "generated_at",
+              "currency",
+              "recommended_limit",
+              "risk_band",
+              "verdict",
+              "evidence",
+              "confidence",
+              "adverse_indicators",
+              "audit_trail_ref",
+              "methodology"
+            ],
+            "properties": {
+              "subject": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "business",
+                      "individual"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              },
+              "generated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "currency": {
+                "type": "string",
+                "example": "KES"
+              },
+              "recommended_limit": {
+                "type": "number",
+                "minimum": 0
+              },
+              "risk_band": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "moderate",
+                  "elevated",
+                  "high"
+                ]
+              },
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "approve",
+                  "review",
+                  "decline"
+                ]
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DecisionEvidence"
+                }
+              },
+              "confidence": {
+                "$ref": "#/components/schemas/DecisionConfidence"
+              },
+              "adverse_indicators": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "audit_trail_ref": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "methodology": {
+                "type": "object",
+                "properties": {
+                  "score_source": {
+                    "type": "string"
+                  },
+                  "limit_formula": {
+                    "type": "string"
+                  },
+                  "risk_band_mapping": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "business_name",
+              "shortcodes",
+              "monthly_inflow_avg",
+              "inflow_volatility",
+              "revenue_trend",
+              "months_of_history",
+              "top_customer_concentration",
+              "business_health_score",
+              "health_band",
+              "receivables"
+            ],
+            "properties": {
+              "business_name": {
+                "type": "string"
+              },
+              "shortcodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "monthly_inflow_avg": {
+                "type": "number"
+              },
+              "inflow_volatility": {
+                "type": "number",
+                "nullable": true
+              },
+              "revenue_trend": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "type": "string"
+                  },
+                  "change_pct": {
+                    "type": "number",
+                    "nullable": true
+                  }
+                }
+              },
+              "months_of_history": {
+                "type": "integer"
+              },
+              "top_customer_concentration": {
+                "type": "number"
+              },
+              "business_health_score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "health_band": {
+                "type": "string",
+                "enum": [
+                  "strong",
+                  "stable",
+                  "watch",
+                  "at_risk"
+                ]
+              },
+              "receivables": {
+                "$ref": "#/components/schemas/ReceivablesSummary"
+              }
+            }
+          }
+        ]
       }
     }
   }

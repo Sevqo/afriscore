@@ -588,8 +588,17 @@ export function buildBusinessTips(metrics: BusinessMetrics, health: BusinessHeal
   return unique.slice(0, 3);
 }
 
-/** Loads the business and its transactions, then computes the dashboard. */
-export async function getBusinessDashboard(businessId: string, options: MetricsOptions = {}): Promise<BusinessDashboard> {
+export interface BusinessContext {
+  business: Business;
+  metrics: BusinessMetrics;
+  health: BusinessHealthScore;
+  tips: string[];
+}
+
+/** Loads the business and its transactions and computes every derived metric.
+ *  Shared by the dashboard endpoint and the decision-card service so a lender
+ *  is never shown a number the owner's dashboard cannot reproduce. */
+export async function loadBusinessContext(businessId: string, options: MetricsOptions = {}): Promise<BusinessContext> {
   const business: Business | undefined = await getBusiness(businessId);
   if (!business) throw new Error("business_not_found");
 
@@ -601,6 +610,13 @@ export async function getBusinessDashboard(businessId: string, options: MetricsO
   const metrics = computeBusinessMetrics(transactions, options);
   const health = computeBusinessHealth(metrics);
   const tips = buildBusinessTips(metrics, health);
+
+  return { business, metrics, health, tips };
+}
+
+/** Loads the business and its transactions, then computes the dashboard. */
+export async function getBusinessDashboard(businessId: string, options: MetricsOptions = {}): Promise<BusinessDashboard> {
+  const { business, metrics, health, tips } = await loadBusinessContext(businessId, options);
 
   return {
     business: {
