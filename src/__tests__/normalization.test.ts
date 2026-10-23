@@ -44,6 +44,31 @@ describe("normalization", () => {
     assert.strictEqual(c.status, "failed");
   });
 
+  test("a FAILED M-Pesa payout stays a debit instead of becoming a credit", () => {
+    const c = normalizeMpesaTransaction({
+      MpesaReceiptNumber: "Q126",
+      TransactionType: "B2CPayment",
+      Amount: 2500,
+      MSISDN: "254712345678",
+      TransactionDate: "2026-09-01T10:00:00.000Z",
+      ResultDesc: "FAILED",
+    });
+    assert.strictEqual(c.status, "failed");
+    assert.strictEqual(c.type, "debit", "a failed payout must never be counted as revenue");
+  });
+
+  test("an unrecognised M-Pesa status is pending, not completed", () => {
+    const c = normalizeMpesaTransaction({
+      MpesaReceiptNumber: "Q127",
+      TransactionType: "CustomerPayment",
+      Amount: 100,
+      MSISDN: "254712345678",
+      TransactionDate: "2026-09-01T10:00:00.000Z",
+      ResultDesc: "QUEUED" as any,
+    });
+    assert.strictEqual(c.status, "pending");
+  });
+
   test("bank CREDIT/COMPLETED maps to the SAME canonical shape as M-Pesa CR", () => {
     const bank = normalizeBankTransaction({
       txnRef: "BNK1",

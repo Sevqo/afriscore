@@ -14,6 +14,7 @@ const createSchema = z.object({
   registration_number: z.string().optional(),
   kra_pin: z.string().optional(),
   industry: z.string().optional(),
+  sector: z.string().optional(),
 });
 
 router.post("/", requireAdmin, async (req, res) => {
@@ -52,6 +53,9 @@ router.get("/:id/trust-record", requireApiKey, async (req: AuthedRequest, res) =
 });
 
 router.get("/:id/ledger/verify", requireAdmin, async (req, res) => {
+  // A nonexistent subject must be a 404, not "valid: true, entryCount: 0" —
+  // the latter reads as "this business has a clean history".
+  if (!(await getBusiness(String(req.params.id)))) return res.status(404).json({ error: "not_found" });
   const result = await verifyChainIntegrity("business", String(req.params.id));
   res.json(result);
 });

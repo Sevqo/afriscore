@@ -29,34 +29,56 @@ export interface QueryAnswer {
   data: unknown;
 }
 
+type DataScope = "trust_score" | "financial_profile" | "insights" | "accounts" | "transactions" | "invoices" | "query";
+
 interface IntentDef {
   intent: string;
+  /** Consent scope needed to see the data this intent returns. `query` only
+   *  buys the natural-language door; the answer's underlying capability is
+   *  gated by its own scope, exactly like the REST endpoint would be. */
+  requiredScope: DataScope;
   keywords: string[][]; // each inner array is a set of keywords that ALL must appear
 }
 
 const INTENTS: IntentDef[] = [
-  { intent: "overdue_invoices", keywords: [["overdue"], ["invoice", "invoices"]] },
-  { intent: "cash_flow_forecast", keywords: [["cash", "forecast", "cashflow"]] },
-  { intent: "unusual_transactions", keywords: [["unusual", "suspicious", "outlier", "anomal"], ["transaction"]] },
-  { intent: "customer_concentration", keywords: [["customer", "client"], ["depend", "concentrat", "biggest", "largest"]] },
-  { intent: "financial_profile", keywords: [["revenue", "profile", "financial", "income"]] },
-  { intent: "trust_score", keywords: [["trust", "score", "verified", "verification"]] },
+  { intent: "overdue_invoices", requiredScope: "invoices", keywords: [["overdue"], ["invoice", "invoices"]] },
+  { intent: "cash_flow_forecast", requiredScope: "insights", keywords: [["cash", "forecast", "cashflow"]] },
+  {
+    intent: "unusual_transactions",
+    requiredScope: "transactions",
+    keywords: [["unusual", "suspicious", "outlier", "anomal"], ["transaction"]],
+  },
+  {
+    intent: "customer_concentration",
+    requiredScope: "insights",
+    keywords: [["customer", "client"], ["depend", "concentrat", "biggest", "largest"]],
+  },
+  { intent: "financial_profile", requiredScope: "financial_profile", keywords: [["revenue", "profile", "financial", "income"]] },
+  { intent: "trust_score", requiredScope: "trust_score", keywords: [["trust", "score", "verified", "verification"]] },
 ];
 
-function matchIntent(question: string): string | null {
+function matchIntent(question: string): IntentDef | null {
   const q = question.toLowerCase();
   for (const def of INTENTS) {
     const allGroupsMatch = def.keywords.every((group) => group.some((kw) => q.includes(kw)));
-    if (allGroupsMatch) return def.intent;
+    if (allGroupsMatch) return def;
   }
   return null;
+}
+
+/** Resolves the intent (and the consent scope it requires) without touching
+ *  any data, so routes can authorise before the query runs. */
+export function resolveIntent(question: string): { intent: string; requiredScope: DataScope } | null {
+  const def = matchIntent(question);
+  return def ? { intent: def.intent, requiredScope: def.requiredScope } : null;
 }
 
 export async function answerQuestion(businessId: string, question: string): Promise<QueryAnswer> {
   const business = await getBusiness(businessId);
   if (!business) throw new Error("business_not_found");
 
-  const intent = matchIntent(question);
+  const resolved = matchIntent(question);
+  const intent = resolved?.intent ?? null;
 
   switch (intent) {
     case "overdue_invoices": {

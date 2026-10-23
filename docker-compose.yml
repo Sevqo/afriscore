@@ -1,0 +1,42 @@
+# Local development stack: the API container plus PostgreSQL.
+#
+#   docker compose up --build
+#   curl localhost:4000/v1/health
+#
+# The values below are development-only. For production, provide real random
+# secrets (32+ characters), set NODE_ENV=production, and configure
+# AFRISCORE_WEBHOOK_ALLOWED_HOSTS — the API validates these at startup.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: afriscore
+      POSTGRES_PASSWORD: afriscore-dev-only
+      POSTGRES_DB: afriscore
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U afriscore -d afriscore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: "4000"
+      DATABASE_URL: postgres://afriscore:afriscore-dev-only@postgres:5432/afriscore
+      AFRISCORE_ADMIN_TOKEN: ${AFRISCORE_ADMIN_TOKEN:-dev-only-admin-token-change-before-deploy}
+      ID_HASH_SALT: ${ID_HASH_SALT:-dev-only-id-hash-salt-change-before-deploy}
+      LEDGER_HMAC_KEY: ${LEDGER_HMAC_KEY:-dev-only-ledger-hmac-key-change-before-deploy}
+    ports:
+      - "4000:4000"
+
+volumes:
+  postgres-data:

@@ -1,0 +1,250 @@
+import { test, describe, before, after } from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import type { Server } from "http";
+import { configureTestEnv, truncateAll, removeSqliteFile } from "./helpers";
+
+const { sqlitePath } = configureTestEnv("business-onboarding");
+
+import { migrate, dbRun } from "../db";
+import { createApp } from "../app";
+import { getLedger, verifyChainIntegrity } from "../services/ledgerService";
+import { parseStatement, StatementParseError } from "../services/statement/parser";
+import { parseCsv } from "../services/statement/csv";
+
+const FIXTURES = path.join(__dirname, "../../test-fixtures");
+const fixture = (name: string): string => fs.readFileSync(path.join(FIXTURES, name), "utf8");
+
+let server: Server;
+let baseUrl: string;
+
+async function api(method: string, urlPath: string, opts: { body?: unknown } = {}) {
+  const res = await fetch(`${baseUrl}${urlPath}`, {
+    method,
+    headers: { "Content-Type": "application/json", "x-admin-token": process.env.AFRISCORE_ADMIN_TOKEN! },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let json: unknown = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* empty body */
+  }
+  return { status: res.status, body: json as any };
+}
+
+async function createBusiness(name: string, sector = "retail"): Promise<string> {
+  const res = await api("POST", "/v1/businesses", { body: { legal_name: name, sector, registration_number: `REG-${name.length}` } });
+  assert.strictEqual(res.status, 201);
+  return res.body.id;
+}
+
+async function onboard(businessId: string): Promise<string> {
+  const res = await api("POST", `/v1/businesses/${businessId}/onboarding/consent`, { body: { purpose: "business_onboarding" } });
+  assert.strictEqual(res.status, 201);
+  return res.body.consent.id;
+}
+
+describe("statement parsing", () => {
+  test("CSV reader handles quoted amounts and CRLF", () => {
+    const rows = parseCsv('a,b\r\n"1,250.00",x\r\n');
+    assert.deepStrictEqual(rows, [
+      ["a", "b"],
+      ["1,250.00", "x"],
+    ]);
+  });
+
+  test("clean till statement normalizes into the canonical transaction shape", () => {
+    const parsed = parseStatement("business_till", fixture("till-clean.csv"), { shortcode: "123456" });
+    assert.strictEqual(parsed.sourceType, "business_till");
+    assert.strictEqual(parsed.shortcode, "123456");
+    assert.ok(parsed.rows.length >= 20);
+    assert.ok(parsed.rows.some((row) => row.type === "credit"));
+    assert.ok(parsed.rows.some((row) => row.type === "debit"));
+    assert.ok(parsed.rows.some((row) => row.counterparty?.includes("ACME")));
+    assert.ok(parsed.rows.every((row) => row.amount > 0 && row.occurred_at.endsWith("Z")));
+    const spanDays = (new Date(parsed.periodEnd).getTime() - new Date(parsed.periodStart).getTime()) / 86_400_000;
+    assert.ok(spanDays >= 30);
+  });
+
+  test("a statement with under 30 days of history is rejected explicitly", () => {
+    assert.throws(
+      () => parseStatement("business_till", fixture("till-sparse.csv"), { shortcode: "123456" }),
+      (err: unknown) => err instanceof StatementParseError && err.code === "insufficient_history"
+    );
+  });
+
+  test("bank statement parses debit and credit columns", () => {
+    const parsed = parseStatement("bank", fixture("bank-clean.csv"));
+    assert.ok(parsed.rows.length >= 10);
+    assert.ok(parsed.rows.some((row) => row.type === "credit"));
+    assert.ok(parsed.rows.some((row) => row.type === "debit"));
+  });
+
+  test("mixed till and bank statements normalize to the same row shape", () => {
+    const till = parseStatement("business_till", fixture("till-clean.csv"), { shortcode: "123456" });
+    const bank = parseStatement("bank", fixture("bank-clean.csv"));
+    const keys = Object.keys(till.rows[0]).sort();
+    assert.deepStrictEqual(Object.keys(bank.rows[0]).sort(), keys);
+  });
+
+  test("individual M-Pesa statement parses via the individual source", () => {
+    const parsed = parseStatement("individual_mpesa", fixture("mpesa-individual.csv"));
+    assert.ok(parsed.rows.length >= 8);
+    assert.ok(parsed.rows.some((row) => row.counterparty?.includes("2547")));
+  });
+
+  test("parse failures are typed and specific", () => {
+    assert.throws(
+      () => parseStatement("business_till", fixture("bank-clean.csv"), { shortcode: "123456" }),
+      (err: unknown) => err instanceof StatementParseError && err.code === "wrong_statement_type"
+    );
+    assert.throws(
+      () => parseStatement("business_till", "", { shortcode: "123456" }),
+      (err: unknown) => err instanceof StatementParseError && err.code === "unreadable_file"
+    );
+    assert.throws(
+      () => parseStatement("business_paybill", fixture("till-clean.csv")),
+      (err: unknown) => err instanceof StatementParseError && err.code === "missing_shortcode"
+    );
+  });
+});
+
+describe("business onboarding flow", () => {
+  before(async () => {
+    await migrate();
+    await truncateAll(dbRun);
+    const app = createApp();
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, () => resolve());
+    });
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : 0;
+    baseUrl = `http://127.0.0.1:${port}`;
+  });
+
+  after(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    removeSqliteFile(sqlitePath);
+  });
+
+  test("no statement is parsed before business consent exists", async () => {
+    const businessId = await createBusiness("Consent First Ltd");
+    const blocked = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "business_till", shortcode: "111111", content: fixture("till-clean.csv") },
+    });
+    assert.strictEqual(blocked.status, 403);
+    assert.strictEqual(blocked.body.error, "consent_required");
+    assert.strictEqual(blocked.body.required_scope, "statements");
+
+    await onboard(businessId);
+    const allowed = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "business_till", shortcode: "111111", content: fixture("till-clean.csv") },
+    });
+    assert.strictEqual(allowed.status, 201);
+    assert.ok(allowed.body.transactions_imported >= 20);
+  });
+
+  test("ingested rows are canonical, tagged and deduplicated on re-upload", async () => {
+    const businessId = await createBusiness("Tagger Ltd");
+    await onboard(businessId);
+
+    const first = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "business_till", shortcode: "222222", content: fixture("till-clean.csv"), file_name: "statement.csv" },
+    });
+    assert.strictEqual(first.status, 201);
+    const imported = first.body.transactions_imported as number;
+
+    const txns = await api("GET", `/v1/businesses/${businessId}/transactions`);
+    assert.strictEqual(txns.status, 200);
+    const firstTxn = txns.body[0];
+    assert.strictEqual(firstTxn.subject_type, "business");
+    assert.strictEqual(firstTxn.shortcode, "222222");
+    assert.strictEqual(firstTxn.source_provider, "mpesa_till");
+    assert.ok(firstTxn.statement_id);
+
+    const second = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "business_till", shortcode: "222222", content: fixture("till-clean.csv") },
+    });
+    assert.strictEqual(second.status, 201);
+    assert.strictEqual(second.body.transactions_imported, 0);
+    assert.strictEqual(second.body.duplicates_skipped, imported);
+  });
+
+  test("a failed upload is rejected with a code and still audited", async () => {
+    const businessId = await createBusiness("Sparse History Ltd");
+    await onboard(businessId);
+
+    const res = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "business_till", shortcode: "333333", content: fixture("till-sparse.csv") },
+    });
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error, "insufficient_history");
+    assert.ok(res.body.message.includes("of history"));
+
+    const statements = await api("GET", `/v1/businesses/${businessId}/statements`);
+    assert.strictEqual(statements.body[0].status, "failed");
+    assert.strictEqual(statements.body[0].error_code, "insufficient_history");
+  });
+
+  test("every imported transaction is written to the hash-chained ledger", async () => {
+    const businessId = await createBusiness("Ledgered Business Ltd");
+    await onboard(businessId);
+    const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "bank", content: fixture("bank-clean.csv") },
+    });
+    assert.strictEqual(upload.status, 201);
+    const imported = upload.body.transactions_imported as number;
+
+    const ledger = await getLedger("business", businessId);
+    const ingested = ledger.filter((entry) => entry.event_type === "business.transaction.ingested");
+    assert.strictEqual(ingested.length, imported, "one ledger entry per ingested data point");
+
+    const integrity = await verifyChainIntegrity("business", businessId);
+    assert.strictEqual(integrity.valid, true);
+    assert.strictEqual(integrity.anchored, true);
+  });
+
+  test("revoking business consent stops further statement reads", async () => {
+    const businessId = await createBusiness("Revoke Business Ltd");
+    const consentId = await onboard(businessId);
+    const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "bank", content: fixture("bank-clean.csv") },
+    });
+    assert.strictEqual(upload.status, 201);
+
+    const revoked = await api("DELETE", `/v1/consents/${consentId}`);
+    assert.strictEqual(revoked.status, 200);
+
+    const blocked = await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "bank", content: fixture("bank-clean.csv") },
+    });
+    assert.strictEqual(blocked.status, 403);
+    assert.strictEqual(blocked.body.error, "consent_required");
+  });
+
+  test("the individual/person flow is unaffected by business onboarding", async () => {
+    const person = await api("POST", "/v1/persons", { body: { full_name: "Separate Person", national_id: "90909090" } });
+    assert.strictEqual(person.status, 201);
+    const verified = await api("POST", `/v1/persons/${person.body.id}/verify`);
+    assert.strictEqual(verified.status, 200);
+    assert.strictEqual(verified.body.person.status, "verified");
+  });
+
+  test("shortcodes are registered per business and listed", async () => {
+    const businessId = await createBusiness("Shortcode Ltd");
+    await onboard(businessId);
+    await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "business_till", shortcode: "444444", content: fixture("till-clean.csv") },
+    });
+    await api("POST", `/v1/businesses/${businessId}/statements`, {
+      body: { source_type: "bank", content: fixture("bank-clean.csv") },
+    });
+
+    const shortcodes = await api("GET", `/v1/businesses/${businessId}/shortcodes`);
+    assert.strictEqual(shortcodes.status, 200);
+    const types = shortcodes.body.map((s: any) => s.type).sort();
+    assert.deepStrictEqual(types, ["bank", "till"]);
+  });
+});

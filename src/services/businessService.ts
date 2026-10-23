@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { appendEvent, getLedger, verifyChainIntegrity } from "./ledgerService";
+import { redactLedgerEvents } from "./redaction";
 import { computeTrustScore } from "./scoreService";
 
 export interface Business {
@@ -11,6 +12,8 @@ export interface Business {
   kra_pin?: string;
   jurisdiction: string;
   industry?: string;
+  /** Business sector for the business track (e.g. retail, hospitality). */
+  sector?: string;
   status: string;
   trust_score: number;
   is_sandbox: boolean;
@@ -24,6 +27,7 @@ export async function createBusiness(input: {
   registration_number?: string;
   kra_pin?: string;
   industry?: string;
+  sector?: string;
   is_sandbox?: boolean;
 }): Promise<Business> {
   const now = new Date().toISOString();
@@ -35,6 +39,7 @@ export async function createBusiness(input: {
     kra_pin: input.kra_pin,
     jurisdiction: "KE",
     industry: input.industry,
+    sector: input.sector,
     status: "pending_verification",
     trust_score: 0,
     is_sandbox: input.is_sandbox ? 1 : 0,
@@ -43,14 +48,15 @@ export async function createBusiness(input: {
   };
 
   await dbRun(
-    `INSERT INTO businesses (id, legal_name, trading_name, registration_number, kra_pin, jurisdiction, industry, status, trust_score, is_sandbox, created_at, updated_at)
-     VALUES (@id, @legal_name, @trading_name, @registration_number, @kra_pin, @jurisdiction, @industry, @status, @trust_score, @is_sandbox, @created_at, @updated_at)`,
+    `INSERT INTO businesses (id, legal_name, trading_name, registration_number, kra_pin, jurisdiction, industry, sector, status, trust_score, is_sandbox, created_at, updated_at)
+     VALUES (@id, @legal_name, @trading_name, @registration_number, @kra_pin, @jurisdiction, @industry, @sector, @status, @trust_score, @is_sandbox, @created_at, @updated_at)`,
     business
   );
 
   await appendEvent("business", business.id, "business.created", {
     legal_name: business.legal_name,
     registration_number: business.registration_number,
+    sector: business.sector,
     is_sandbox: !!business.is_sandbox,
   });
 
@@ -113,9 +119,22 @@ export async function getTrustRecord(businessId: string) {
   const business = await getBusiness(businessId);
   if (!business) return undefined;
 
+  // Deliberately no KYC fields (registration_number, kra_pin, legal_name):
+  // the `trust_score` consent scope covers the trust judgement, not the
+  // underlying identity file. See redaction.ts.
   return {
-    business,
-    verification_history: await getLedger("business", businessId),
+    subject: {
+      id: business.id,
+      type: "business" as const,
+      status: business.status,
+      trust_score: business.trust_score,
+      jurisdiction: business.jurisdiction,
+      industry: business.industry ?? null,
+      is_sandbox: business.is_sandbox,
+      created_at: business.created_at,
+      updated_at: business.updated_at,
+    },
+    verification_history: redactLedgerEvents(await getLedger("business", businessId)),
     integrity: await verifyChainIntegrity("business", businessId),
   };
 }

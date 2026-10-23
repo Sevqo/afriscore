@@ -4,7 +4,7 @@ import { findMatch } from "../services/reconciliationService";
 import { Invoice } from "../services/invoiceService";
 import { Transaction } from "../services/transactionService";
 
-function invoice(amount: number): Invoice {
+function invoice(amount: number, expectedCounterparty?: string): Invoice {
   return {
     id: "inv-1",
     business_id: "biz-1",
@@ -13,11 +13,12 @@ function invoice(amount: number): Invoice {
     currency: "KES",
     issue_date: new Date().toISOString(),
     status: "unpaid",
+    expected_counterparty: expectedCounterparty,
     created_at: new Date().toISOString(),
   };
 }
 
-function txn(id: string, amount: number): Transaction {
+function txn(id: string, amount: number, counterparty: string | null = null): Transaction {
   return {
     id,
     account_id: "acc-1",
@@ -26,7 +27,7 @@ function txn(id: string, amount: number): Transaction {
     amount,
     currency: "KES",
     type: "credit",
-    counterparty: null,
+    counterparty,
     category: "sales",
     status: "completed",
     source_provider: "mpesa",
@@ -95,5 +96,24 @@ describe("reconciliation matching", () => {
     const m = findMatch(invoice(3000), [txn("a", 1000), txn("b", 2000), txn("exact", 3000)]);
     assert.strictEqual(m?.match_type, "exact");
     assert.deepStrictEqual(m?.transaction_ids, ["exact"]);
+  });
+
+  test("expected counterparty agreement is reflected in confidence and note", () => {
+    const m = findMatch(invoice(5000, "Acme Ltd"), [txn("a", 5000, "ACME LIMITED")]);
+    assert.strictEqual(m?.match_type, "exact");
+    assert.strictEqual(m?.confidence, 1);
+    assert.ok(m?.note?.includes("matches the expected payer"));
+  });
+
+  test("expected counterparty disagreement lowers confidence for review", () => {
+    const m = findMatch(invoice(5000, "Acme Ltd"), [txn("a", 5000, "Unknown Traders")]);
+    assert.strictEqual(m?.match_type, "exact");
+    assert.strictEqual(m?.confidence, 0.8, "a mismatched payer must not score full confidence");
+    assert.ok(m?.note?.includes("does not match the expected payer"));
+  });
+
+  test("phone-number formatting variants count as counterparty agreement", () => {
+    const m = findMatch(invoice(5000, "0712345678"), [txn("a", 5000, "254712345678")]);
+    assert.strictEqual(m?.confidence, 1);
   });
 });

@@ -1,0 +1,9 @@
+Receipt No.,Completion Time,Details,Transaction Status,Paid In,Withdrawn,Balance
+QQQ001,2026-01-04 08:30:00,Funds received from 254712345678,Completed,"2,500.00",,2500.00
+QQQ002,2026-01-09 12:15:00,Sent to 254798765432,Completed,,"1,000.00",1500.00
+QQQ003,2026-01-18 18:40:00,Fuliza repayment,Completed,,"500.00",1000.00
+QQQ004,2026-01-25 09:55:00,Funds received from 254733344455,Completed,"4,000.00",,5000.00
+QQQ005,2026-02-02 14:20:00,Sent to 254711122233,Completed,,"1,500.00",3500.00
+QQQ006,2026-02-09 11:00:00,Funds received from 254798765432,Completed,"3,200.00",,6700.00
+QQQ007,2026-02-16 16:30:00,Airtime purchase,Completed,,"200.00",6500.00
+QQQ008,2026-02-23 10:45:00,Funds received from 254712345678,Completed,"2,800.00",,9300.00

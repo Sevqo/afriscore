@@ -24,6 +24,15 @@ export async function connectAccount(
   const business = await getBusiness(businessId);
   if (!business) throw new Error("business_not_found");
 
+  // One live connection per upstream account: re-connecting the same
+  // provider/account would ingest the same transactions twice and let one
+  // payment settle two invoices.
+  const existing = await dbGet<Account>(
+    `SELECT * FROM accounts WHERE business_id = ? AND provider = ? AND account_identifier = ?`,
+    [businessId, provider, accountIdentifier]
+  );
+  if (existing) throw new Error("account_already_connected");
+
   const account: Account = {
     id: randomUUID(),
     business_id: businessId,
@@ -41,7 +50,11 @@ export async function connectAccount(
   );
 
   await appendEvent("business", businessId, "account.connected", { account_id: account.id, provider, scenario });
-  await emitEvent("account.connected", { account_id: account.id, business_id: businessId, provider });
+  await emitEvent("account.connected", { account_id: account.id, business_id: businessId, provider }, {
+    type: "business",
+    id: businessId,
+    is_sandbox: business.is_sandbox,
+  });
 
   return account;
 }
@@ -53,10 +66,18 @@ export async function disconnectAccount(accountId: string, businessId?: string):
   const account = await getAccount(accountId);
   if (!account || (businessId && account.business_id !== businessId)) throw new Error("account_not_found");
 
+  // Idempotent: disconnecting twice must not append duplicate audit events.
+  if (account.status === "disconnected") return account;
+
+  const business = await getBusiness(account.business_id);
   const now = new Date().toISOString();
   await dbRun(`UPDATE accounts SET status = 'disconnected', disconnected_at = ? WHERE id = ?`, [now, accountId]);
   await appendEvent("business", account.business_id, "account.disconnected", { account_id: accountId, provider: account.provider });
-  await emitEvent("account.disconnected", { account_id: accountId, business_id: account.business_id });
+  await emitEvent("account.disconnected", { account_id: accountId, business_id: account.business_id }, {
+    type: "business",
+    id: account.business_id,
+    is_sandbox: !!business?.is_sandbox,
+  });
 
   return (await getAccount(accountId))!;
 }

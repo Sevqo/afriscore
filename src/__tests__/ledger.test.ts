@@ -86,4 +86,55 @@ describe("hash-chained ledger", () => {
     const result = await verifyChainIntegrity("business", "biz-del");
     assert.strictEqual(result.valid, false, "chain with a removed entry must NOT verify");
   });
+
+  test("TAMPER DETECTION: truncating the tail is detected via the head anchor", async () => {
+    await appendEvent("business", "biz-tail", "business.created", { step: 1 });
+    await appendEvent("business", "biz-tail", "score.updated", { trust_score: 10 });
+    await appendEvent("business", "biz-tail", "score.updated", { trust_score: 20 });
+
+    // Deleting the newest entry used to leave a perfectly "valid" chain.
+    const entries = await getLedger("business", "biz-tail");
+    await dbRun(`DELETE FROM ledger WHERE id = ?`, [entries[entries.length - 1].id]);
+
+    const result = await verifyChainIntegrity("business", "biz-tail");
+    assert.strictEqual(result.valid, false, "tail truncation must be detected");
+    assert.strictEqual(result.reason, "entry_count_mismatch");
+    assert.strictEqual(result.anchored, true);
+  });
+
+  test("TAMPER DETECTION: deleting the whole post-upgrade ledger is detected", async () => {
+    await appendEvent("business", "biz-wipe", "business.created", { step: 1 });
+    await appendEvent("business", "biz-wipe", "score.updated", { trust_score: 5 });
+    await dbRun(`DELETE FROM ledger WHERE subject_id = ?`, ["biz-wipe"]);
+
+    const result = await verifyChainIntegrity("business", "biz-wipe");
+    assert.strictEqual(result.valid, false, "an emptied chain must not look like a clean history");
+  });
+
+  test("TAMPER DETECTION: a rewritten chain cannot forge the keyed head anchor", async () => {
+    await appendEvent("business", "biz-forge", "business.created", { step: 1 });
+    await appendEvent("business", "biz-forge", "score.updated", { trust_score: 10 });
+
+    // Simulates a DB-write attacker rewriting the head hash without the key.
+    await dbRun(`UPDATE ledger_heads SET head_hash = ? WHERE subject_id = ?`, ["f".repeat(64), "biz-forge"]);
+
+    const result = await verifyChainIntegrity("business", "biz-forge");
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.anchored, true);
+  });
+
+  test("concurrent appends produce a single unforked, correctly sequenced chain", async () => {
+    await Promise.all(
+      Array.from({ length: 8 }, (_, i) => appendEvent("business", "biz-concurrent", "score.updated", { i }))
+    );
+
+    const result = await verifyChainIntegrity("business", "biz-concurrent");
+    assert.strictEqual(result.valid, true, "concurrent appends must not fork the chain");
+    assert.strictEqual(result.entryCount, 8);
+    assert.strictEqual(result.anchored, true);
+
+    const entries = await getLedger("business", "biz-concurrent");
+    const seqs = entries.map((e) => e.seq);
+    assert.deepStrictEqual(seqs, [1, 2, 3, 4, 5, 6, 7, 8]);
+  });
 });

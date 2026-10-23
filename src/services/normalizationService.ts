@@ -13,18 +13,26 @@ export interface CanonicalTransaction {
   occurred_at: string;
 }
 
-/** M-Pesa's ResultDesc vocabulary -> canonical status/type. */
+/** M-Pesa's ResultDesc vocabulary -> canonical status/direction.
+ *
+ *  A FAILED ResultDesc carries no direction, so direction is inferred from
+ *  TransactionType instead of defaulting everything non-DR to credit (which
+ *  used to turn failed B2C payouts into incoming credits). Unknown statuses
+ *  are preserved as `pending`, never silently treated as completed. */
 export function normalizeMpesaTransaction(raw: RawMpesaTransaction): CanonicalTransaction {
-  const type: "credit" | "debit" = raw.ResultDesc === "DR" ? "debit" : "credit";
-  const status: CanonicalTransaction["status"] = raw.ResultDesc === "FAILED" ? "failed" : "completed";
+  const type: "credit" | "debit" =
+    raw.ResultDesc === "DR" ? "debit" : raw.ResultDesc === "CR" ? "credit" : raw.TransactionType === "B2CPayment" ? "debit" : "credit";
+
+  const status: CanonicalTransaction["status"] =
+    raw.ResultDesc === "FAILED" ? "failed" : raw.ResultDesc === "CR" || raw.ResultDesc === "DR" ? "completed" : "pending";
 
   return {
     external_id: raw.MpesaReceiptNumber,
-    amount: raw.Amount,
+    amount: Math.abs(raw.Amount),
     currency: "KES",
     type,
     counterparty: raw.MSISDN,
-    category: raw.TransactionType === "CustomerPayment" ? "sales" : "payout",
+    category: type === "credit" ? "sales" : raw.TransactionType === "B2CPayment" ? "payout" : "expenses",
     status,
     source_provider: "mpesa",
     raw_status: raw.ResultDesc,
@@ -38,7 +46,7 @@ export function normalizeMpesaTransaction(raw: RawMpesaTransaction): CanonicalTr
 export function normalizeSandboxTransaction(raw: SandboxTransaction): CanonicalTransaction {
   return {
     external_id: raw.external_id,
-    amount: raw.amount,
+    amount: Math.abs(raw.amount),
     currency: "KES",
     type: raw.type,
     counterparty: null,
@@ -51,16 +59,20 @@ export function normalizeSandboxTransaction(raw: SandboxTransaction): CanonicalT
 }
 export function normalizeBankTransaction(raw: RawBankTransaction): CanonicalTransaction {
   const type: "credit" | "debit" = raw.debitCredit === "CREDIT" ? "credit" : "debit";
+  // Unknown bank statuses become `pending`, not `completed` — an unrecognised
+  // value must never be treated as settled money.
   const status: CanonicalTransaction["status"] =
-    raw.status === "REVERSED" ? "failed" : raw.status === "PENDING" ? "pending" : "completed";
+    raw.status === "COMPLETED" ? "completed" : raw.status === "PENDING" ? "pending" : raw.status === "REVERSED" ? "failed" : "pending";
 
   return {
     external_id: raw.txnRef,
-    amount: raw.txnAmount,
+    amount: Math.abs(raw.txnAmount),
     currency: "KES",
     type,
     counterparty: null,
-    category: raw.narrative.toLowerCase().includes("supplier") ? "sales" : "expenses",
+    // Category derives from direction, so it can never contradict `type`
+    // (a debit labelled "supplier payment received" used to become "sales").
+    category: type === "credit" ? "sales" : "expenses",
     status,
     source_provider: "bank",
     raw_status: raw.status,

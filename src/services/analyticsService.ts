@@ -25,13 +25,15 @@ export interface FinancialProfile {
 export async function computeFinancialProfile(businessId: string): Promise<FinancialProfile> {
   const txns = await dbAll<Transaction>(`SELECT * FROM transactions WHERE business_id = ?`, [businessId]);
 
-  const completed = txns.filter((t) => t.status === "completed");
+  const now = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+  // Only settled transactions move money. Future-dated rows are excluded from
+  // the trailing windows (they were previously counted as "last 30 days").
+  const completed = txns.filter((t) => t.status === "completed" && new Date(t.occurred_at).getTime() <= now);
   const revenue = completed.filter((t) => t.type === "credit").reduce((sum, t) => sum + t.amount, 0);
   const expenses = completed.filter((t) => t.type === "debit").reduce((sum, t) => sum + t.amount, 0);
   const failed = txns.filter((t) => t.status === "failed").length;
-
-  const now = Date.now();
-  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
   const last30 = completed.filter((t) => t.type === "credit" && now - new Date(t.occurred_at).getTime() <= thirtyDaysMs);
   const prior30 = completed.filter(
@@ -45,6 +47,10 @@ export async function computeFinancialProfile(businessId: string): Promise<Finan
   const revenuePrior30 = prior30.reduce((sum, t) => sum + t.amount, 0);
   const growthPct = revenuePrior30 > 0 ? Math.round(((revenueLast30 - revenuePrior30) / revenuePrior30) * 1000) / 10 : null;
 
+  // Average size is per settled transaction, not per row: failed/pending rows
+  // used to inflate the denominator and understate average ticket size.
+  const averageTransactionSize = completed.length ? (revenue + expenses) / completed.length : 0;
+
   return {
     business_id: businessId,
     currency: "KES",
@@ -52,7 +58,7 @@ export async function computeFinancialProfile(businessId: string): Promise<Finan
     total_expenses: Math.round(expenses * 100) / 100,
     net_cash_flow: Math.round((revenue - expenses) * 100) / 100,
     transaction_count: txns.length,
-    average_transaction_size: txns.length ? Math.round((revenue + expenses) / txns.length * 100) / 100 : 0,
+    average_transaction_size: Math.round(averageTransactionSize * 100) / 100,
     failed_transaction_count: failed,
     revenue_last_30d: Math.round(revenueLast30 * 100) / 100,
     revenue_prior_30d: Math.round(revenuePrior30 * 100) / 100,

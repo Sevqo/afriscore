@@ -34,6 +34,11 @@ export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath
  */
 export async function truncateAll(dbRun: (sql: string, params?: any[]) => Promise<any>) {
   const tables = [
+    "invoice_payments",
+    "business_links",
+    "statements",
+    "business_shortcodes",
+    "ledger_heads",
     "ledger",
     "consents",
     "transactions",
