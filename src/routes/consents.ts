@@ -12,14 +12,24 @@ const grantSchema = z.object({
   grantee: z.string().min(1),
   purpose: z.string().min(1),
   scope: z.array(z.enum(CONSENT_SCOPES)).min(1),
+  expires_at: z
+    .string()
+    .datetime({ offset: true })
+    .refine((value) => new Date(value).getTime() > Date.now(), { message: "expires_at must be in the future" })
+    .optional(),
 });
 
 router.post("/", async (req, res) => {
   const parsed = grantSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
-  const consent = await grantConsent(parsed.data);
-  res.status(201).json(consent);
+  try {
+    const consent = await grantConsent(parsed.data);
+    res.status(201).json(consent);
+  } catch (e: any) {
+    if (e.message === "invalid_expires_at") return res.status(400).json({ error: "invalid_input", detail: "expires_at must be in the future" });
+    throw e;
+  }
 });
 
 router.delete("/:id", async (req, res) => {

@@ -66,7 +66,8 @@ describe("API routes", () => {
     assert.ok(res.headers.get("x-request-id"));
     assert.strictEqual(res.headers.get("x-content-type-options"), "nosniff");
     assert.strictEqual(res.headers.get("x-powered-by"), null);
-    assert.strictEqual(res.headers.get("ratelimit-limit"), "120");
+    // Global limiter is per-IP (the per-client limiter kicks in after auth).
+    assert.strictEqual(res.headers.get("ratelimit-limit"), "600");
   });
 
   test("admin routes reject anonymous access", async () => {
@@ -204,6 +205,45 @@ describe("API routes", () => {
     assert.strictEqual(after.status, 403, "access must be cut off immediately after revocation");
   });
 
+  test("consent expires automatically, and past expiry dates are rejected", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "expiring-client" } });
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Expiring Ltd" } });
+
+    const past = await api("POST", "/v1/consents", {
+      body: {
+        subject_type: "business",
+        subject_id: biz.body.id,
+        grantee: "expiring-client",
+        purpose: "underwriting",
+        scope: ["trust_score"],
+        expires_at: new Date(Date.now() - 60_000).toISOString(),
+      },
+    });
+    assert.strictEqual(past.status, 400, "an already-expired consent must not be grantable");
+
+    const grant = await api("POST", "/v1/consents", {
+      body: {
+        subject_type: "business",
+        subject_id: biz.body.id,
+        grantee: "expiring-client",
+        purpose: "underwriting",
+        scope: ["trust_score"],
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      },
+    });
+    assert.strictEqual(grant.status, 201);
+    assert.ok(grant.body.expires_at);
+
+    const before = await api("GET", `/v1/businesses/${biz.body.id}/trust-record`, { apiKey: client.body.api_key });
+    assert.strictEqual(before.status, 200);
+
+    // Move the expiry into the past (as time would): access must stop without
+    // any explicit revocation.
+    await dbRun(`UPDATE consents SET expires_at = ? WHERE id = ?`, [new Date(Date.now() - 1000).toISOString(), grant.body.id]);
+    const after = await api("GET", `/v1/businesses/${biz.body.id}/trust-record`, { apiKey: client.body.api_key });
+    assert.strictEqual(after.status, 403, "expired consent must no longer authorise access");
+  });
+
   test("one client's consent does NOT grant access to a different client", async () => {
     const clientA = await api("POST", "/v1/clients", { body: { name: "client-a" } });
     const clientB = await api("POST", "/v1/clients", { body: { name: "client-b" } });
@@ -272,6 +312,115 @@ describe("API routes", () => {
 
     assert.strictEqual(result.status, 400);
     assert.strictEqual(result.body.error, "invalid_input");
+  });
+
+  test("trust-record does not leak KYC fields or identifier hashes", async () => {
+    const person = await api("POST", "/v1/persons", { body: { full_name: "Redacted Person", national_id: "55556666", phone: "254700000001" } });
+    const client = await api("POST", "/v1/clients", { body: { name: "redaction-client" } });
+    await api("POST", "/v1/consents", {
+      body: {
+        subject_type: "person",
+        subject_id: person.body.id,
+        grantee: "redaction-client",
+        purpose: "underwriting",
+        scope: ["trust_score"],
+      },
+    });
+
+    const res = await api("GET", `/v1/persons/${person.body.id}/trust-record`, { apiKey: client.body.api_key });
+    assert.strictEqual(res.status, 200);
+    const serialized = JSON.stringify(res.body);
+    assert.ok(!serialized.includes("Redacted Person"), "full name is not part of a trust-score grant");
+    assert.ok(!serialized.includes("national_id_hash"), "identifier hashes must never be exposed");
+    assert.ok(!serialized.includes("phone_hash"), "identifier hashes must never be exposed");
+    assert.strictEqual(res.body.identifiers.national_id_present, true);
+    assert.strictEqual(res.body.integrity.valid, true);
+  });
+
+  test("ledger integrity endpoint 404s for an unknown subject", async () => {
+    const res = await api("GET", "/v1/businesses/00000000-0000-0000-0000-000000000000/ledger/verify");
+    assert.strictEqual(res.status, 404);
+  });
+
+  test("duplicate account connection is rejected instead of double-ingesting", async () => {
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Dup Account Ltd" } });
+    const first = await api("POST", `/v1/businesses/${biz.body.id}/accounts/connect`, {
+      body: { provider: "sandbox", account_identifier: "DUP-1", scenario: "success" },
+    });
+    assert.strictEqual(first.status, 201);
+
+    const second = await api("POST", `/v1/businesses/${biz.body.id}/accounts/connect`, {
+      body: { provider: "sandbox", account_identifier: "DUP-1", scenario: "success" },
+    });
+    assert.strictEqual(second.status, 409);
+    assert.strictEqual(second.body.error, "account_already_connected");
+  });
+
+  test("query scope alone cannot read other capabilities through /ask", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "query-only-client" } });
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Query Only Ltd" } });
+    await api("POST", "/v1/consents", {
+      body: {
+        subject_type: "business",
+        subject_id: biz.body.id,
+        grantee: "query-only-client",
+        purpose: "support",
+        scope: ["query"],
+      },
+    });
+
+    const escalated = await api("POST", `/v1/businesses/${biz.body.id}/ask`, {
+      apiKey: client.body.api_key,
+      body: { question: "what is our revenue and financial profile?" },
+    });
+    assert.strictEqual(escalated.status, 403);
+    assert.strictEqual(escalated.body.required_scope, "financial_profile");
+
+    // The narrow scope still allows questions that only need the interface.
+    const unmatched = await api("POST", `/v1/businesses/${biz.body.id}/ask`, {
+      apiKey: client.body.api_key,
+      body: { question: "what is the weather in Nairobi" },
+    });
+    assert.strictEqual(unmatched.status, 200);
+    assert.strictEqual(unmatched.body.matched_intent, null);
+  });
+
+  test("webhook subscription rejects unknown event patterns", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "pattern-client" } });
+    const res = await api("POST", "/v1/webhooks", {
+      apiKey: client.body.api_key,
+      body: { event_pattern: "invoices.*", target_url: "https://example.com/hook" },
+    });
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error, "invalid_event_pattern");
+  });
+
+  test("the same payment cannot settle two invoices across reconciliations", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "double-settle-client" } });
+    const biz = await api("POST", "/v1/businesses", { body: { legal_name: "Double Settle Ltd" } });
+    await api("POST", "/v1/consents", {
+      body: { subject_type: "business", subject_id: biz.body.id, grantee: "double-settle-client", purpose: "analysis", scope: ["all"] },
+    });
+    const acc = await api("POST", `/v1/businesses/${biz.body.id}/accounts/connect`, {
+      body: { provider: "sandbox", account_identifier: "SETTLE-1", scenario: "success" },
+    });
+    await api("POST", `/v1/businesses/${biz.body.id}/accounts/${acc.body.id}/sync`);
+    const txns = await api("GET", `/v1/businesses/${biz.body.id}/transactions`);
+    const credit = txns.body.find((t: any) => t.type === "credit" && t.status === "completed");
+    assert.ok(credit);
+
+    // Two invoices for the same amount, only one payment available.
+    await api("POST", `/v1/businesses/${biz.body.id}/invoices`, {
+      body: { customer_reference: "Customer One", amount: credit.amount },
+    });
+    await api("POST", `/v1/businesses/${biz.body.id}/invoices`, {
+      body: { customer_reference: "Customer Two", amount: credit.amount },
+    });
+
+    const recon = await api("POST", `/v1/businesses/${biz.body.id}/reconcile`);
+    assert.strictEqual(recon.status, 200);
+    assert.strictEqual(recon.body.matched.length, 1, "one payment must settle at most one invoice");
+    assert.strictEqual(recon.body.unmatched_invoices.length, 1);
   });
 
   test("ask endpoint enforces consent, then answers from real data", async () => {
@@ -394,6 +543,36 @@ describe("API routes", () => {
     assert.strictEqual(rejected.body.error, "target_not_allowed");
     const events = await api("GET", "/v1/webhooks/events", { apiKey: client.body.api_key, admin: false });
     assert.strictEqual(events.status, 401);
+  });
+
+  test("webhook signing secrets can be rotated, and only by their owner", async () => {
+    const owner = await api("POST", "/v1/clients", { body: { name: "rotate-owner-client" } });
+    const stranger = await api("POST", "/v1/clients", { body: { name: "rotate-stranger-client" } });
+    const sub = await api("POST", "/v1/webhooks", {
+      apiKey: owner.body.api_key,
+      body: { event_pattern: "invoice.paid", target_url: "https://example.com/hook" },
+    });
+    assert.strictEqual(sub.status, 201);
+
+    const rotated = await api("POST", `/v1/webhooks/${sub.body.id}/rotate`, { apiKey: owner.body.api_key });
+    assert.strictEqual(rotated.status, 200);
+    assert.ok(rotated.body.secret.startsWith("whsec_"));
+    assert.notStrictEqual(rotated.body.secret, sub.body.secret, "rotation must issue a new secret");
+
+    const stolen = await api("POST", `/v1/webhooks/${sub.body.id}/rotate`, { apiKey: stranger.body.api_key });
+    assert.strictEqual(stolen.status, 404, "a client cannot rotate another client's subscription");
+  });
+
+  test("sandbox webhook test returns a timestamped signature", async () => {
+    const client = await api("POST", "/v1/clients", { body: { name: "timestamp-client" } });
+    const res = await api("POST", "/v1/sandbox/webhook-test", {
+      apiKey: client.body.api_key,
+      body: { target_url: "https://example.com/hook" },
+    });
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.body.signature);
+    assert.ok(Number.isInteger(res.body.timestamp), "receivers need a timestamp to enforce replay protection");
+    assert.strictEqual(res.body.status_code, undefined, "must not expose internal reachability");
   });
 
   test("full data pipeline: connect, sync, normalize, reconcile", async () => {

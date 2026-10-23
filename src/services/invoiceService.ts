@@ -13,6 +13,8 @@ export interface Invoice {
   due_date?: string;
   status: string;
   matched_transaction_id?: string;
+  expected_counterparty?: string;
+  paid_amount?: number | null;
   created_at: string;
   paid_at?: string;
 }
@@ -22,6 +24,7 @@ export async function createInvoice(input: {
   customer_reference: string;
   amount: number;
   due_date?: string;
+  expected_counterparty?: string;
 }): Promise<Invoice> {
   const business = await getBusiness(input.business_id);
   if (!business) throw new Error("business_not_found");
@@ -36,12 +39,13 @@ export async function createInvoice(input: {
     issue_date: now,
     due_date: input.due_date,
     status: "unpaid",
+    expected_counterparty: input.expected_counterparty,
     created_at: now,
   };
 
   await dbRun(
-    `INSERT INTO invoices (id, business_id, customer_reference, amount, currency, issue_date, due_date, status, created_at)
-     VALUES (@id, @business_id, @customer_reference, @amount, @currency, @issue_date, @due_date, @status, @created_at)`,
+    `INSERT INTO invoices (id, business_id, customer_reference, amount, currency, issue_date, due_date, status, expected_counterparty, created_at)
+     VALUES (@id, @business_id, @customer_reference, @amount, @currency, @issue_date, @due_date, @status, @expected_counterparty, @created_at)`,
     invoice
   );
 
@@ -68,12 +72,25 @@ export async function listInvoicesForBusiness(businessId: string, status?: strin
   return dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ? ORDER BY issue_date DESC`, [businessId]);
 }
 
-export async function markInvoicePaid(invoiceId: string, transactionId: string): Promise<Invoice> {
+/**
+ * Settles an invoice. The update is conditional on the invoice still being
+ * unpaid, so two concurrent reconciliations can never both mark the same
+ * invoice paid (the loser sees changes === 0). `paidAmount` records what was
+ * actually received, which can differ from the invoiced amount for tolerance
+ * matches.
+ */
+export async function markInvoicePaid(
+  invoiceId: string,
+  transactionId: string,
+  paidAmount: number
+): Promise<{ invoice: Invoice; changed: boolean }> {
   const now = new Date().toISOString();
-  await dbRun(`UPDATE invoices SET status = 'paid', matched_transaction_id = ?, paid_at = ? WHERE id = ?`, [
-    transactionId,
-    now,
-    invoiceId,
-  ]);
-  return (await getInvoice(invoiceId))!;
+  const res = await dbRun(
+    `UPDATE invoices SET status = 'paid', matched_transaction_id = ?, paid_amount = ?, paid_at = ?
+     WHERE id = ? AND status = 'unpaid'`,
+    [transactionId, paidAmount, now, invoiceId]
+  );
+
+  const invoice = (await getInvoice(invoiceId))!;
+  return { invoice, changed: res.changes > 0 };
 }

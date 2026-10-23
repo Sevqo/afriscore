@@ -2,137 +2,1845 @@
   "openapi": "3.0.3",
   "info": {
     "title": "AfriScore API",
-    "version": "0.2.0",
-    "description": "Consent-gated identity, financial data, operations and intelligence infrastructure for African businesses."
+    "version": "0.3.0",
+    "description": "Consent-gated identity, financial data, operations and intelligence infrastructure for African businesses.\n\nAll successful responses use JSON. Protected endpoints take either an `x-admin-token` header (control plane) or an `x-api-key` header (partner API); the scheme required by each operation is documented on that operation. Errors use a flat envelope: `{ \"error\": <stable string code>, \"message\": <human readable>, \"request_id\": <correlation id>, ... }` where extra fields such as `details`, `required_scope`, `matched_intent`, `detail` or `path` may be present for a specific endpoint. Every response also carries an `x-request-id` header (echoing a caller-supplied `x-request-id` when it matches the expected format)."
   },
   "servers": [{ "url": "http://localhost:4000/v1", "description": "Local development" }],
-  "security": [{ "AdminToken": [] }],
   "tags": [
-    { "name": "Platform" },
-    { "name": "Businesses" },
-    { "name": "Persons" },
-    { "name": "Consent" },
-    { "name": "Data" },
-    { "name": "Operations" },
-    { "name": "Intelligence" },
-    { "name": "Webhooks" },
-    { "name": "Sandbox" }
+    { "name": "Platform", "description": "Health, readiness, API clients." },
+    { "name": "Businesses", "description": "Business onboarding, verification and trust records." },
+    { "name": "Persons", "description": "Person onboarding, verification and trust records." },
+    { "name": "Consent", "description": "Purpose-specific, scoped and optionally expiring consent grants." },
+    { "name": "Data", "description": "Provider account connections and normalized financial data." },
+    { "name": "Operations", "description": "Invoicing and reconciliation." },
+    { "name": "Intelligence", "description": "Explainable financial metrics, insights and the grounded query layer." },
+    { "name": "Webhooks", "description": "Signed, consent-gated, environment-scoped webhook subscriptions." },
+    { "name": "Sandbox", "description": "Isolated synthetic data using the same code paths as live data." }
   ],
   "paths": {
     "/health": {
-      "get": { "tags": ["Platform"], "summary": "Check service health", "security": [], "responses": { "200": { "description": "Healthy" } } }
+      "get": {
+        "tags": ["Platform"],
+        "summary": "Liveness check",
+        "description": "Process-only liveness probe. Deliberately does not touch the database.",
+        "operationId": "getHealth",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service process is up",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" },
+                "example": { "status": "ok", "service": "afriscore", "db_engine": "sqlite" }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/readiness": {
+      "get": {
+        "tags": ["Platform"],
+        "summary": "Readiness check",
+        "description": "Runs a cheap `SELECT 1` (3s timeout). Returns 503 when the database is unavailable so a load balancer can drain the instance.",
+        "operationId": "getReadiness",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Instance can serve requests",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReadinessResponse" },
+                "example": { "status": "ok", "checks": { "database": "ok" }, "db_engine": "postgres" }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": {
+            "description": "Database check failed or timed out",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReadinessFailureResponse" },
+                "example": { "status": "error", "checks": { "database": "error" }, "db_engine": "postgres" }
+              }
+            }
+          }
+        }
+      }
     },
     "/clients": {
-      "post": { "tags": ["Platform"], "summary": "Create an API client", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Client and one-time API key created" }, "400": { "$ref": "#/components/responses/BadRequest" } } },
-      "get": { "tags": ["Platform"], "summary": "List API clients without key material", "responses": { "200": { "description": "Client list" } } }
-    },
-    "/clients/{id}/rotate": {
-      "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "post": { "tags": ["Platform"], "summary": "Rotate a client key; previous key becomes invalid", "responses": { "200": { "description": "New one-time API key" } } }
+      "post": {
+        "tags": ["Platform"],
+        "summary": "Create an API client",
+        "description": "Returns the raw API key exactly once; only its hash is persisted.",
+        "operationId": "createApiClient",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ApiClientCreateRequest" },
+              "example": { "name": "Acme Lending" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Client and its one-time API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiClientCreated" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      },
+      "get": {
+        "tags": ["Platform"],
+        "summary": "List API clients",
+        "description": "Never returns key material — only id, name and lifecycle timestamps.",
+        "operationId": "listApiClients",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "API clients",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ApiClient" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/clients/{id}": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "delete": { "tags": ["Platform"], "summary": "Revoke a client key", "responses": { "200": { "description": "Key revoked" } } }
+      "delete": {
+        "tags": ["Platform"],
+        "summary": "Revoke an API client",
+        "operationId": "revokeApiClient",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Client revoked; its key can no longer authenticate",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiClientRevoked" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
+    },
+    "/clients/{id}/rotate": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": {
+        "tags": ["Platform"],
+        "summary": "Rotate an API client key",
+        "description": "The previous key stops authenticating immediately; the new key is returned once.",
+        "operationId": "rotateApiClientKey",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "New one-time API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiClientRotated" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses": {
-      "post": { "tags": ["Businesses"], "summary": "Register a business", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Business registered" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+      "post": {
+        "tags": ["Businesses"],
+        "summary": "Register a business",
+        "description": "Creates a business in `pending_verification` status and appends `business.created` to its ledger.",
+        "operationId": "createBusiness",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BusinessCreateRequest" },
+              "example": {
+                "legal_name": "Acme Traders Limited",
+                "trading_name": "Acme",
+                "registration_number": "PVT-123456",
+                "kra_pin": "P051234567X",
+                "industry": "retail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Business registered",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Business" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Businesses"], "summary": "Get a business", "responses": { "200": { "description": "Business" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+      "get": {
+        "tags": ["Businesses"],
+        "summary": "Get a business",
+        "operationId": "getBusiness",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Business record",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Business" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/verify": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "post": { "tags": ["Businesses"], "summary": "Run business verification", "responses": { "200": { "description": "Verification result" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+      "post": {
+        "tags": ["Businesses"],
+        "summary": "Run business verification checks",
+        "description": "Runs the configured checks, updates status and trust score, and appends audit entries to the ledger.",
+        "operationId": "verifyBusiness",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Verification checks and the updated business",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/BusinessVerificationResult" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/trust-record": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Businesses"], "summary": "Get a consent-gated trust record", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Trust record" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+      "get": {
+        "tags": ["Businesses"],
+        "summary": "Get a consent-gated business trust record",
+        "description": "Requires an active consent grant from the business to the calling API client covering the `trust_score` scope. The response is minimised: KYC identifiers are never returned, and ledger event data is projected through a per-event-type allowlist.",
+        "operationId": "getBusinessTrustRecord",
+        "security": [{ "ApiKey": [] }],
+        "responses": {
+          "200": {
+            "description": "Minimised trust record",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BusinessTrustRecord" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/ConsentRequired" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/businesses/{id}/ledger/verify": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "tags": ["Businesses"],
+        "summary": "Verify a business ledger chain",
+        "description": "Re-walks the hash chain, checks sequencing and validates the HMAC head anchor. A nonexistent business is a 404 (not an empty-but-valid chain).",
+        "operationId": "verifyBusinessLedger",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Chain verification result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChainVerification" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/accounts": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Data"], "summary": "List connected accounts", "responses": { "200": { "description": "Accounts" } } }
+      "get": {
+        "tags": ["Data"],
+        "summary": "List connected accounts",
+        "operationId": "listBusinessAccounts",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Accounts connected to the business",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Account" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/accounts/connect": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "post": { "tags": ["Data"], "summary": "Connect a provider account", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Account connected" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+      "post": {
+        "tags": ["Data"],
+        "summary": "Connect a provider account",
+        "operationId": "connectBusinessAccount",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccountConnectRequest" },
+              "example": { "provider": "mpesa", "account_identifier": "254712345678", "scenario": "mixed" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account connected",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Account" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
+    },
+    "/businesses/{id}/accounts/{accountId}/disconnect": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }, { "$ref": "#/components/parameters/AccountId" }],
+      "post": {
+        "tags": ["Data"],
+        "summary": "Disconnect a provider account",
+        "description": "Historical transactions are retained; the account can no longer be synced. Idempotent.",
+        "operationId": "disconnectBusinessAccount",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Disconnected account",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Account" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/accounts/{accountId}/sync": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }, { "$ref": "#/components/parameters/AccountId" }],
-      "post": { "tags": ["Data"], "summary": "Ingest and normalize provider transactions", "responses": { "200": { "description": "Sync result" }, "409": { "description": "Account disconnected" } } }
+      "post": {
+        "tags": ["Data"],
+        "summary": "Ingest and normalize provider transactions",
+        "description": "Deduplicates on (account_id, external_id), so re-syncing is safe. The whole batch is ingested in one transaction.",
+        "operationId": "syncBusinessAccount",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Sync result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SyncResult" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": {
+            "description": "Account is disconnected",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": {
+                  "error": "account_disconnected",
+                  "message": "Reconnect the account before syncing.",
+                  "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+                }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/transactions": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Data"], "summary": "List normalized transactions", "responses": { "200": { "description": "Transactions" } } }
+      "get": {
+        "tags": ["Data"],
+        "summary": "List normalized transactions",
+        "operationId": "listBusinessTransactions",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Most recent transactions first (capped at 100)",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Transaction" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/financial-profile": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Intelligence"], "summary": "Get explainable financial metrics", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Financial profile" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+      "get": {
+        "tags": ["Intelligence"],
+        "summary": "Get explainable financial metrics",
+        "description": "Requires an active consent grant covering the `financial_profile` scope for the calling API client.",
+        "operationId": "getBusinessFinancialProfile",
+        "security": [{ "ApiKey": [] }],
+        "responses": {
+          "200": {
+            "description": "Financial profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FinancialProfile" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/ConsentRequired" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
     },
     "/businesses/{id}/invoices": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "post": { "tags": ["Operations"], "summary": "Create an invoice", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Invoice created" } } },
-      "get": { "tags": ["Operations"], "summary": "List invoices", "responses": { "200": { "description": "Invoices" } } }
+      "post": {
+        "tags": ["Operations"],
+        "summary": "Create an invoice",
+        "operationId": "createBusinessInvoice",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InvoiceCreateRequest" },
+              "example": {
+                "customer_reference": "ACME-001",
+                "amount": 125000.5,
+                "due_date": "2026-11-30",
+                "expected_counterparty": "Acme Limited"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invoice created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invoice" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      },
+      "get": {
+        "tags": ["Operations"],
+        "summary": "List invoices",
+        "operationId": "listBusinessInvoices",
+        "security": [{ "AdminToken": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter by invoice status",
+            "schema": { "type": "string", "enum": ["unpaid", "paid"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoices, newest first",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Invoice" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/reconcile": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "post": { "tags": ["Operations"], "summary": "Match payments to invoices", "responses": { "200": { "description": "Reconciliation result" } } }
+      "post": {
+        "tags": ["Operations"],
+        "summary": "Match payments to invoices",
+        "description": "Runs exact, tolerance and installment matching. Only completed credit transactions not already matched to another invoice are eligible; the run is atomic and every claim is conditional, so one payment cannot settle two invoices.",
+        "operationId": "reconcileBusiness",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Reconciliation result",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ReconciliationResult" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/businesses/{id}/insights": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Intelligence"], "summary": "Get business intelligence", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Business insights" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+      "get": {
+        "tags": ["Intelligence"],
+        "summary": "Get business intelligence",
+        "description": "Requires an active consent grant covering the `insights` scope for the calling API client.",
+        "operationId": "getBusinessInsights",
+        "security": [{ "ApiKey": [] }],
+        "responses": {
+          "200": {
+            "description": "Overdue invoices, cash-flow forecast, unusual transactions and customer concentration",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InsightsResponse" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/ConsentRequired" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
     },
     "/businesses/{id}/ask": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "post": { "tags": ["Intelligence"], "summary": "Ask a grounded business question", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "200": { "description": "Grounded answer" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+      "post": {
+        "tags": ["Intelligence"],
+        "summary": "Ask a grounded business question",
+        "description": "Requires an active consent grant covering the `query` scope, plus the scope governing the data the matched intent exposes (for example `invoices` or `insights`). A narrow `query` grant cannot read a financial profile or trust score.",
+        "operationId": "askBusinessQuestion",
+        "security": [{ "ApiKey": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AskRequest" },
+              "example": { "question": "Which invoices are overdue?" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Grounded answer with the underlying structured data",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/QueryAnswer" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/ConsentRequired" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
     },
     "/persons": {
-      "post": { "tags": ["Persons"], "summary": "Register a person without storing raw identifiers", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Person registered" } } }
+      "post": {
+        "tags": ["Persons"],
+        "summary": "Register a person",
+        "description": "Raw national ID and phone number are never stored — only salted hashes. The response contains the hashes.",
+        "operationId": "createPerson",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PersonCreateRequest" },
+              "example": { "full_name": "Jane Wanjiku", "national_id": "12345678", "phone": "254712345678" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Person registered",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Person" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
+    },
+    "/persons/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "tags": ["Persons"],
+        "summary": "Get a person",
+        "operationId": "getPerson",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Person record (identifier hashes only)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Person" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
+    },
+    "/persons/{id}/verify": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": {
+        "tags": ["Persons"],
+        "summary": "Run person verification checks",
+        "description": "Checks name/identifier presence and duplicate national-ID registration, then updates status.",
+        "operationId": "verifyPerson",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Verification checks, duplicate flag and the updated person",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PersonVerificationResult" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/persons/{id}/trust-record": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "get": { "tags": ["Persons"], "summary": "Get a consent-gated person trust record", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Trust record" }, "403": { "$ref": "#/components/responses/ConsentRequired" } } }
+      "get": {
+        "tags": ["Persons"],
+        "summary": "Get a consent-gated person trust record",
+        "description": "Requires an active consent grant from the person to the calling API client covering the `trust_score` scope. Returns presence booleans, never the cross-linkable identifier hashes.",
+        "operationId": "getPersonTrustRecord",
+        "security": [{ "ApiKey": [] }],
+        "responses": {
+          "200": {
+            "description": "Minimised trust record",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PersonTrustRecord" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/ConsentRequired" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/persons/{id}/ledger/verify": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "tags": ["Persons"],
+        "summary": "Verify a person ledger chain",
+        "operationId": "verifyPersonLedger",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Chain verification result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChainVerification" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/consents": {
-      "post": { "tags": ["Consent"], "summary": "Grant purpose-specific access", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Consent granted" } } },
-      "get": { "tags": ["Consent"], "summary": "List a subject's consent grants", "responses": { "200": { "description": "Consent grants" } } }
+      "post": {
+        "tags": ["Consent"],
+        "summary": "Grant purpose-specific access",
+        "description": "`scope` is one or more capability scopes (`all` grants every scope). An optional `expires_at` must be an ISO 8601 timestamp with an offset and in the future; expired grants are treated as inactive automatically.",
+        "operationId": "grantConsent",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ConsentGrantRequest" },
+              "example": {
+                "subject_type": "business",
+                "subject_id": "6f1c2d34-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+                "grantee": "Acme Lending",
+                "purpose": "credit_underwriting",
+                "scope": ["trust_score", "financial_profile"],
+                "expires_at": "2027-01-31T23:59:59.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Consent granted",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Consent" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      },
+      "get": {
+        "tags": ["Consent"],
+        "summary": "List a subject's consent grants",
+        "operationId": "listConsents",
+        "security": [{ "AdminToken": [] }],
+        "parameters": [
+          {
+            "name": "subject_type",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["business", "person"] }
+          },
+          { "name": "subject_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consent grants, newest first",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Consent" } }
+              }
+            }
+          },
+          "400": {
+            "description": "Required query parameters missing",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": {
+                  "error": "missing_params",
+                  "message": "subject_type and subject_id are required",
+                  "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/consents/{id}": {
       "parameters": [{ "$ref": "#/components/parameters/Id" }],
-      "delete": { "tags": ["Consent"], "summary": "Revoke consent immediately", "responses": { "200": { "description": "Consent revoked" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+      "delete": {
+        "tags": ["Consent"],
+        "summary": "Revoke consent immediately",
+        "description": "Idempotent: revoking an already-revoked grant returns it unchanged and does not append another audit event.",
+        "operationId": "revokeConsent",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Revoked consent",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Consent" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/webhooks": {
-      "post": { "tags": ["Webhooks"], "summary": "Create a signed webhook subscription", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Subscription and one-time signing secret" } } },
-      "get": { "tags": ["Webhooks"], "summary": "List caller webhook subscriptions", "security": [{ "ApiKey": [] }], "responses": { "200": { "description": "Subscriptions" } } }
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create a signed webhook subscription",
+        "description": "Returns the per-subscription signing secret once. Deliveries are signed with `x-africore-signature` (hex HMAC-SHA256 over `${timestamp}.${body}`) plus `x-africore-timestamp` (unix seconds). Targets must be HTTPS URLs with no port, credentials or private/IP-literal hostname. Event patterns are validated against the known event catalogue.",
+        "operationId": "createWebhookSubscription",
+        "security": [{ "ApiKey": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookSubscribeRequest" },
+              "example": {
+                "event_pattern": "transaction.*",
+                "target_url": "https://hooks.example.com/afriscore",
+                "environment": "live"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription with its one-time signing secret",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/WebhookSubscriptionCreated" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      },
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List the caller's webhook subscriptions",
+        "description": "The signing secret is never returned by list.",
+        "operationId": "listWebhookSubscriptions",
+        "security": [{ "ApiKey": [] }],
+        "responses": {
+          "200": {
+            "description": "Subscriptions owned by the calling API client",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/WebhookSubscription" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/webhooks/{id}/rotate": {
+      "parameters": [{ "$ref": "#/components/parameters/WebhookId" }],
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Rotate a webhook signing secret",
+        "description": "Issues a new signing secret for a subscription owned by the calling API client. The previous secret stops validating immediately. The new secret is returned once.",
+        "operationId": "rotateWebhookSecret",
+        "security": [{ "ApiKey": [] }],
+        "responses": {
+          "200": {
+            "description": "New one-time signing secret",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/WebhookSecretRotation" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
     },
     "/webhooks/events": {
-      "get": { "tags": ["Webhooks"], "summary": "List webhook events for administrators", "responses": { "200": { "description": "Events" } } }
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhook events for administrators",
+        "operationId": "listWebhookEvents",
+        "security": [{ "AdminToken": [] }],
+        "parameters": [
+          {
+            "name": "event_type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Filter by exact event type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recorded webhook events, newest first (capped at 50)",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/WebhookEvent" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/sandbox/businesses": {
-      "post": { "tags": ["Sandbox"], "summary": "Create an isolated synthetic business", "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "201": { "description": "Sandbox business" } } },
-      "get": { "tags": ["Sandbox"], "summary": "List sandbox businesses", "responses": { "200": { "description": "Sandbox businesses" } } }
+      "post": {
+        "tags": ["Sandbox"],
+        "summary": "Create an isolated synthetic business",
+        "operationId": "createSandboxBusiness",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SandboxBusinessCreateRequest" },
+              "example": { "legal_name": "Sandbox Traders", "registration_number": "SBX-001" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sandbox business",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Business" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      },
+      "get": {
+        "tags": ["Sandbox"],
+        "summary": "List sandbox businesses",
+        "operationId": "listSandboxBusinesses",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Sandbox businesses",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Business" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
+    },
+    "/sandbox/persons": {
+      "post": {
+        "tags": ["Sandbox"],
+        "summary": "Create an isolated synthetic person",
+        "operationId": "createSandboxPerson",
+        "security": [{ "AdminToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SandboxPersonCreateRequest" },
+              "example": { "full_name": "Sandbox Person", "national_id": "00000001" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sandbox person",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Person" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      },
+      "get": {
+        "tags": ["Sandbox"],
+        "summary": "List sandbox persons",
+        "operationId": "listSandboxPersons",
+        "security": [{ "AdminToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Sandbox persons",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Person" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/AdminNotConfigured" }
+        }
+      }
     },
     "/sandbox/webhook-test": {
-      "post": { "tags": ["Sandbox"], "summary": "Send a signed test webhook", "security": [{ "ApiKey": [] }], "requestBody": { "$ref": "#/components/requestBodies/JsonBody" }, "responses": { "200": { "description": "Delivery result" } } }
+      "post": {
+        "tags": ["Sandbox"],
+        "summary": "Send a signed test webhook",
+        "description": "Fires one synthetic signed delivery (`webhook.test`) at the supplied URL so a receiver can verify signature handling. The outbound HTTP status code is deliberately not returned; only whether delivery succeeded, plus the signature and timestamp used. Signatures are hex HMAC-SHA256 over `${timestamp}.${body}`.",
+        "operationId": "sendSandboxWebhookTest",
+        "security": [{ "ApiKey": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookTestRequest" },
+              "example": { "target_url": "https://hooks.example.com/afriscore-test" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery result and the signature/timestamp that was sent",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/WebhookTestResult" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
     }
   },
   "components": {
     "securitySchemes": {
-      "ApiKey": { "type": "apiKey", "in": "header", "name": "x-api-key" },
-      "AdminToken": { "type": "apiKey", "in": "header", "name": "x-admin-token" }
+      "ApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Partner API key. Proves caller identity; consent checks use the server-derived client name, never a caller-supplied header. Per-client rate limit: 120 requests/minute."
+      },
+      "AdminToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-admin-token",
+        "description": "Bootstrap control-plane credential (AFRISCORE_ADMIN_TOKEN, minimum 32 characters). Independent of partner API keys."
+      }
     },
     "parameters": {
-      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-      "AccountId": { "name": "accountId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-    },
-    "requestBodies": {
-      "JsonBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } }
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Resource UUID",
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "AccountId": {
+        "name": "accountId",
+        "in": "path",
+        "required": true,
+        "description": "Provider account UUID",
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "WebhookId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Webhook subscription UUID owned by the calling API client",
+        "schema": { "type": "string", "format": "uuid" }
+      }
     },
     "responses": {
-      "BadRequest": { "description": "Invalid input" },
-      "Unauthorized": { "description": "Missing or invalid API key" },
-      "ConsentRequired": { "description": "An active consent grant with the required scope is missing" },
-      "NotFound": { "description": "Resource not found" }
+      "BadRequest": {
+        "description": "Invalid input (validation failure or malformed JSON)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "invalid_input",
+              "message": "Request body failed validation.",
+              "details": { "fieldErrors": { "legal_name": ["String must contain at least 2 character(s)"] } },
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid admin token / API key",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "examples": {
+              "missingApiKey": {
+                "value": {
+                  "error": "missing_api_key",
+                  "message": "An x-api-key header is required.",
+                  "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+                }
+              },
+              "invalidApiKey": {
+                "value": {
+                  "error": "invalid_api_key",
+                  "message": "The API key is invalid or revoked.",
+                  "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+                }
+              },
+              "adminRequired": {
+                "value": {
+                  "error": "admin_auth_required",
+                  "message": "A valid x-admin-token header is required.",
+                  "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ConsentRequired": {
+        "description": "No active consent grant with the required scope for the calling API client",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "consent_required",
+              "message": "Active consent granting the required scope is required.",
+              "required_scope": "trust_score",
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "not_found",
+              "message": "Resource not found.",
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflicting state, e.g. the provider account is already connected",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "account_already_connected",
+              "message": "This provider account is already connected to the business.",
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "Request body exceeds the 1 MB JSON limit",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "payload_too_large",
+              "message": "Request body is too large.",
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limited. The global per-IP limiter allows 600 requests/minute; API-key operations also have a per-client limit of 120 requests/minute.",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds until the current window resets",
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          "RateLimit-Limit": { "description": "Requests allowed in the window", "schema": { "type": "integer" } },
+          "RateLimit-Remaining": { "description": "Requests remaining", "schema": { "type": "integer" } },
+          "RateLimit-Reset": { "description": "Unix timestamp when the window resets", "schema": { "type": "integer" } }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "rate_limited",
+              "message": "Too many requests; retry later.",
+              "retry_after_seconds": 42,
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      },
+      "AdminNotConfigured": {
+        "description": "AFRISCORE_ADMIN_TOKEN is missing or shorter than 32 characters on the server",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "error": "admin_auth_not_configured",
+              "message": "Admin authentication is not configured on this server.",
+              "request_id": "5f0c9c2e-6a0f-4b8f-9d4e-3a1a2b3c4d5e"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "description": "Flat error envelope. `error` is a stable machine-readable code; extra fields are additive and endpoint-specific.",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string", "example": "invalid_input" },
+          "message": { "type": "string", "description": "Human-readable explanation" },
+          "request_id": { "type": "string", "description": "Correlation id, also returned as the x-request-id header" },
+          "details": { "type": "object", "additionalProperties": true, "description": "Validation or diagnostic details" },
+          "detail": { "type": "string", "description": "Endpoint-specific detail string" },
+          "required_scope": { "type": "string", "description": "Consent scope required by the endpoint (403 responses)" },
+          "matched_intent": { "type": "string", "description": "Query intent matched by /ask (403 responses)" },
+          "path": { "type": "string", "description": "Request path (404 responses)" },
+          "retry_after_seconds": { "type": "integer", "description": "Rate-limit retry hint (429 responses)" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service", "db_engine"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ok"] },
+          "service": { "type": "string", "example": "afriscore" },
+          "db_engine": { "type": "string", "enum": ["sqlite", "postgres"] }
+        }
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "required": ["status", "checks", "db_engine"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ok"] },
+          "checks": {
+            "type": "object",
+            "required": ["database"],
+            "properties": { "database": { "type": "string", "enum": ["ok"] } }
+          },
+          "db_engine": { "type": "string", "enum": ["sqlite", "postgres"] }
+        }
+      },
+      "ReadinessFailureResponse": {
+        "type": "object",
+        "required": ["status", "checks", "db_engine"],
+        "properties": {
+          "status": { "type": "string", "enum": ["error"] },
+          "checks": {
+            "type": "object",
+            "required": ["database"],
+            "properties": { "database": { "type": "string", "enum": ["error"] } }
+          },
+          "db_engine": { "type": "string", "enum": ["sqlite", "postgres"] }
+        }
+      },
+      "ApiClientCreateRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": { "name": { "type": "string", "minLength": 2, "example": "Acme Lending" } }
+      },
+      "ApiClient": {
+        "type": "object",
+        "required": ["id", "name", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "revoked_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "ApiClientCreated": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ApiClient" },
+          {
+            "type": "object",
+            "required": ["api_key", "note"],
+            "properties": {
+              "api_key": { "type": "string", "description": "Raw API key, returned exactly once", "example": "ak_9f8e7d6c5b4a39281706f5e4d3c2b1a0" },
+              "note": { "type": "string" }
+            }
+          }
+        ]
+      },
+      "ApiClientRotated": {
+        "type": "object",
+        "required": ["id", "name", "api_key", "note"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "api_key": { "type": "string", "description": "New raw API key, returned exactly once" },
+          "note": { "type": "string" }
+        }
+      },
+      "ApiClientRevoked": {
+        "type": "object",
+        "required": ["id", "name", "revoked_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "revoked_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BusinessCreateRequest": {
+        "type": "object",
+        "required": ["legal_name"],
+        "properties": {
+          "legal_name": { "type": "string", "minLength": 2, "example": "Acme Traders Limited" },
+          "trading_name": { "type": "string" },
+          "registration_number": { "type": "string" },
+          "kra_pin": { "type": "string" },
+          "industry": { "type": "string" }
+        }
+      },
+      "Business": {
+        "type": "object",
+        "required": ["id", "legal_name", "jurisdiction", "status", "trust_score", "is_sandbox", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "legal_name": { "type": "string" },
+          "trading_name": { "type": "string", "nullable": true },
+          "registration_number": { "type": "string", "nullable": true },
+          "kra_pin": { "type": "string", "nullable": true },
+          "jurisdiction": { "type": "string", "example": "KE" },
+          "industry": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["pending_verification", "verified"], "example": "pending_verification" },
+          "trust_score": { "type": "number", "minimum": 0, "maximum": 100, "example": 0 },
+          "is_sandbox": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BusinessVerificationResult": {
+        "type": "object",
+        "required": ["checks", "business"],
+        "properties": {
+          "checks": {
+            "type": "object",
+            "additionalProperties": { "type": "boolean" },
+            "example": {
+              "registration_number_present": true,
+              "kra_pin_present": true,
+              "legal_name_present": true
+            }
+          },
+          "business": { "$ref": "#/components/schemas/Business" }
+        }
+      },
+      "PersonCreateRequest": {
+        "type": "object",
+        "required": ["full_name"],
+        "properties": {
+          "full_name": { "type": "string", "minLength": 2 },
+          "national_id": { "type": "string", "minLength": 4, "description": "Hashed with ID_HASH_SALT before storage" },
+          "phone": { "type": "string", "minLength": 7, "description": "Hashed with ID_HASH_SALT before storage" }
+        }
+      },
+      "Person": {
+        "type": "object",
+        "required": ["id", "full_name", "status", "is_sandbox", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "full_name": { "type": "string" },
+          "national_id_hash": { "type": "string", "nullable": true, "description": "Salted SHA-256 of the national ID; null when not supplied" },
+          "phone_hash": { "type": "string", "nullable": true, "description": "Salted SHA-256 of the phone number; null when not supplied" },
+          "status": { "type": "string", "enum": ["pending_verification", "verified"] },
+          "is_sandbox": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PersonVerificationResult": {
+        "type": "object",
+        "required": ["checks", "duplicate", "person"],
+        "properties": {
+          "checks": {
+            "type": "object",
+            "additionalProperties": { "type": "boolean" },
+            "example": { "full_name_present": true, "national_id_present": true, "no_duplicate_national_id": true }
+          },
+          "duplicate": { "type": "boolean", "description": "True when the national-ID hash is already registered to a different person" },
+          "person": { "$ref": "#/components/schemas/Person" }
+        }
+      },
+      "AccountConnectRequest": {
+        "type": "object",
+        "required": ["provider", "account_identifier"],
+        "properties": {
+          "provider": { "type": "string", "enum": ["mpesa", "bank", "sandbox"] },
+          "account_identifier": { "type": "string", "minLength": 3, "example": "254712345678" },
+          "scenario": {
+            "type": "string",
+            "enum": ["success", "failure", "duplicate", "mixed"],
+            "description": "Sandbox-only deterministic data scenario"
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "required": ["id", "business_id", "provider", "account_identifier", "status", "connected_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "business_id": { "type": "string", "format": "uuid" },
+          "provider": { "type": "string", "enum": ["mpesa", "bank", "sandbox"] },
+          "account_identifier": { "type": "string" },
+          "status": { "type": "string", "enum": ["connected", "disconnected"] },
+          "scenario": {
+            "type": "string",
+            "enum": ["success", "failure", "duplicate", "mixed"],
+            "nullable": true
+          },
+          "connected_at": { "type": "string", "format": "date-time" },
+          "disconnected_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "business_id",
+          "external_id",
+          "amount",
+          "currency",
+          "type",
+          "status",
+          "source_provider",
+          "raw_status",
+          "occurred_at",
+          "created_at"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "account_id": { "type": "string", "format": "uuid" },
+          "business_id": { "type": "string", "format": "uuid" },
+          "external_id": { "type": "string", "description": "Provider transaction id; unique per account" },
+          "amount": { "type": "number", "description": "Absolute amount in the currency's minor-unit-exact NUMERIC(18,2)", "example": 125000.5 },
+          "currency": { "type": "string", "example": "KES" },
+          "type": { "type": "string", "enum": ["credit", "debit"] },
+          "counterparty": { "type": "string", "nullable": true },
+          "category": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["completed", "failed", "pending"] },
+          "source_provider": { "type": "string", "enum": ["mpesa", "bank", "sandbox"] },
+          "raw_status": { "type": "string" },
+          "occurred_at": { "type": "string", "description": "Provider occurrence timestamp" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "matched_invoice_id": { "type": "string", "format": "uuid", "nullable": true }
+        }
+      },
+      "SyncResult": {
+        "type": "object",
+        "required": ["synced", "skipped_duplicates", "transactions"],
+        "properties": {
+          "synced": { "type": "integer", "minimum": 0, "description": "New transactions inserted" },
+          "skipped_duplicates": { "type": "integer", "minimum": 0, "description": "Transactions already ingested for this account" },
+          "transactions": { "type": "array", "items": { "$ref": "#/components/schemas/Transaction" } }
+        }
+      },
+      "InvoiceCreateRequest": {
+        "type": "object",
+        "required": ["customer_reference", "amount"],
+        "properties": {
+          "customer_reference": { "type": "string", "minLength": 1, "example": "ACME-001" },
+          "amount": { "type": "number", "exclusiveMinimum": 0, "example": 125000.5 },
+          "due_date": { "type": "string", "description": "Due date (ISO date or timestamp)" },
+          "expected_counterparty": {
+            "type": "string",
+            "description": "Payer name/phone expected for this invoice; reconciliation lowers confidence when the paying counterparty disagrees"
+          }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "required": ["id", "business_id", "customer_reference", "amount", "currency", "issue_date", "status", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "business_id": { "type": "string", "format": "uuid" },
+          "customer_reference": { "type": "string" },
+          "amount": { "type": "number", "example": 125000.5 },
+          "currency": { "type": "string", "example": "KES" },
+          "issue_date": { "type": "string", "format": "date-time" },
+          "due_date": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["unpaid", "paid"] },
+          "matched_transaction_id": { "type": "string", "format": "uuid", "nullable": true },
+          "expected_counterparty": { "type": "string", "nullable": true },
+          "paid_amount": { "type": "number", "nullable": true, "description": "Amount actually received (can differ within tolerance)" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "paid_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "FinancialProfile": {
+        "type": "object",
+        "required": [
+          "business_id",
+          "currency",
+          "total_revenue",
+          "total_expenses",
+          "net_cash_flow",
+          "transaction_count",
+          "average_transaction_size",
+          "failed_transaction_count",
+          "revenue_last_30d",
+          "revenue_prior_30d",
+          "revenue_growth_pct",
+          "computed_at"
+        ],
+        "properties": {
+          "business_id": { "type": "string", "format": "uuid" },
+          "currency": { "type": "string" },
+          "total_revenue": { "type": "number" },
+          "total_expenses": { "type": "number" },
+          "net_cash_flow": { "type": "number" },
+          "transaction_count": { "type": "integer" },
+          "average_transaction_size": { "type": "number" },
+          "failed_transaction_count": { "type": "integer" },
+          "revenue_last_30d": { "type": "number" },
+          "revenue_prior_30d": { "type": "number" },
+          "revenue_growth_pct": { "type": "number", "nullable": true },
+          "computed_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CashFlowForecast": {
+        "type": "object",
+        "required": ["method", "daily_net_cash_flow_avg", "forecast_next_30d", "based_on_days", "confidence"],
+        "properties": {
+          "method": { "type": "string", "enum": ["insufficient_data", "linear_projection_from_history"] },
+          "daily_net_cash_flow_avg": { "type": "number" },
+          "forecast_next_30d": { "type": "number" },
+          "based_on_days": { "type": "integer", "minimum": 0 },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+        }
+      },
+      "OverdueInvoice": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Invoice" },
+          {
+            "type": "object",
+            "required": ["days_overdue"],
+            "properties": { "days_overdue": { "type": "integer", "minimum": 0 } }
+          }
+        ]
+      },
+      "UnusualTransaction": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Transaction" },
+          {
+            "type": "object",
+            "required": ["deviation_from_mean"],
+            "properties": {
+              "deviation_from_mean": {
+                "type": "number",
+                "description": "Standard deviations from the business's own mean transaction size"
+              }
+            }
+          }
+        ]
+      },
+      "CustomerConcentration": {
+        "type": "object",
+        "required": ["customer_reference", "total_invoiced", "invoice_count", "share_of_total_pct"],
+        "properties": {
+          "customer_reference": { "type": "string" },
+          "total_invoiced": { "type": "number" },
+          "invoice_count": { "type": "integer" },
+          "share_of_total_pct": { "type": "number", "description": "Share of realized revenue, rounded to 0.1%" }
+        }
+      },
+      "InsightsResponse": {
+        "type": "object",
+        "required": ["overdue_invoices", "cash_flow_forecast", "unusual_transactions", "customer_concentration"],
+        "properties": {
+          "overdue_invoices": { "type": "array", "items": { "$ref": "#/components/schemas/OverdueInvoice" } },
+          "cash_flow_forecast": { "$ref": "#/components/schemas/CashFlowForecast" },
+          "unusual_transactions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UnusualTransaction" }
+          },
+          "customer_concentration": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CustomerConcentration" }
+          }
+        }
+      },
+      "AskRequest": {
+        "type": "object",
+        "required": ["question"],
+        "properties": { "question": { "type": "string", "minLength": 3, "example": "Which invoices are overdue?" } }
+      },
+      "QueryAnswer": {
+        "type": "object",
+        "required": ["question", "matched_intent", "answer", "data"],
+        "properties": {
+          "question": { "type": "string" },
+          "matched_intent": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "overdue_invoices",
+              "cash_flow_forecast",
+              "unusual_transactions",
+              "customer_concentration",
+              "financial_profile",
+              "trust_score",
+              null
+            ]
+          },
+          "answer": { "type": "string", "description": "Grounded natural-language answer computed from structured data" },
+          "data": { "type": "object", "additionalProperties": true, "nullable": true }
+        }
+      },
+      "ConsentGrantRequest": {
+        "type": "object",
+        "required": ["subject_type", "subject_id", "grantee", "purpose", "scope"],
+        "properties": {
+          "subject_type": { "type": "string", "enum": ["business", "person"] },
+          "subject_id": { "type": "string", "format": "uuid" },
+          "grantee": { "type": "string", "minLength": 1, "description": "API client name the grant is issued to" },
+          "purpose": { "type": "string", "minLength": 1 },
+          "scope": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["all", "trust_score", "financial_profile", "insights", "query", "accounts", "transactions", "invoices"]
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional ISO 8601 timestamp with offset; must be in the future. Expired grants are treated as inactive automatically."
+          }
+        }
+      },
+      "Consent": {
+        "type": "object",
+        "required": ["id", "subject_type", "subject_id", "grantee", "purpose", "scope", "status", "granted_at", "expires_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "subject_type": { "type": "string", "enum": ["business", "person"] },
+          "subject_id": { "type": "string", "format": "uuid" },
+          "grantee": { "type": "string" },
+          "purpose": { "type": "string" },
+          "scope": {
+            "type": "string",
+            "description": "JSON-encoded array of granted scopes (as stored)",
+            "example": "[\"trust_score\",\"financial_profile\"]"
+          },
+          "status": { "type": "string", "enum": ["active", "revoked"] },
+          "granted_at": { "type": "string", "format": "date-time" },
+          "revoked_at": { "type": "string", "format": "date-time", "nullable": true },
+          "expires_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "WebhookSubscribeRequest": {
+        "type": "object",
+        "required": ["event_pattern", "target_url"],
+        "properties": {
+          "event_pattern": {
+            "type": "string",
+            "minLength": 3,
+            "description": "Known event type (transaction.created, account.connected, account.disconnected, invoice.paid) or a group prefix such as transaction.*",
+            "example": "transaction.*"
+          },
+          "target_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "HTTPS URL with no port, credentials or private/IP-literal hostname",
+            "example": "https://hooks.example.com/afriscore"
+          },
+          "environment": { "type": "string", "enum": ["live", "sandbox"], "default": "live" }
+        }
+      },
+      "WebhookSubscription": {
+        "type": "object",
+        "required": ["id", "client_name", "event_pattern", "target_url", "environment", "status", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "client_id": { "type": "string", "format": "uuid", "nullable": true },
+          "client_name": { "type": "string" },
+          "event_pattern": { "type": "string" },
+          "target_url": { "type": "string", "format": "uri" },
+          "environment": { "type": "string", "enum": ["live", "sandbox"] },
+          "status": { "type": "string", "enum": ["active"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WebhookSubscriptionCreated": {
+        "allOf": [
+          { "$ref": "#/components/schemas/WebhookSubscription" },
+          {
+            "type": "object",
+            "required": ["secret", "note"],
+            "properties": {
+              "secret": { "type": "string", "description": "Signing secret returned exactly once", "example": "whsec_0123456789abcdef0123456789abcdef0123456789abcdef" },
+              "note": { "type": "string" }
+            }
+          }
+        ]
+      },
+      "WebhookSecretRotation": {
+        "type": "object",
+        "required": ["id", "secret", "note"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "secret": { "type": "string", "description": "New signing secret returned exactly once" },
+          "note": { "type": "string" }
+        }
+      },
+      "WebhookTestRequest": {
+        "type": "object",
+        "required": ["target_url"],
+        "properties": { "target_url": { "type": "string", "format": "uri" } }
+      },
+      "WebhookTestResult": {
+        "type": "object",
+        "required": ["delivered", "signature", "timestamp"],
+        "properties": {
+          "delivered": { "type": "boolean", "description": "Whether the outbound delivery received a 2xx response" },
+          "error": { "type": "string", "description": "Failure reason when not delivered; the outbound status code is deliberately not exposed" },
+          "signature": { "type": "string", "description": "Hex HMAC-SHA256 over `${timestamp}.${body}`" },
+          "timestamp": { "type": "integer", "description": "Unix seconds sent as x-africore-timestamp" }
+        }
+      },
+      "WebhookEvent": {
+        "type": "object",
+        "required": ["id", "event_type", "payload", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "event_type": { "type": "string" },
+          "subject_type": { "type": "string", "nullable": true },
+          "subject_id": { "type": "string", "nullable": true },
+          "is_sandbox": { "type": "integer", "enum": [0, 1] },
+          "payload": { "type": "string", "description": "JSON-encoded event payload" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "delivery_attempts": { "type": "integer", "minimum": 0 },
+          "last_delivery_status": { "type": "string", "nullable": true }
+        }
+      },
+      "ChainVerification": {
+        "type": "object",
+        "required": ["valid", "entryCount", "anchored"],
+        "properties": {
+          "valid": { "type": "boolean" },
+          "brokenAt": { "type": "string", "format": "uuid", "description": "Id of the first entry that failed verification" },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "prev_hash_mismatch",
+              "missing_seq",
+              "seq_gap",
+              "hash_mismatch",
+              "missing_anchor",
+              "entry_count_mismatch",
+              "head_mismatch",
+              "anchor_key_unavailable",
+              "anchor_mismatch"
+            ]
+          },
+          "entryCount": { "type": "integer", "minimum": 0 },
+          "anchored": { "type": "boolean", "description": "Whether a keyed head anchor was present and checked" }
+        }
+      },
+      "RedactedLedgerEvent": {
+        "type": "object",
+        "required": ["id", "event_type", "created_at", "entry_hash", "data"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "event_type": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "entry_hash": { "type": "string" },
+          "seq": { "type": "integer", "nullable": true },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Per-event-type allowlisted projection; sensitive fields are omitted"
+          }
+        }
+      },
+      "BusinessTrustRecordSubject": {
+        "type": "object",
+        "required": ["id", "type", "status", "trust_score", "jurisdiction", "is_sandbox", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string", "enum": ["business"] },
+          "status": { "type": "string" },
+          "trust_score": { "type": "number" },
+          "jurisdiction": { "type": "string" },
+          "industry": { "type": "string", "nullable": true },
+          "is_sandbox": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BusinessTrustRecord": {
+        "type": "object",
+        "required": ["subject", "verification_history", "integrity"],
+        "properties": {
+          "subject": { "$ref": "#/components/schemas/BusinessTrustRecordSubject" },
+          "verification_history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RedactedLedgerEvent" }
+          },
+          "integrity": { "$ref": "#/components/schemas/ChainVerification" }
+        }
+      },
+      "PersonTrustRecordSubject": {
+        "type": "object",
+        "required": ["id", "type", "status", "is_sandbox", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string", "enum": ["person"] },
+          "status": { "type": "string" },
+          "is_sandbox": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PersonTrustRecord": {
+        "type": "object",
+        "required": ["subject", "identifiers", "verification_history", "integrity"],
+        "properties": {
+          "subject": { "$ref": "#/components/schemas/PersonTrustRecordSubject" },
+          "identifiers": {
+            "type": "object",
+            "required": ["national_id_present", "phone_present"],
+            "properties": {
+              "national_id_present": { "type": "boolean" },
+              "phone_present": { "type": "boolean" }
+            }
+          },
+          "verification_history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RedactedLedgerEvent" }
+          },
+          "integrity": { "$ref": "#/components/schemas/ChainVerification" }
+        }
+      },
+      "ReconciliationMatch": {
+        "type": "object",
+        "required": ["invoice_id", "transaction_ids", "invoice_amount", "paid_amount", "match_type", "confidence"],
+        "properties": {
+          "invoice_id": { "type": "string", "format": "uuid" },
+          "transaction_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "invoice_amount": { "type": "number" },
+          "paid_amount": { "type": "number" },
+          "match_type": { "type": "string", "enum": ["exact", "tolerance", "partial"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "note": { "type": "string" }
+        }
+      },
+      "UnmatchedInvoice": {
+        "type": "object",
+        "required": ["invoice_id", "amount", "reason"],
+        "properties": {
+          "invoice_id": { "type": "string", "format": "uuid" },
+          "amount": { "type": "number" },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "no_unmatched_payments_available",
+              "no_payment_combination_matched",
+              "payment_claimed_concurrently",
+              "invoice_already_settled"
+            ]
+          }
+        }
+      },
+      "ReconciliationResult": {
+        "type": "object",
+        "required": ["matched", "unmatched_invoices"],
+        "properties": {
+          "matched": { "type": "array", "items": { "$ref": "#/components/schemas/ReconciliationMatch" } },
+          "unmatched_invoices": { "type": "array", "items": { "$ref": "#/components/schemas/UnmatchedInvoice" } }
+        }
+      },
+      "SandboxBusinessCreateRequest": {
+        "type": "object",
+        "required": ["legal_name"],
+        "properties": {
+          "legal_name": { "type": "string", "minLength": 2 },
+          "registration_number": { "type": "string" },
+          "kra_pin": { "type": "string" }
+        }
+      },
+      "SandboxPersonCreateRequest": {
+        "type": "object",
+        "required": ["full_name"],
+        "properties": {
+          "full_name": { "type": "string", "minLength": 2 },
+          "national_id": { "type": "string", "minLength": 4 }
+        }
+      }
     }
   }
 }

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { dbAll, dbRun, isPostgres } from "../db";
+import { dbAll, dbRun, dbTransaction, isPostgres } from "../db";
 import { getAccount } from "./accountService";
+import { getBusiness } from "./businessService";
 import { fetchMpesaTransactions, fetchBankTransactions, fetchSandboxTransactions, SandboxScenario } from "./connectorService";
 import { normalizeMpesaTransaction, normalizeBankTransaction, normalizeSandboxTransaction, CanonicalTransaction } from "./normalizationService";
 import { emitEvent } from "./webhookService";
@@ -28,12 +29,16 @@ const INSERT_SQL = isPostgres
 /**
  * Pulls raw transactions from the account's provider, normalizes them into
  * the canonical schema, and stores new ones (deduped on account+external_id
- * so re-syncing is safe). Fires a transaction.created webhook per new row.
+ * so re-syncing is safe). The whole ingest is one transaction, so a failure
+ * mid-sync cannot leave a business with a partial batch; webhooks fire only
+ * after the batch has committed.
  */
 export async function syncAccountTransactions(accountId: string): Promise<{ synced: number; skipped_duplicates: number; transactions: Transaction[] }> {
   const account = await getAccount(accountId);
   if (!account) throw new Error("account_not_found");
   if (account.status === "disconnected") throw new Error("account_disconnected");
+
+  const business = await getBusiness(account.business_id);
 
   const raw =
     account.provider === "mpesa"
@@ -44,29 +49,37 @@ export async function syncAccountTransactions(accountId: string): Promise<{ sync
           normalizeSandboxTransaction
         );
 
-  let synced = 0;
-  let skipped = 0;
   const inserted: Transaction[] = [];
+  let skipped = 0;
 
-  for (const canonical of raw) {
-    const row = {
-    id: randomUUID(),
-      account_id: accountId,
-      business_id: account.business_id,
-      created_at: new Date().toISOString(),
-      ...canonical,
-    };
-    const result = await dbRun(INSERT_SQL, row);
-    if (result.changes > 0) {
-      synced++;
-      inserted.push(row as Transaction);
-      await emitEvent("transaction.created", { transaction_id: row.id, business_id: account.business_id, amount: row.amount, type: row.type });
-    } else {
-      skipped++;
+  await dbTransaction(async () => {
+    for (const canonical of raw) {
+      const row = {
+        id: randomUUID(),
+        account_id: accountId,
+        business_id: account.business_id,
+        created_at: new Date().toISOString(),
+        ...canonical,
+      };
+      const result = await dbRun(INSERT_SQL, row);
+      if (result.changes > 0) {
+        inserted.push(row as Transaction);
+      } else {
+        skipped++;
+      }
     }
+  });
+
+  const subject = { type: "business" as const, id: account.business_id, is_sandbox: !!business?.is_sandbox };
+  for (const row of inserted) {
+    await emitEvent(
+      "transaction.created",
+      { transaction_id: row.id, business_id: account.business_id, amount: row.amount, type: row.type },
+      subject
+    );
   }
 
-  return { synced, skipped_duplicates: skipped, transactions: inserted };
+  return { synced: inserted.length, skipped_duplicates: skipped, transactions: inserted };
 }
 
 export async function listTransactionsForBusiness(businessId: string, limit = 100): Promise<Transaction[]> {

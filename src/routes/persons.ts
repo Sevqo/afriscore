@@ -50,6 +50,7 @@ router.get("/:id/trust-record", requireApiKey, async (req: AuthedRequest, res) =
 });
 
 router.get("/:id/ledger/verify", requireAdmin, async (req, res) => {
+  if (!(await getPerson(String(req.params.id)))) return res.status(404).json({ error: "not_found" });
   const result = await verifyChainIntegrity("person", String(req.params.id));
   res.json(result);
 });

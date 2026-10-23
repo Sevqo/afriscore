@@ -12,6 +12,7 @@ export interface Consent {
   status: string;
   granted_at: string;
   revoked_at?: string;
+  expires_at?: string | null;
 }
 
 export const CONSENT_SCOPES = ["all", "trust_score", "financial_profile", "insights", "query", "accounts", "transactions", "invoices"] as const;
@@ -26,13 +27,24 @@ function parseScopes(value: string): string[] {
   }
 }
 
+/** ISO timestamps sort lexicographically, so this works on both engines. */
+function activeConsentCondition(): string {
+  return `AND (expires_at IS NULL OR expires_at > ?)`;
+}
+
 export async function grantConsent(input: {
   subject_type: "business" | "person";
   subject_id: string;
   grantee: string;
   purpose: string;
   scope: string[];
+  expires_at?: string;
 }): Promise<Consent> {
+  if (input.expires_at !== undefined && input.expires_at !== null) {
+    const expiry = new Date(input.expires_at).getTime();
+    if (!Number.isFinite(expiry) || expiry <= Date.now()) throw new Error("invalid_expires_at");
+  }
+
   const now = new Date().toISOString();
   const consent: Consent = {
     id: randomUUID(),
@@ -43,11 +55,12 @@ export async function grantConsent(input: {
     scope: JSON.stringify(input.scope),
     status: "active",
     granted_at: now,
+    expires_at: input.expires_at ?? null,
   };
 
   await dbRun(
-    `INSERT INTO consents (id, subject_type, subject_id, grantee, purpose, scope, status, granted_at)
-     VALUES (@id, @subject_type, @subject_id, @grantee, @purpose, @scope, @status, @granted_at)`,
+    `INSERT INTO consents (id, subject_type, subject_id, grantee, purpose, scope, status, granted_at, expires_at)
+     VALUES (@id, @subject_type, @subject_id, @grantee, @purpose, @scope, @status, @granted_at, @expires_at)`,
     consent
   );
 
@@ -56,6 +69,7 @@ export async function grantConsent(input: {
     grantee: input.grantee,
     purpose: input.purpose,
     scope: input.scope,
+    expires_at: consent.expires_at,
   });
 
   return consent;
@@ -65,8 +79,12 @@ export async function revokeConsent(consentId: string): Promise<Consent | undefi
   const consent = await dbGet<Consent>(`SELECT * FROM consents WHERE id = ?`, [consentId]);
   if (!consent) return undefined;
 
+  // Idempotent: revoking an already-revoked grant must not append duplicate
+  // audit events or move the revocation timestamp.
+  if (consent.status === "revoked") return consent;
+
   const now = new Date().toISOString();
-  await dbRun(`UPDATE consents SET status = 'revoked', revoked_at = ? WHERE id = ?`, [now, consentId]);
+  await dbRun(`UPDATE consents SET status = 'revoked', revoked_at = ? WHERE id = ? AND status = 'active'`, [now, consentId]);
 
   await appendEvent(consent.subject_type as "business" | "person", consent.subject_id, "consent.revoked", {
     consent_id: consent.id,
@@ -85,15 +103,19 @@ export async function listConsents(subjectType: string, subjectId: string): Prom
 
 export async function isConsentActive(subjectType: string, subjectId: string, grantee: string): Promise<boolean> {
   const row = await dbGet(
-    `SELECT * FROM consents WHERE subject_type = ? AND subject_id = ? AND grantee = ? AND status = 'active' ORDER BY granted_at DESC LIMIT 1`,
-    [subjectType, subjectId, grantee]
+    `SELECT * FROM consents
+     WHERE subject_type = ? AND subject_id = ? AND grantee = ? AND status = 'active'
+       ${activeConsentCondition()}
+     ORDER BY granted_at DESC LIMIT 1`,
+    [subjectType, subjectId, grantee, new Date().toISOString()]
   );
   return !!row;
 }
 
-/** Enforces purpose-specific consent. An active grant for one capability
- * must not silently unlock every other sensitive endpoint. `all` remains
- * available for explicit broad grants in trusted sandbox/test flows. */
+/** Enforces purpose-specific consent for an active, unexpired grant. An
+ *  active grant for one capability must not silently unlock every other
+ *  sensitive endpoint. `all` remains available for explicit broad grants in
+ *  trusted sandbox/test flows. */
 export async function hasActiveConsentScope(
   subjectType: string,
   subjectId: string,
@@ -101,8 +123,11 @@ export async function hasActiveConsentScope(
   requiredScope: Exclude<ConsentScope, "all">
 ): Promise<boolean> {
   const rows = await dbAll<Consent>(
-    `SELECT * FROM consents WHERE subject_type = ? AND subject_id = ? AND grantee = ? AND status = 'active' ORDER BY granted_at DESC`,
-    [subjectType, subjectId, grantee]
+    `SELECT * FROM consents
+     WHERE subject_type = ? AND subject_id = ? AND grantee = ? AND status = 'active'
+       ${activeConsentCondition()}
+     ORDER BY granted_at DESC`,
+    [subjectType, subjectId, grantee, new Date().toISOString()]
   );
 
   return rows.some((row) => {

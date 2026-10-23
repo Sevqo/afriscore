@@ -47,7 +47,11 @@ export async function getCashFlowForecast(businessId: string): Promise<CashFlowF
     [businessId]
   );
 
-  if (txns.length === 0) {
+  const now = Date.now();
+  // Future-dated transactions must not be projected as if they had happened.
+  const settled = txns.filter((t) => new Date(t.occurred_at).getTime() <= now);
+
+  if (settled.length === 0) {
     return {
       method: "insufficient_data",
       daily_net_cash_flow_avg: 0,
@@ -57,11 +61,13 @@ export async function getCashFlowForecast(businessId: string): Promise<CashFlowF
     };
   }
 
-  const earliest = new Date(txns[0].occurred_at).getTime();
-  const latest = new Date(txns[txns.length - 1].occurred_at).getTime();
-  const spanDays = Math.max(1, Math.round((latest - earliest) / (1000 * 60 * 60 * 24)));
+  // Project over the observed window (earliest event to now), not from the
+  // first to the last event: a single day of history used to be divided by 1
+  // and multiplied by 30, producing a confident-looking 30x number.
+  const earliest = new Date(settled[0].occurred_at).getTime();
+  const spanDays = Math.max(1, Math.ceil((now - earliest) / (1000 * 60 * 60 * 24)));
 
-  const net = txns.reduce((sum, t) => sum + (t.type === "credit" ? t.amount : -t.amount), 0);
+  const net = settled.reduce((sum, t) => sum + (t.type === "credit" ? t.amount : -t.amount), 0);
   const dailyAvg = net / spanDays;
 
   return {
@@ -77,24 +83,34 @@ export interface UnusualTransaction extends Transaction {
   deviation_from_mean: number;
 }
 
-/** "Show me unusual transactions." Flags transactions more than 2
- *  standard deviations from the business's own mean transaction size. */
+/** "Show me unusual transactions." Flags transactions more than 2 standard
+ *  deviations from the business's own mean transaction size. Statistics are
+ *  computed per direction: mixing KES 40,000 sales with KES 200 airtime
+ *  purchases used to flag every large sale as an anomaly. */
 export async function getUnusualTransactions(businessId: string): Promise<UnusualTransaction[]> {
   const txns = await dbAll<Transaction>(`SELECT * FROM transactions WHERE business_id = ? AND status = 'completed'`, [businessId]);
 
   if (txns.length < 5) return [];
 
-  const amounts = txns.map((t) => t.amount);
-  const mean = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-  const variance = amounts.reduce((sum, a) => sum + (a - mean) ** 2, 0) / amounts.length;
-  const stddev = Math.sqrt(variance);
+  const flagged: UnusualTransaction[] = [];
 
-  if (stddev === 0) return [];
+  for (const type of ["credit", "debit"] as const) {
+    const group = txns.filter((t) => t.type === type);
+    if (group.length < 5) continue;
 
-  return txns
-    .map((t) => ({ ...t, deviation_from_mean: Math.round(((t.amount - mean) / stddev) * 100) / 100 }))
-    .filter((t) => Math.abs(t.deviation_from_mean) > 2)
-    .sort((a, b) => Math.abs(b.deviation_from_mean) - Math.abs(a.deviation_from_mean));
+    const mean = group.reduce((sum, t) => sum + t.amount, 0) / group.length;
+    const variance = group.reduce((sum, t) => sum + (t.amount - mean) ** 2, 0) / group.length;
+    const stddev = Math.sqrt(variance);
+    if (stddev === 0) continue;
+
+    for (const txn of group) {
+      const z = (txn.amount - mean) / stddev;
+      // Filter on the raw score, not a rounded one.
+      if (Math.abs(z) > 2) flagged.push({ ...txn, deviation_from_mean: Math.round(z * 100) / 100 });
+    }
+  }
+
+  return flagged.sort((a, b) => Math.abs(b.deviation_from_mean) - Math.abs(a.deviation_from_mean));
 }
 
 export interface CustomerConcentration {
@@ -104,20 +120,27 @@ export interface CustomerConcentration {
   share_of_total_pct: number;
 }
 
-/** "How dependent are we on our largest customer?" */
+/** "How dependent are we on our largest customer?" Uses money actually
+ *  received for paid invoices (`paid_amount`, falling back to the invoiced
+ *  amount for pre-upgrade rows) because invoiced != collected. */
 export async function getCustomerConcentration(businessId: string): Promise<CustomerConcentration[]> {
   const invoices = await dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ? AND status = 'paid'`, [businessId]);
 
   if (invoices.length === 0) return [];
 
-  const totalRevenue = invoices.reduce((sum, i) => sum + i.amount, 0);
-  const byCustomer = new Map<string, { total: number; count: number }>();
+  const realized = invoices
+    .map((invoice) => ({ invoice, amount: invoice.paid_amount ?? invoice.amount }))
+    .filter((entry) => entry.amount > 0);
 
-  for (const inv of invoices) {
-    const entry = byCustomer.get(inv.customer_reference) || { total: 0, count: 0 };
-    entry.total += inv.amount;
+  const totalRevenue = realized.reduce((sum, entry) => sum + entry.amount, 0);
+  if (totalRevenue <= 0) return [];
+
+  const byCustomer = new Map<string, { total: number; count: number }>();
+  for (const { invoice, amount } of realized) {
+    const entry = byCustomer.get(invoice.customer_reference) || { total: 0, count: 0 };
+    entry.total += amount;
     entry.count += 1;
-    byCustomer.set(inv.customer_reference, entry);
+    byCustomer.set(invoice.customer_reference, entry);
   }
 
   return Array.from(byCustomer.entries())

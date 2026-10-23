@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { appendEvent, getLedger, verifyChainIntegrity } from "./ledgerService";
+import { redactLedgerEvents } from "./redaction";
 
 export interface Person {
   id: string;
@@ -120,9 +121,24 @@ export async function getPersonTrustRecord(personId: string) {
   const person = await getPerson(personId);
   if (!person) return undefined;
 
+  // No full_name / national_id_hash / phone_hash: the `trust_score` scope
+  // covers the verification judgement, not the identity file. Presence
+  // booleans let an underwriter confirm what was checked without exposing
+  // the (cross-linkable) salted hashes.
   return {
-    person,
-    verification_history: await getLedger("person", personId),
+    subject: {
+      id: person.id,
+      type: "person" as const,
+      status: person.status,
+      is_sandbox: person.is_sandbox,
+      created_at: person.created_at,
+      updated_at: person.updated_at,
+    },
+    identifiers: {
+      national_id_present: !!person.national_id_hash,
+      phone_present: !!person.phone_hash,
+    },
+    verification_history: redactLedgerEvents(await getLedger("person", personId)),
     integrity: await verifyChainIntegrity("person", personId),
   };
 }

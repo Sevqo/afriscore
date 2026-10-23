@@ -1,18 +1,25 @@
 # Dependencies
 node_modules/
+.npm-cache/
 
 # Build output
 dist/
+coverage/
+*.tsbuildinfo
 
 # Local database (contains real business/person data once deployed —
 # must never be committed)
 *.db
 *.db-shm
 *.db-wal
+test-*.db
+test-*.db-shm
+test-*.db-wal
 
 # Environment / secrets
 .env
-.env.local
+.env.*
+!.env.example
 
 # Logs
 *.log
@@ -27,4 +34,6 @@ npm-debug.log*
 
 # Local visual QA captures
 website/*-qa.png
-*.tsbuildinfo
+
+# Scratch work
+.tmp/

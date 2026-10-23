@@ -8,7 +8,7 @@ import { requireApiKey, AuthedRequest } from "../middleware/apiKeyAuth";
 import { createInvoice, listInvoicesForBusiness } from "../services/invoiceService";
 import { reconcileBusiness } from "../services/reconciliationService";
 import { getOverdueInvoices, getCashFlowForecast, getUnusualTransactions, getCustomerConcentration } from "../services/insightsService";
-import { answerQuestion } from "../services/queryService";
+import { answerQuestion, resolveIntent } from "../services/queryService";
 import { requireAdmin } from "../middleware/adminAuth";
 
 type BizParams = { id: string; accountId: string };
@@ -31,6 +31,9 @@ router.post("/accounts/connect", requireAdmin, async (req: BizRequest, res) => {
     res.status(201).json(account);
   } catch (e: any) {
     if (e.message === "business_not_found") return res.status(404).json({ error: "not_found" });
+    if (e.message === "account_already_connected") {
+      return res.status(409).json({ error: "account_already_connected", detail: "This provider account is already connected to the business." });
+    }
     throw e;
   }
 });
@@ -101,8 +104,13 @@ router.get("/invoices", requireAdmin, async (req: BizRequest, res) => {
 });
 
 router.post("/reconcile", requireAdmin, async (req: BizRequest, res) => {
-  const result = await reconcileBusiness(req.params.id);
-  res.json(result);
+  try {
+    const result = await reconcileBusiness(req.params.id);
+    res.json(result);
+  } catch (e: any) {
+    if (e.message === "business_not_found") return res.status(404).json({ error: "not_found" });
+    throw e;
+  }
 });
 
 // === Phase 4: Business Intelligence ===
@@ -130,8 +138,23 @@ router.post("/ask", requireApiKey, async (req: AuthedRequest & BizRequest, res) 
   const parsed = askSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
 
+  // The `query` scope buys the natural-language interface only. The data an
+  // answer exposes is gated by the scope that governs that capability, so a
+  // narrow "query" grant cannot read a financial profile or trust score.
   if (!(await hasActiveConsentScope("business", req.params.id, req.client!.name, "query"))) {
     return res.status(403).json({ error: "consent_required", required_scope: "query" });
+  }
+
+  const intent = resolveIntent(parsed.data.question);
+  if (intent) {
+    const allowed = await hasActiveConsentScope("business", req.params.id, req.client!.name, intent.requiredScope);
+    if (!allowed) {
+      return res.status(403).json({
+        error: "consent_required",
+        required_scope: intent.requiredScope,
+        matched_intent: intent.intent,
+      });
+    }
   }
 
   try {

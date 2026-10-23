@@ -1,0 +1,43 @@
+# Dependency and build output — rebuilt inside the image
+node_modules/
+dist/
+.npm-cache/
+*.tsbuildinfo
+
+# Local databases and test databases (never ship data)
+*.db
+*.db-shm
+*.db-wal
+test-*.db
+test-*.db-shm
+test-*.db-wal
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Git and CI metadata
+.git/
+.gitignore
+.github/
+
+# Not needed by the API image
+website/
+reviews/
+scripts/
+openapi.json
+README.md
+SECURITY.md
+CONTRIBUTING.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Local tooling noise
+.vscode/
+.idea/
+.tmp/
+*.log
+npm-debug.log*
+.DS_Store

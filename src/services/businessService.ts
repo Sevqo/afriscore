@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { dbGet, dbAll, dbRun } from "../db";
 import { appendEvent, getLedger, verifyChainIntegrity } from "./ledgerService";
+import { redactLedgerEvents } from "./redaction";
 import { computeTrustScore } from "./scoreService";
 
 export interface Business {
@@ -113,9 +114,22 @@ export async function getTrustRecord(businessId: string) {
   const business = await getBusiness(businessId);
   if (!business) return undefined;
 
+  // Deliberately no KYC fields (registration_number, kra_pin, legal_name):
+  // the `trust_score` consent scope covers the trust judgement, not the
+  // underlying identity file. See redaction.ts.
   return {
-    business,
-    verification_history: await getLedger("business", businessId),
+    subject: {
+      id: business.id,
+      type: "business" as const,
+      status: business.status,
+      trust_score: business.trust_score,
+      jurisdiction: business.jurisdiction,
+      industry: business.industry ?? null,
+      is_sandbox: business.is_sandbox,
+      created_at: business.created_at,
+      updated_at: business.updated_at,
+    },
+    verification_history: redactLedgerEvents(await getLedger("business", businessId)),
     integrity: await verifyChainIntegrity("business", businessId),
   };
 }
