@@ -1,6 +1,6 @@
 import crypto, { timingSafeEqual } from "node:crypto";
 import { randomUUID } from "node:crypto";
-import { dbGet, dbAll, dbRun, dbTransaction } from "../db";
+import { dbGet, dbAll, dbRun, dbTransaction, isPostgres } from "../db";
 
 /**
  * Hash-chained, HMAC-anchored trust ledger.
@@ -144,6 +144,14 @@ export async function appendEvent(
   for (;;) {
     try {
       return await dbTransaction(async () => {
+        // Serialise appends per subject. SQLite is already serialised by the
+        // adapter's mutex; PostgreSQL needs an explicit per-subject lock or
+        // two concurrent appends can read the same predecessor and race the
+        // UNIQUE(subject_type, subject_id, prev_hash) index into a retry storm.
+        if (isPostgres) {
+          await dbRun(`SELECT pg_advisory_xact_lock(hashtext(?))`, [`ledger:${subjectType}:${subjectId}`]);
+        }
+
         const head = await getHead(subjectType, subjectId);
         const last = head ? undefined : await getLastEntry(subjectType, subjectId);
         const prevHash = head ? head.head_hash : last ? last.entry_hash : GENESIS_HASH;
