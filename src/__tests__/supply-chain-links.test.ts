@@ -9,6 +9,7 @@ const { sqlitePath } = configureTestEnv("supply-chain-links");
 
 import { migrate, dbRun } from "../db";
 import { createApp } from "../app";
+import { drainOrbit } from "./orbit-test-utils";
 import { computeBusinessMetrics } from "../services/businessMetricsService";
 import { computeSupplyChainReadiness } from "../services/supplyChainService";
 import { ReceivablesSummary } from "../services/receivablesService";
@@ -189,7 +190,8 @@ describe("supply chain on dashboard and decision card", () => {
     const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "business_till", shortcode: "666666", content: fixture("till-clean.csv") },
     });
-    assert.strictEqual(upload.status, 201);
+    assert.strictEqual(upload.status, 202);
+    await drainOrbit();
 
     const invoice = await api("POST", `/v1/businesses/${businessId}/invoices`, {
       body: { customer_reference: "ACME WHOLESALERS LTD", amount: 4000, issue_date: daysAgo(20), due_date: daysAhead(10) },

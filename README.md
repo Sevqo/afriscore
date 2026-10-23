@@ -161,6 +161,75 @@ and leaves the linked person's reads untouched.
 CSV upload → owner dashboard → lender card. It calls only the documented API
 and never bypasses auth or consent.
 
+## Orbit Core (async orchestration)
+
+Orbit is the orchestration and state layer that connects ingestion, normalization,
+ledger writes, scoring and receivables matching. It extends the existing services
+rather than replacing them: workers call the same parsers, ledger and scoring
+functions the synchronous endpoints use.
+
+**Queues** (BullMQ on Redis when `REDIS_URL` is set; an in-memory broker with the
+same semantics when it is not, so local dev and tests need no Redis):
+
+- `ingestion` — validates subject consent and extracts the raw statement text
+- `normalization` — parses, dedupes by receipt id, writes transactions
+- `ledger` — writes the ingested rows to the hash chain (idempotently)
+- `scoring` — recomputes metrics / health / DSO after data changes
+- `matching` — reconciles incoming payments to invoices
+- `dead-letter` — jobs that exhausted retries
+
+**State machine** — every workflow has a row in `workflows` and an append-only
+`workflow_events` history:
+
+`PENDING → CONSENT_VERIFIED → PARSING → NORMALIZING → RECONCILING → SCORING → READY`
+
+Failures land in a phase-specific terminal state (`FAILED_PARSING`,
+`FAILED_NORMALIZATION`, `FAILED_LEDGER`, `FAILED_RECONCILING`, `FAILED_SCORING`).
+Transitions are forward-only; retries are idempotent (`advance()` is a no-op if
+the workflow is already at/after the target state).
+
+**Idempotency** — three layers:
+
+1. **Jobs**: job ids are `sha256(stage + content + subject)`; a duplicate upload is
+   dropped by the queue and the API returns the existing `workflow_id` with
+   `duplicate: true`.
+2. **Transactions**: the canonical `(account_id, external_id)` uniqueness plus an
+   explicit receipt-id check means re-processing cannot duplicate rows.
+3. **Ledger**: the ledger worker checks whether the stable id (`transaction_id` /
+   `statement_id`) is already in the event data before appending, so a retried
+   job cannot duplicate chain entries.
+
+**Retries & DLQ** — every job gets up to **3 attempts with exponential backoff**.
+Exhausted jobs are recorded in `dead_letter_jobs` and moved to the `dead-letter`
+queue, whose worker logs the failure, sets the workflow to its `FAILED_*` state,
+writes a `workflow.failed` ledger event (without breaking the chain) and emits a
+`workflow.failed` notification.
+
+**API triggers** — `POST /v1/businesses/:id/statements` returns **`202 Accepted`**
+with `{ workflow_id, job_id, duplicate, workflow_url }` immediately;
+`POST /v1/businesses/:id/payments/simulate` returns `200` with the matching
+workflow id. Poll `GET /v1/orbit/workflows/:id` (admin) for the current state,
+transition history and dead-letter errors. The local console at `/dashboard`
+polls that endpoint and renders the pipeline live.
+
+**Running it**
+
+```bash
+# Single process (no Redis): the API also runs the in-memory workers.
+npm run build && npm start
+
+# Production-style: Redis + a separately scalable worker process.
+REDIS_URL=redis://localhost:6379 npm run worker          # terminal 1
+REDIS_URL=redis://localhost:6379 npm start               # terminal 2
+
+# Development with hot TypeScript:
+npm run start:dev    # API (in-memory workers)
+REDIS_URL=... npm run worker:dev
+```
+
+`docker compose up --build` starts PostgreSQL, Redis, the API and a standalone
+worker.
+
 ## Architecture
 
 ```
@@ -301,6 +370,14 @@ queue, dashboard/card integration) and `supply-chain-links` (readiness
 signals, explicit linking, per-subject consent isolation, person-flow
 regression).
 
+`orbit` covers the asynchronous engine deterministically on the in-memory
+backend: upload → `PENDING`…`READY` with the full transition history, the
+transaction/ledger rows and chain integrity; duplicate uploads producing no new
+rows or ledger entries; a corrupted statement reaching the DLQ and
+`FAILED_PARSING`; the admin workflow endpoint; payment → invoice matching → DSO
+recalculation → ledger; unmatched payments parked for review; and retried
+payment webhooks staying idempotent.
+
 ## API reference
 
 Full reference: [`openapi.json`](./openapi.json) (OpenAPI 3.0 — import
@@ -321,7 +398,8 @@ business/person data is involved, an active purpose-specific consent grant.
 | Data Infrastructure | `POST /businesses/:id/accounts/connect`, `POST /businesses/:id/accounts/:accountId/disconnect`, `GET /businesses/:id/accounts`, `POST /businesses/:id/accounts/:accountId/sync`, `GET /businesses/:id/transactions` | admin |
 | Data Infrastructure (partner) | `GET /businesses/:id/financial-profile` | API key + `financial_profile` |
 | Business Operations | `POST/GET /businesses/:id/invoices`, `POST /businesses/:id/reconcile` | admin |
-| Business onboarding | `POST /businesses/:id/onboarding/consent`, `POST/GET /businesses/:id/statements`, `GET /businesses/:id/shortcodes` | admin |
+| Business onboarding | `POST /businesses/:id/onboarding/consent`, `POST/GET /businesses/:id/statements` (POST → 202 + `workflow_id`), `GET /businesses/:id/shortcodes` | admin |
+| Orbit orchestration | `POST /businesses/:id/payments/simulate`, `GET /orbit/workflows`, `GET /orbit/workflows/:id` | admin |
 | Receivables | `GET /businesses/:id/invoices/:invoiceId`, `POST .../invoices/:invoiceId/send`, `POST .../invoices/:invoiceId/payments`, `POST /businesses/:id/receivables/match`, `GET /businesses/:id/receivables/review-queue`, `GET /businesses/:id/receivables/summary` | admin |
 | Linked profiles | `POST/GET /businesses/:id/links`, `DELETE /businesses/:id/links/:personId`, `GET /businesses/:id/linked-profiles` | admin |
 | Business intelligence (partner) | `GET /businesses/:id/business-profile` | API key + `business_profile` |
@@ -616,6 +694,14 @@ src/
   config.ts             - environment parsing/validation + local .env loading
   logging.ts            - structured JSON logger and request access log
   metrics.ts            - in-process Prometheus-style counters (/v1/metrics)
+  orbit/
+    queue.ts              - queue abstraction: BullMQ/Redis + in-memory backends
+    stateMachine.ts       - workflow states, forward-only transitions, history
+    workers.ts            - queue processors, retries, DLQ failure handling
+    orbitService.ts       - API triggers + workflow read models
+    runtime.ts            - inline (dev) and Redis worker startup
+    types.ts              - typed payloads for every queue
+  worker.ts             - standalone Orbit worker entry point (Redis)
   db/
     adapter.ts           - dual-engine query functions (SQLite/Postgres)
     index.ts              - schema + migration guards

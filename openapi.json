@@ -1993,8 +1993,8 @@
           "Business",
           "Onboarding"
         ],
-        "summary": "Parse and ingest a till, paybill or bank statement (CSV)",
-        "description": "Requires an active business onboarding consent. Every ingested transaction is written to the hash-chained ledger in the same DB transaction. Parse failures (unreadable_file, wrong_statement_type, insufficient_history, missing_shortcode, invalid_rows) return 400 with the code in the error field.",
+        "summary": "Queue a statement for async ingestion (returns 202 + workflow id)",
+        "description": "Validates business consent and enqueues the Orbit ingestion pipeline. Parsing/normalizing/ledger/scoring run asynchronously; poll GET /orbit/workflows/{id} for progress. Identical content is deduplicated.",
         "operationId": "uploadBusinessStatement",
         "security": [
           {
@@ -2012,12 +2012,12 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Statement ingested",
+          "202": {
+            "description": "Accepted for async ingestion",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatementUploadResult"
+                  "$ref": "#/components/schemas/OrbitWorkflowAccepted"
                 }
               }
             }
@@ -2818,6 +2818,180 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/orbit/workflows": {
+      "get": {
+        "tags": [
+          "Orbit"
+        ],
+        "summary": "List Orbit workflows for a subject",
+        "operationId": "listOrbitWorkflows",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "business",
+                "individual"
+              ]
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflows newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrbitWorkflow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/orbit/workflows/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Orbit"
+        ],
+        "summary": "Workflow state, transition history and dead-letter errors",
+        "operationId": "getOrbitWorkflow",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrbitWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/AdminNotConfigured"
+          }
+        }
+      }
+    },
+    "/businesses/{id}/payments/simulate": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Orbit"
+        ],
+        "summary": "Simulate an incoming M-Pesa payment (enqueues the matching workflow)",
+        "description": "Returns 200 immediately with a workflow id. Matching, DSO recalculation and ledger writes happen asynchronously in the matching and scoring queues. Retried webhooks with the same reference+amount are deduplicated.",
+        "operationId": "simulateMpesaPayment",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentSimulateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment accepted for async matching",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrbitWorkflowAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
           },
           "503": {
             "$ref": "#/components/responses/AdminNotConfigured"
@@ -6074,6 +6248,205 @@
           },
           "summary": {
             "type": "string"
+          }
+        }
+      },
+      "OrbitWorkflowAccepted": {
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "job_id",
+          "duplicate",
+          "status"
+        ],
+        "properties": {
+          "workflow_id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "duplicate": {
+            "type": "boolean",
+            "description": "True when the same content was already accepted (idempotent drop)"
+          },
+          "workflow_url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted"
+            ]
+          }
+        }
+      },
+      "OrbitWorkflow": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "subject_type",
+          "subject_id",
+          "state",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "statement_ingestion",
+              "payment_matching"
+            ]
+          },
+          "subject_type": {
+            "type": "string",
+            "enum": [
+              "business",
+              "individual"
+            ]
+          },
+          "subject_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONSENT_VERIFIED",
+              "PARSING",
+              "NORMALIZING",
+              "RECONCILING",
+              "SCORING",
+              "READY",
+              "FAILED_PARSING",
+              "FAILED_NORMALIZATION",
+              "FAILED_LEDGER",
+              "FAILED_RECONCILING",
+              "FAILED_SCORING",
+              "FAILED"
+            ]
+          },
+          "error_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrbitWorkflowEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workflow_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "from_state": {
+            "type": "string",
+            "nullable": true
+          },
+          "to_state": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrbitWorkflowView": {
+        "type": "object",
+        "required": [
+          "workflow",
+          "history",
+          "dead_letter"
+        ],
+        "properties": {
+          "workflow": {
+            "$ref": "#/components/schemas/OrbitWorkflow"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrbitWorkflowEvent"
+            }
+          },
+          "dead_letter": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "queue": {
+                  "type": "string"
+                },
+                "error_message": {
+                  "type": "string"
+                },
+                "attempts_made": {
+                  "type": "integer"
+                },
+                "failed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PaymentSimulateRequest": {
+        "type": "object",
+        "required": [
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Used as the idempotency key for retried webhooks"
+          },
+          "counterparty": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       }

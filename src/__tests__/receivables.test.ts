@@ -9,6 +9,7 @@ const { sqlitePath } = configureTestEnv("receivables");
 
 import { migrate, dbRun } from "../db";
 import { createApp } from "../app";
+import { drainOrbit } from "./orbit-test-utils";
 import { getLedger } from "../services/ledgerService";
 
 const FIXTURES = path.join(__dirname, "../../test-fixtures");
@@ -209,7 +210,8 @@ describe("automatic payment matching", () => {
     const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "business_till", shortcode: "999999", content: fixture("till-clean.csv") },
     });
-    assert.strictEqual(upload.status, 201);
+    assert.strictEqual(upload.status, 202);
+    await drainOrbit();
     return businessId;
   }
 
@@ -253,7 +255,8 @@ describe("automatic payment matching", () => {
     const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "business_till", shortcode: "444444", content },
     });
-    assert.strictEqual(upload.status, 201);
+    assert.strictEqual(upload.status, 202);
+    await drainOrbit();
 
     const invoice = await createInvoice(businessId, {
       amount: 9000,
@@ -286,7 +289,8 @@ describe("receivables feed the dashboard and decision card", () => {
     const upload = await api("POST", `/v1/businesses/${businessId}/statements`, {
       body: { source_type: "business_till", shortcode: "555555", content: fixture("till-clean.csv") },
     });
-    assert.strictEqual(upload.status, 201);
+    assert.strictEqual(upload.status, 202);
+    await drainOrbit();
 
     const invoice = await createInvoice(businessId, {
       amount: 4000,

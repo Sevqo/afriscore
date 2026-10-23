@@ -240,6 +240,65 @@ const SCHEMA = `
     created_at TEXT NOT NULL,
     UNIQUE (person_id, business_id)
   );
+
+  -- Orbit orchestration: workflow state machine + transition history.
+  CREATE TABLE IF NOT EXISTS workflows (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    subject_type TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    state TEXT NOT NULL,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workflows_subject ON workflows (subject_type, subject_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS workflow_events (
+    id TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    from_state TEXT,
+    to_state TEXT NOT NULL,
+    event TEXT,
+    error TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workflow_events_workflow ON workflow_events (workflow_id, seq);
+
+  -- Jobs that exhausted retries; consumed by the DLQ worker.
+  CREATE TABLE IF NOT EXISTS dead_letter_jobs (
+    id TEXT PRIMARY KEY,
+    queue TEXT NOT NULL,
+    workflow_id TEXT,
+    subject_type TEXT,
+    subject_id TEXT,
+    name TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    attempts_made INTEGER NOT NULL,
+    error_message TEXT NOT NULL,
+    failed_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_dead_letter_subject ON dead_letter_jobs (subject_type, subject_id, failed_at);
+
+  -- Incoming payments the matching worker could not reconcile to an invoice.
+  CREATE TABLE IF NOT EXISTS unmatched_payments (
+    id TEXT PRIMARY KEY,
+    business_id TEXT NOT NULL,
+    transaction_id TEXT,
+    amount NUMERIC(18,2) NOT NULL,
+    reference TEXT,
+    counterparty TEXT,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_unmatched_payments_business ON unmatched_payments (business_id, status, created_at);
 `;
 
 export async function migrate(): Promise<void> {

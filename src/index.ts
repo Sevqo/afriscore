@@ -6,6 +6,8 @@ import type { Server } from "node:http";
 import { migrate, isPostgres, closeDb } from "./db";
 import { createApp } from "./app";
 import { logger } from "./logging";
+import { startInlineWorkers } from "./orbit/runtime";
+import { getOrbitQueues } from "./orbit/queue";
 
 /**
  * Boot sequence:
@@ -42,6 +44,16 @@ async function main(): Promise<void> {
     process.exit(1);
   });
 
+  // Orbit workers: with Redis configured they run in the standalone worker
+  // process (`npm run worker`); without it the API also processes its own
+  // in-memory queues so local dev works with a single command.
+  if (!process.env.REDIS_URL) {
+    startInlineWorkers();
+    logger.info("orbit_inline_workers_started", { backend: "memory" });
+  } else {
+    logger.info("orbit_workers_external", { backend: "redis" });
+  }
+
   installSignalHandlers(server);
   installProcessErrorHandlers();
 }
@@ -70,6 +82,7 @@ function installSignalHandlers(server: Server): void {
       if (closeErr) logger.error("shutdown_server_close_failed", { message: closeErr.message });
 
       try {
+        await getOrbitQueues().close();
         await closeDb();
         logger.info("shutdown_complete", { signal, db_closed: true });
       } catch (dbErr) {

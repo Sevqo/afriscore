@@ -10,11 +10,14 @@ import { parseStatement, ParsedStatement, StatementParseError, StatementSourceTy
  * transactions tagged with the business subject, its shortcode and the
  * statement they came from.
  *
- * Consent is checked BEFORE the statement is parsed: no business data is
- * read from an uploaded file until an active grant exists for the business
- * subject. Every imported transaction is written to the trust ledger inside
- * the same DB transaction as the rows themselves, so the ledger can never
- * claim a data point that was not stored (or vice versa).
+ * The ingestion work is split into discrete steps so the Orbit orchestrator can
+ * run them across queues:
+ *   normalizeStatement()          parse + dedupe + write transactions (no ledger)
+ *   ledgerStatementIngestion()    write the ingested rows to the hash chain
+ *   ingestStatement()             the pre-Orbit synchronous composition
+ *
+ * Consent is checked before any file is parsed: no business data is read from
+ * an uploaded file until an active grant exists for the business subject.
  */
 
 /** Internal grantee representing the platform's own onboarding purpose. */
@@ -76,14 +79,23 @@ export interface IngestStatementResult {
   warnings: string[];
 }
 
-const PROVIDER_BY_SOURCE: Record<StatementSourceType, string> = {
+export interface NormalizeStatementResult {
+  statement: StatementRecord;
+  parsed: ParsedStatement;
+  shortcode: string;
+  imported: number;
+  duplicates: number;
+  warnings: string[];
+}
+
+export const PROVIDER_BY_SOURCE: Record<StatementSourceType, string> = {
   individual_mpesa: "mpesa",
   business_till: "mpesa_till",
   business_paybill: "mpesa_paybill",
   bank: "bank",
 };
 
-const SHORTCODE_TYPE_BY_SOURCE: Record<StatementSourceType, string> = {
+export const SHORTCODE_TYPE_BY_SOURCE: Record<StatementSourceType, string> = {
   individual_mpesa: "mpesa",
   business_till: "till",
   business_paybill: "paybill",
@@ -115,7 +127,7 @@ export async function listShortcodes(businessId: string): Promise<BusinessShortc
 }
 
 /** SQLite's INSERT OR IGNORE vs PostgreSQL's ON CONFLICT DO NOTHING. */
-function insertIgnoreTransactionsSql(): string {
+export function insertIgnoreTransactionsSql(): string {
   const columns = `(id, account_id, business_id, subject_type, external_id, amount, currency, type, counterparty, category, status, source_provider, raw_status, occurred_at, statement_id, shortcode, created_at)`;
   const values = `(@id, @account_id, @business_id, @subject_type, @external_id, @amount, @currency, @type, @counterparty, @category, @status, @source_provider, @raw_status, @occurred_at, @statement_id, @shortcode, @created_at)`;
   return isPostgres
@@ -123,7 +135,12 @@ function insertIgnoreTransactionsSql(): string {
     : `INSERT OR IGNORE INTO transactions ${columns} VALUES ${values}`;
 }
 
-async function ensureShortcode(businessId: string, sourceType: StatementSourceType, shortcode: string, label?: string): Promise<void> {
+export async function ensureStatementShortcode(
+  businessId: string,
+  sourceType: StatementSourceType,
+  shortcode: string,
+  label?: string
+): Promise<void> {
   await dbRun(
     `INSERT INTO business_shortcodes (id, business_id, type, shortcode, label, created_at)
      VALUES (?, ?, ?, ?, ?, ?)
@@ -132,7 +149,11 @@ async function ensureShortcode(businessId: string, sourceType: StatementSourceTy
   );
 }
 
-async function ensureAccount(businessId: string, sourceType: StatementSourceType, shortcode: string): Promise<{ id: string }> {
+export async function ensureStatementAccount(
+  businessId: string,
+  sourceType: StatementSourceType,
+  shortcode: string
+): Promise<{ id: string }> {
   const provider = PROVIDER_BY_SOURCE[sourceType];
   const existing = await dbGet<{ id: string }>(
     `SELECT id FROM accounts WHERE business_id = ? AND provider = ? AND account_identifier = ?`,
@@ -149,7 +170,7 @@ async function ensureAccount(businessId: string, sourceType: StatementSourceType
   return { id };
 }
 
-async function recordStatement(
+export async function recordStatementRow(
   businessId: string,
   input: IngestStatementInput,
   parsed: ParsedStatement | null,
@@ -183,14 +204,11 @@ async function recordStatement(
 }
 
 /**
- * Parses a statement and stores the normalized rows for a business.
- *
- * Failure modes are explicit `StatementParseError`s (unreadable file, wrong
- * statement type, < 30 days of history, missing shortcode) — the failed
- * upload is still recorded for audit, and the caller gets a 400 with a
- * machine-readable code rather than a stack trace.
+ * Parse the statement, dedupe by provider receipt id and write the rows.
+ * Deliberately does NOT write to the ledger — the Orbit ledger worker owns
+ * that step so ordering and idempotency are explicit.
  */
-export async function ingestStatement(businessId: string, input: IngestStatementInput): Promise<IngestStatementResult> {
+export async function normalizeStatement(businessId: string, input: IngestStatementInput): Promise<NormalizeStatementResult> {
   const business = await getBusiness(businessId);
   if (!business) throw new OnboardingError("business_not_found", "Business not found.");
 
@@ -201,7 +219,7 @@ export async function ingestStatement(businessId: string, input: IngestStatement
 
   if ((input.sourceType === "business_till" || input.sourceType === "business_paybill") && !input.shortcode?.trim()) {
     const error = new StatementParseError("missing_shortcode", "A till or paybill shortcode is required for this statement type.");
-    await recordStatement(businessId, input, null, error);
+    await recordStatementRow(businessId, input, null, error);
     throw error;
   }
 
@@ -210,15 +228,15 @@ export async function ingestStatement(businessId: string, input: IngestStatement
     parsed = parseStatement(input.sourceType, input.content, { shortcode: input.shortcode });
   } catch (err) {
     if (err instanceof StatementParseError) {
-      await recordStatement(businessId, input, null, err);
+      await recordStatementRow(businessId, input, null, err);
     }
     throw err;
   }
 
   const shortcode = parsed.shortcode ?? `stmt-${businessId}`;
-  await ensureShortcode(businessId, input.sourceType, shortcode, input.label);
-  const account = await ensureAccount(businessId, input.sourceType, shortcode);
-  const statement = await recordStatement(businessId, input, parsed, null);
+  await ensureStatementShortcode(businessId, input.sourceType, shortcode, input.label);
+  const account = await ensureStatementAccount(businessId, input.sourceType, shortcode);
+  const statement = await recordStatementRow(businessId, input, parsed, null);
 
   let imported = 0;
   let duplicates = 0;
@@ -227,9 +245,8 @@ export async function ingestStatement(businessId: string, input: IngestStatement
   try {
     await dbTransaction(async () => {
       for (const row of parsed.rows) {
-        const id = randomUUID();
         const result = await dbRun(sql, {
-          id,
+          id: randomUUID(),
           account_id: account.id,
           business_id: businessId,
           subject_type: "business",
@@ -252,32 +269,10 @@ export async function ingestStatement(businessId: string, input: IngestStatement
           duplicates++;
           continue;
         }
-
         imported++;
-        await appendEvent("business", businessId, "business.transaction.ingested", {
-          transaction_id: id,
-          statement_id: statement.id,
-          source_type: input.sourceType,
-          shortcode,
-          amount: row.amount,
-          direction: row.type,
-          status: row.status,
-          occurred_at: row.occurred_at,
-        });
       }
 
       await dbRun(`UPDATE statements SET imported_count = ?, duplicate_count = ? WHERE id = ?`, [imported, duplicates, statement.id]);
-      await appendEvent("business", businessId, "statement.ingested", {
-        statement_id: statement.id,
-        source_type: input.sourceType,
-        shortcode,
-        period_start: parsed.periodStart,
-        period_end: parsed.periodEnd,
-        rows: parsed.rows.length,
-        imported,
-        duplicates,
-        warnings: parsed.warnings.length,
-      });
     });
   } catch (err) {
     await dbRun(`UPDATE statements SET status = 'failed', error_code = ?, error_message = ? WHERE id = ?`, [
@@ -288,10 +283,82 @@ export async function ingestStatement(businessId: string, input: IngestStatement
     throw new OnboardingError("ingestion_failed", "The statement could not be stored; no partial data was committed.");
   }
 
+  return { statement: { ...statement, imported_count: imported, duplicate_count: duplicates }, parsed, shortcode, imported, duplicates, warnings: parsed.warnings };
+}
+
+/**
+ * Ledger idempotency: has this exact event already been written?
+ * The event payload carries a stable id (transaction id / statement id), so a
+ * retried ledger job is a no-op instead of a duplicate chain entry.
+ */
+async function ledgerHasEvent(subjectType: "business" | "person", subjectId: string, eventType: string, needle: string): Promise<boolean> {
+  const row = await dbGet<{ found: number }>(
+    `SELECT 1 AS found FROM ledger WHERE subject_type = ? AND subject_id = ? AND event_type = ? AND event_data LIKE ? LIMIT 1`,
+    [subjectType, subjectId, eventType, `%${needle}%`]
+  );
+  return !!row;
+}
+
+/** Writes the ingested statement + its transactions to the hash chain, once. */
+export async function ledgerStatementIngestion(businessId: string, statementId: string): Promise<{ ledgered: number; skipped: number }> {
+  const statement = await dbGet<StatementRecord>(`SELECT * FROM statements WHERE id = ?`, [statementId]);
+  if (!statement) throw new Error(`statement_not_found: ${statementId}`);
+
+  const rows = await dbAll<{ id: string; amount: number; type: string; status: string; occurred_at: string }>(
+    `SELECT id, amount, type, status, occurred_at FROM transactions WHERE statement_id = ?`,
+    [statementId]
+  );
+
+  let ledgered = 0;
+  let skipped = 0;
+  for (const txn of rows) {
+    const already = await ledgerHasEvent("business", businessId, "business.transaction.ingested", `"transaction_id":"${txn.id}"`);
+    if (already) {
+      skipped++;
+      continue;
+    }
+    await appendEvent("business", businessId, "business.transaction.ingested", {
+      transaction_id: txn.id,
+      statement_id: statementId,
+      source_type: statement.source_type,
+      shortcode: statement.shortcode,
+      amount: txn.amount,
+      direction: txn.type,
+      status: txn.status,
+      occurred_at: txn.occurred_at,
+    });
+    ledgered++;
+  }
+
+  const summaryAlready = await ledgerHasEvent("business", businessId, "statement.ingested", `"statement_id":"${statementId}"`);
+  if (!summaryAlready) {
+    await appendEvent("business", businessId, "statement.ingested", {
+      statement_id: statementId,
+      source_type: statement.source_type,
+      shortcode: statement.shortcode,
+      period_start: statement.period_start,
+      period_end: statement.period_end,
+      rows: statement.row_count,
+      imported: statement.imported_count,
+      duplicates: statement.duplicate_count,
+    });
+  }
+
+  return { ledgered, skipped };
+}
+
+/**
+ * Pre-Orbit synchronous composition (normalize + ledger). Kept for callers that
+ * need a one-shot ingest; the API upload path now uses the Orbit workflow.
+ */
+export async function ingestStatement(businessId: string, input: IngestStatementInput): Promise<IngestStatementResult> {
+  const normalized = await normalizeStatement(businessId, input);
+  await ledgerStatementIngestion(businessId, normalized.statement.id);
+
   return {
-    statement: { ...statement, imported_count: imported, duplicate_count: duplicates },
-    transactionsImported: imported,
-    duplicatesSkipped: duplicates,
-    warnings: parsed.warnings,
+    statement: normalized.statement,
+    transactionsImported: normalized.imported,
+    duplicatesSkipped: normalized.duplicates,
+    warnings: normalized.warnings,
   };
 }

@@ -14,6 +14,8 @@ import path from "path";
  */
 export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath: string } {
   process.env.AFRISCORE_ADMIN_TOKEN = "test-only-admin-token-at-least-32-characters";
+  // Orbit tests always use the in-memory queue backend, never a live Redis.
+  delete process.env.REDIS_URL;
   const pgUrl = process.env.TEST_DATABASE_URL;
 
   if (pgUrl) {
@@ -34,6 +36,10 @@ export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath
  */
 export async function truncateAll(dbRun: (sql: string, params?: any[]) => Promise<any>) {
   const tables = [
+    "unmatched_payments",
+    "dead_letter_jobs",
+    "workflow_events",
+    "workflows",
     "invoice_payments",
     "business_links",
     "statements",
