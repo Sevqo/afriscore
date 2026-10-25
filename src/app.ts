@@ -1,6 +1,8 @@
 // First import on purpose: src/config.ts loads a local .env before ./db is
 // imported below, and the DB adapter snapshots DATABASE_URL at import time.
 import { config } from "./config";
+import { auth, sameOrigin } from './platform/auth';
+import { platform } from './platform/routes';
 import express from "express";
 import path from "node:path";
 import { dbGet, isPostgres } from "./db";
@@ -67,7 +69,10 @@ export function createApp() {
   // Limit before parsing: an unauthenticated flood should be rejected without
   // paying for JSON parsing (and its 1 MB body allowance).
   app.use(ipRateLimit);
-  app.use(express.json({ limit: "1mb" }));
+  app.use(express.json({ limit: "1mb", verify: (req,_res,body) => { (req as any).rawBody = body.toString("utf8"); } }));
+  app.use('/api/auth', sameOrigin, auth);
+  app.use('/api/v1', sameOrigin, platform);
+  app.get('/api/openapi.json', (_req,res) => res.sendFile(path.join(process.cwd(), 'platform-openapi.json')));
 
   // Liveness: process-only, deliberately does NOT touch the database, so a
   // slow DB cannot cause an orchestrator to kill a healthy process.
@@ -118,6 +123,14 @@ export function createApp() {
   app.use("/v1/webhooks", webhookRoutes);
   app.use("/v1/sandbox", sandboxRoutes);
 
+  app.use((req,res,next) => {
+    if (!req.path.startsWith('/api/') && !req.path.startsWith('/v1/')) {
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    }
+    next();
+  });
+  app.use(express.static(path.join(process.cwd(), 'website/dist')));
+  app.get(['/app','/app/{*path}','/checkout/{*path}','/signin','/signup','/recover','/reset','/verify','/products/{*path}','/solutions/{*path}','/developers','/docs','/sandbox','/security','/about','/contact','/support','/pricing','/privacy','/terms'], (_req,res) => res.sendFile(path.join(process.cwd(), 'website/dist/index.html')));
   app.use((req: RequestWithContext, res) => res.status(404).json({ error: "not_found", path: req.originalUrl }));
 
   // Terminal handler: body-parser errors become 400/413, thrown errors keep

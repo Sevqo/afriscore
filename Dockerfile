@@ -37,6 +37,13 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
+FROM base AS website-build
+WORKDIR /app/website
+COPY website/package.json website/package-lock.json ./
+RUN npm ci
+COPY website ./
+RUN npm run build
+
 # --- Production dependencies only ------------------------------------------
 FROM base AS production-deps
 
@@ -51,7 +58,9 @@ ENV NODE_ENV=production \
     PORT=4000 \
     DB_PATH=/app/data/afriscore.db
 
-COPY package.json ./
+COPY package.json platform-openapi.json ./
+COPY dashboard ./dashboard
+COPY --from=website-build /app/website/dist ./website/dist
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 

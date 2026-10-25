@@ -1,3 +1,4 @@
+import { migratePlatform } from '../platform/schema';
 import { dbExec, isPostgres, rawSqliteDb } from "./adapter";
 
 // Table/column types here (TEXT, REAL, INTEGER) are valid in both SQLite
@@ -303,6 +304,7 @@ const SCHEMA = `
 
 export async function migrate(): Promise<void> {
   await dbExec(SCHEMA);
+  await migratePlatform();
 
   if (isPostgres) {
     await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS matched_invoice_id TEXT;`);

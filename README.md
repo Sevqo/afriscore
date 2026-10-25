@@ -728,3 +728,13 @@ SECURITY.md                 - disclosure process and security model
 CONTRIBUTING.md             - setup, tests and contribution conventions
 .github/workflows/ci.yml    - SQLite, PostgreSQL, type-check, OpenAPI, website CI
 ```
+
+## AfriCore Phase 1/2 workspace implementation
+
+The redesigned public website and authenticated sandbox app share this API origin. Existing AfriScore consent APIs and records remain intact; new users do not implicitly claim legacy businesses.
+
+Quick start: root `npm ci` and `npm run build`; in `website`, `npm ci` and `npm run build`; root `npm start`, then open `http://localhost:4000`. Register at `/signup`, verify with the local development token and open `/app`.
+
+Read [implementation status](docs/IMPLEMENTATION_STATUS.md), [architecture](docs/ARCHITECTURE.md), [deployment](docs/DEPLOYMENT.md), [workspace API](docs/API.md) and [media system](docs/DESIGN_SYSTEM.md). `npm run validate:platform` checks new route documentation, while `npm run validate:openapi` validates existing APIs.
+
+Production registration/recovery awaits email delivery. Live payments are disabled; sandbox checkout moves no funds. Acceptance gaps and continuation work are explicit in the status document.

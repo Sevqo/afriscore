@@ -100,7 +100,9 @@ function collectCodeRoutes(repoRoot = REPO_ROOT) {
   // Direct app-level routes: app.get("/v1/health", ...)
   const directRe = /\bapp\.(get|post|put|patch|delete)\s*\(\s*["']([^"']+)["']/g;
   while ((match = directRe.exec(appSource)) !== null) {
-    routes.add(`${match[1].toUpperCase()} ${normalizePath(match[2])}`);
+    // Workspace /api routes have their own generated contract and drift check.
+    if (!match[2].startsWith('/v1/')) continue;
+    routes.add(match[1].toUpperCase() + ' ' + normalizePath(match[2]));
   }
 
   // Mounted routers: app.use("/v1/businesses", businessRoutes)

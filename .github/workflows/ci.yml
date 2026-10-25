@@ -25,6 +25,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run validate:openapi
+      - run: npm run validate:platform
 
   test-postgres:
     name: Tests (PostgreSQL)

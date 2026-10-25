@@ -23,7 +23,8 @@ test-*.db-wal
 .github/
 
 # Not needed by the API image
-website/
+website/node_modules/
+website/dist/
 reviews/
 scripts/
 openapi.json

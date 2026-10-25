@@ -2,6 +2,7 @@
 // file as a side effect, and the DB adapter (imported below via ./db) reads
 // process.env.DATABASE_URL at import time to choose SQLite vs PostgreSQL.
 import { config, validateConfig } from "./config";
+import { deliverWebhooks } from './platform/payments';
 import type { Server } from "node:http";
 import { migrate, isPostgres, closeDb } from "./db";
 import { createApp } from "./app";
@@ -26,7 +27,11 @@ async function main(): Promise<void> {
     throw new Error(`Invalid configuration (${errors.length} problem${errors.length === 1 ? "" : "s"}); refusing to start.`);
   }
 
+  if (process.env.NODE_ENV === 'production' && (!process.env.AFRICORE_ENCRYPTION_KEY || process.env.AFRICORE_ENCRYPTION_KEY.length < 32)) throw new Error('AFRICORE_ENCRYPTION_KEY must be 32+ characters');
+  if (process.env.NODE_ENV === 'production' && !process.env.AFRICORE_PUBLIC_ORIGIN?.startsWith('https://')) throw new Error('AFRICORE_PUBLIC_ORIGIN must be an HTTPS origin');
   await migrate();
+  const webhookTimer = setInterval(() => { deliverWebhooks().catch(error => logger.error('webhook_worker_failed', { message: String(error) })); }, 10000);
+  webhookTimer.unref();
 
   const app = createApp();
   const server: Server = app.listen(config.port, () => {

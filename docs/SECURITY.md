@@ -1,0 +1,16 @@
+# Security
+Owner: AfriCore engineering. Reviewed: 2026-10-25.
+
+Every workspace operation resolves server-side membership or hashed scoped credential. Queries include org/environment predicates. Owner/admin manage team/developers; finance manages invoices/payments/imports; operations handles customers/orders; viewer reads. API keys cannot request admin scope or mint new keys.
+
+Scrypt passwords, random salts, timing-safe comparison, hashed 256-bit sessions, HttpOnly/SameSite cookies and Secure in production. Recovery consumes tokens and revokes sessions atomically. JSON-only writes plus origin/Sec-Fetch-Site checks protect browser mutations. Development verification/recovery token return must never be publicly exposed. Production registration/recovery is disabled pending email delivery.
+
+PostgreSQL RLS blocks untrusted direct roles; trusted table-owner backend bypasses RLS and enforces authorization in services. No browser DB credentials. See DATABASE.md for limitations. HTTP tests verify tenant/role/environment denial.
+
+Opaque checkout tokens are hashed, expire and are redacted from access logs. Referrer policy is no-referrer. Configure reverse proxy/error logs to redact checkout paths and recovery query tokens too. No cookies/bodies/secrets should be logged. Production responses use no-store; maintain it at proxies. Website CSP permits same-origin assets; API CSP remains restrictive.
+
+Only trusted adapters/signed sandbox callbacks advance payment state. Financial history is append-only by service convention. Independent 32+ character encryption key and HTTPS public origin are required at production startup. Public HTTPS webhook allowlist plus egress restrictions are essential; application DNS checks alone cannot eliminate rebinding.
+
+Verified engineer allowlist controls internal access independently of workspace role. Kai has no provider and does not generate fabricated replies or receive customer data.
+
+Remaining gates: external audit, retention/deletion, incident procedures, legal terms/support, distributed rate limits/worker leases, complete browser accessibility QA, PostgreSQL verification and real provider certification. No compliance claim. Database administrators can change workspace journal records; independent external anchoring is not implemented.
