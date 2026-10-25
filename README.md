@@ -628,25 +628,29 @@ shapes documented here; keep them in sync when the API changes.
 ### Test the website on a phone
 
 Connect your phone and computer to the same trusted Wi-Fi network. From the
-repository root, install dependencies once with `npm ci` and
-`npm ci --prefix website`. Start the API in one terminal:
+repository root, install dependencies once:
+
+```bash
+npm ci
+npm ci --prefix website
+```
+
+Then start the API and Vite together in one terminal:
 
 ```bash
 npm run dev
 ```
 
-Start Vite in a second terminal:
-
-```bash
-npm run dev:website
-```
-
-Vite listens on the local network at port `5175` and proxies `/api` requests
-to the API on the computer. Find the computer's local IPv4 address (run
-`ipconfig` on Windows), then open `http://<computer-ip>:5175` on your phone;
-for example, `http://192.168.1.25:5175`. If Windows Firewall prompts you,
-allow Node.js on private networks. Do not expose this development server to
-public networks.
+The terminal prints Vite's local and network URLs. On your phone, connected
+to the same Wi-Fi network, open the network URL ending in `:5175`; Vite proxies
+`/api` requests to the API on your computer. The command keeps routine API
+configuration notices out of the way; actual API errors remain visible.
+If either service is already running, the command reuses it rather than
+starting a duplicate. If port `5175` is occupied by another app, Vite
+automatically selects the next available port and prints its network URLs.
+If Windows Firewall prompts you, allow Node.js on private networks. Press
+Ctrl+C to stop servers started by this command. Do not expose this development
+server to public networks.
 
 The operational business dashboard and lender card are served by the API
 itself at `/dashboard` (see [Business track](#business-track)) — dependency
