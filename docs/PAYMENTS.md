@@ -14,3 +14,6 @@ Authorized merchant/shortcode access, Daraja app credentials, applicable passkey
 
 ## Webhooks
 Atomic durable outbox, AES-256-GCM encrypted secrets (AFRICORE_ENCRYPTION_KEY), HMAC-SHA256(timestamp + dot + exact JSON). AfriCore-Delivery remains stable across retries/replay. Five attempts with exponential delay then dead_letter. Authorized replay resets attempts. Secret rotation is immediate and requires receiver coordination. Reused target validation checks HTTPS/public DNS/private addresses/allowlist and rejects redirects; deployment egress controls are still needed against DNS rebinding. Worker is single-instance polling every 10 seconds.
+
+## Stage 2 protected-purchase separation
+See PROTECTED_PAYMENTS.md and DISPUTES.md. This is a separate sandbox arrangement/settlement workflow, not a new bank ledger or live escrow. Standard checkout and invoice creation cannot collect again against an active protected order. Seller reports/connector samples cannot establish partner confirmation. A release/refund request and simulated confirmation remain distinct; no production fund movement occurs.

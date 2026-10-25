@@ -1,0 +1,449 @@
+import { automationTemplates, automationSchema } from './contracts';
+export { automationTemplates, automationSchema } from './contracts';
+import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
+import { dbAll, dbGet, dbRun } from '../db';
+import { Access, audit, fail } from '../platform/auth';
+import { permitted } from '../platform/domain';
+import { now } from '../platform/crypto';
+import { all, atomic, change, create, day, get, legacy } from './store';
+import { emit } from './events';
+
+export async function notify(
+  a: Access,
+  input: {
+    category: string;
+    title: string;
+    body: string;
+    resource_id?: string;
+    key: string;
+    user_id?: string;
+  },
+) {
+  const members = await dbAll(
+    'SELECT user_id FROM ac_memberships WHERE org_id=?' +
+      (input.user_id ? ' AND user_id=?' : ''),
+    [a.org, ...(input.user_id ? [input.user_id] : [])],
+  );
+  const prefs = await all(a, 'notification_preferences');
+  let inserted = 0;
+  for (const member of members) {
+    const pref = prefs.find((p) => p.user_id === member.user_id);
+    if (pref?.paused || pref?.muted_categories?.includes(input.category))
+      continue;
+    const cap = await dbGet(
+      'SELECT COUNT(*) AS total FROM ac2_notifications WHERE org_id=? AND user_id=? AND created_at>=?',
+      [a.org, member.user_id, day() + 'T00:00:00'],
+    );
+    if (Number(cap.total) >= 100) continue;
+    const result = await dbRun(
+      'INSERT INTO ac2_notifications(id,org_id,environment,user_id,category,title,body,resource_id,dedupe_key,created_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(org_id,environment,user_id,dedupe_key) DO NOTHING',
+      [
+        randomUUID(),
+        a.org,
+        a.environment,
+        member.user_id,
+        input.category,
+        input.title,
+        input.body,
+        input.resource_id || null,
+        input.key,
+        now(),
+      ],
+    );
+    inserted += result.changes;
+  }
+  return { inserted };
+}
+export async function createAutomation(a: Access, input: unknown) {
+  const d = automationSchema.parse(input);
+  if (a.api) fail(403, 'A member must own an automation');
+  return atomic(a, () =>
+    create(a, 'automations', { ...d, created_by: a.actor }),
+  );
+}
+export async function setAutomation(a: Access, id: string, enabled: boolean) {
+  return atomic(a, async () => {
+    const w = await get(a, id, 'automations');
+    const result = await change(a, w, { enabled });
+    await audit(
+      a.org,
+      a.actor,
+      enabled ? 'automation.resumed' : 'automation.paused',
+      id,
+    );
+    return result;
+  });
+}
+export async function notificationPreferences(a: Access, input: unknown) {
+  if (a.api) fail(403, 'Member session required');
+  const d = z
+    .object({
+      paused: z.boolean(),
+      muted_categories: z
+        .array(
+          z.enum([
+            'payments',
+            'invoices',
+            'cash_flow',
+            'reconciliation',
+            'integrations',
+            'orders',
+            'deliveries',
+            'protected_payments',
+            'automation_failures',
+            'security',
+            'team',
+          ]),
+        )
+        .max(11),
+    })
+    .strict()
+    .parse(input);
+  return atomic(a, async () => {
+    const existing = (await all(a, 'notification_preferences')).find(
+      (p) => p.user_id === a.actor,
+    );
+    return existing
+      ? change(a, existing, d)
+      : create(a, 'notification_preferences', { ...d, user_id: a.actor });
+  });
+}
+async function candidates(a: Access, w: any, at: Date) {
+  const template = automationTemplates.find((t) => t.id === w.template)!;
+  if (template.trigger !== 'schedule')
+    return (
+      await dbAll(
+        'SELECT * FROM ac2_events WHERE org_id=? AND environment=? AND event_type=? AND occurred_at>=? ORDER BY occurred_at LIMIT 100',
+        [a.org, a.environment, template.trigger, w.created_at],
+      )
+    ).map((e) => ({
+      key: e.id,
+      resource_id: e.resource_id,
+      payload: JSON.parse(e.payload),
+    }));
+  const today = day(at),
+    hour = Number(
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Africa/Nairobi',
+        hour: 'numeric',
+        hourCycle: 'h23',
+      }).format(at),
+    );
+  if (hour < w.schedule.hour) return [];
+  const weekly =
+    w.schedule.frequency === 'weekly' || w.template === 'weekly_cashflow';
+  const key = weekly
+    ? new Date(
+        Date.parse(today + 'T00:00:00Z') -
+          ((new Date(today).getUTCDay() + 6) % 7) * 86400000,
+      )
+        .toISOString()
+        .slice(0, 10)
+    : today;
+  if (
+    ['invoice_due_soon', 'invoice_overdue', 'customer_follow_up'].includes(
+      w.template,
+    )
+  ) {
+    const invoices = await legacy(a, 'invoices');
+    return invoices
+      .filter(
+        (i) =>
+          i.currency === w.conditions.currency &&
+          !['draft', 'voided', 'paid'].includes(i.status) &&
+          i.total_minor - i.paid_minor >= w.conditions.minimum_minor &&
+          (w.template === 'invoice_due_soon'
+            ? i.due_date >= today &&
+              i.due_date <=
+                new Date(
+                  Date.parse(today) + w.conditions.days_before_due * 86400000,
+                )
+                  .toISOString()
+                  .slice(0, 10)
+            : i.due_date < today),
+      )
+      .map((i) => ({
+        key: key + ':' + i.id,
+        resource_id: i.id,
+        payload: {
+          id: i.id,
+          reference: i.reference,
+          currency: i.currency,
+          amount_minor: i.total_minor - i.paid_minor,
+        },
+      }));
+  }
+  return [{ key, resource_id: undefined, payload: {} }];
+}
+export async function runAutomations(a: Access, at = new Date()) {
+  return atomic(a, async () => {
+    await dbRun(
+      "UPDATE ac2_approvals SET status='expired' WHERE org_id=? AND environment=? AND status='pending' AND expires_at<?",
+      [a.org, a.environment, at.toISOString()],
+    );
+    const workflows = await all(a, 'automations');
+    let queued = 0;
+    for (const w of workflows.filter((w) => w.enabled)) {
+      const member = await dbGet(
+        'SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',
+        [a.org, w.created_by],
+      );
+      if (!member || !permitted(member.role, 'finance')) {
+        await change(a, w, {
+          enabled: false,
+          last_error: 'owner_permission_revoked',
+        });
+        await notify(a, {
+          category: 'automation_failures',
+          title: 'Automation paused',
+          body: 'Its owner no longer has finance permissions.',
+          resource_id: w.id,
+          key: 'permission:' + w.id,
+        });
+        continue;
+      }
+      for (const trigger of await candidates(a, w, at)) {
+        if (
+          trigger.payload.currency &&
+          trigger.payload.currency !== w.conditions.currency
+        )
+          continue;
+        if (
+          trigger.payload.amount_minor !== undefined &&
+          trigger.payload.amount_minor < w.conditions.minimum_minor
+        )
+          continue;
+        if (queued >= 50) break;
+        const result = await dbRun(
+          'INSERT INTO ac2_runs(id,org_id,environment,workflow_id,trigger_key,status,next_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(org_id,environment,workflow_id,trigger_key) DO NOTHING',
+          [
+            randomUUID(),
+            a.org,
+            a.environment,
+            w.id,
+            trigger.key,
+            'pending',
+            at.toISOString(),
+            at.toISOString(),
+            at.toISOString(),
+          ],
+        );
+        queued += result.changes;
+      }
+    }
+    const runs = await dbAll(
+      "SELECT * FROM ac2_runs WHERE org_id=? AND environment=? AND status='pending' AND next_at<=? ORDER BY created_at LIMIT 50",
+      [a.org, a.environment, at.toISOString()],
+    );
+    for (const run of runs) {
+      const w = await get(a, run.workflow_id, 'automations');
+      if (!w.enabled) {
+        await dbRun(
+          "UPDATE ac2_runs SET status='cancelled',updated_at=? WHERE id=?",
+          [now(), run.id],
+        );
+        continue;
+      }
+      try {
+        const template = automationTemplates.find((t) => t.id === w.template);
+        if (!template) throw new Error('unsupported_template');
+        const resource = run.trigger_key.split(':').at(-1);
+        let body =
+          'A business record needs your review. This is an in-app reminder; no customer message or financial action was sent.';
+        if (['daily_summary', 'weekly_cashflow'].includes(w.template)) {
+          const { financialSnapshot } = await import('./intelligence');
+          const { day, addDays } = await import('./store');
+          const end = day(at),
+            start = addDays(end, w.template === 'weekly_cashflow' ? -6 : 0),
+            summary = await financialSnapshot(
+              a,
+              { currency: w.conditions.currency, from: start, to: end },
+              end,
+            );
+          body =
+            'Recorded ' +
+            start +
+            ' to ' +
+            end +
+            ': confirmed collections ' +
+            summary.totals.confirmed_inflows_minor +
+            ' ' +
+            w.conditions.currency +
+            ' minor units; recorded outflows ' +
+            summary.totals.recorded_outflows_minor +
+            '; outstanding receivables ' +
+            summary.totals.outstanding_minor +
+            '. Coverage limits apply; this is not profit or a bank balance.';
+        }
+        await notify(a, {
+          category: template.category,
+          title: template.name,
+          body,
+          resource_id: resource,
+          key: 'automation:' + run.id,
+          user_id: w.created_by,
+        });
+        await dbRun(
+          "UPDATE ac2_runs SET status='succeeded',attempts=attempts+1,result=?,updated_at=? WHERE id=?",
+          [
+            JSON.stringify({
+              action: 'in_app_notification',
+              external_messages_sent: 0,
+            }),
+            now(),
+            run.id,
+          ],
+        );
+        await audit(a.org, w.created_by, 'automation.succeeded', run.id);
+      } catch (error) {
+        const attempts = run.attempts + 1;
+        await dbRun(
+          'UPDATE ac2_runs SET status=?,attempts=?,result=?,next_at=?,updated_at=? WHERE id=?',
+          [
+            attempts >= 3 ? 'dead_letter' : 'pending',
+            attempts,
+            JSON.stringify({ error: 'execution_failed' }),
+            new Date(at.getTime() + 1000 * 2 ** attempts).toISOString(),
+            now(),
+            run.id,
+          ],
+        );
+        if (attempts >= 3) {
+          await emit(a, 'automation.run_failed', {
+            id: run.id,
+            workflow_id: w.id,
+          });
+          await notify(a, {
+            category: 'automation_failures',
+            title: 'Automation needs attention',
+            body: 'The run exhausted its retry policy.',
+            resource_id: w.id,
+            key: 'failure:' + run.id,
+          });
+        }
+      }
+    }
+    return { queued, processed: runs.length };
+  });
+}
+export async function requestApproval(a: Access, input: unknown) {
+  if (a.api) fail(403, 'A human member must request approval');
+  const d = z
+    .object({
+      approver: z.string().uuid(),
+      action: z.enum([
+        'protected_release',
+        'protected_refund',
+        'dispute_resolution',
+        'sensitive_integration_change',
+        'invoice_adjustment',
+        'manual_reconciliation',
+      ]),
+      resource_id: z.string().uuid(),
+    })
+    .strict()
+    .parse(input);
+  if (d.approver === a.actor) fail(400, 'Choose a different approver');
+  const m = await dbGet(
+    'SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',
+    [a.org, d.approver],
+  );
+  if (!m || !['owner', 'admin'].includes(m.role))
+    fail(400, 'Approver must be an owner or admin');
+  const kind =
+    d.action === 'dispute_resolution'
+      ? 'disputes'
+      : d.action.startsWith('protected_')
+        ? 'protected_sales'
+        : d.action === 'sensitive_integration_change'
+          ? 'connectors'
+          : undefined;
+  if (kind) await get(a, d.resource_id, kind);
+  else {
+    const object = await dbGet(
+      'SELECT id FROM ac_records WHERE id=? AND org_id=? AND environment=?',
+      [d.resource_id, a.org, a.environment],
+    );
+    if (!object) fail(404, 'Resource not found');
+  }
+  const id = randomUUID();
+  await dbRun(
+    'INSERT INTO ac2_approvals(id,org_id,environment,requester,approver,action,resource_id,status,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [
+      id,
+      a.org,
+      a.environment,
+      a.actor,
+      d.approver,
+      d.action,
+      d.resource_id,
+      'pending',
+      new Date(Date.now() + 86400000).toISOString(),
+      now(),
+    ],
+  );
+  await audit(a.org, a.actor, 'approval.requested', id);
+  await emit(a, 'approval.requested', { id, resource_id: d.resource_id });
+  await notify(a, {
+    category: 'security',
+    title: 'Approval requested',
+    body: 'Review the request before deciding. Self-approval is not permitted.',
+    resource_id: id,
+    key: id,
+    user_id: d.approver,
+  });
+  return { id, ...d, status: 'pending' };
+}
+export async function decideApproval(a: Access, id: string, input: unknown) {
+  if (a.api) fail(403, 'Human session required');
+  const d = z
+    .object({
+      decision: z.enum(['approved', 'rejected']),
+      reason: z.string().trim().min(5).max(1000),
+    })
+    .strict()
+    .parse(input);
+  return atomic(a, async () => {
+    const approval = await dbGet(
+      'SELECT * FROM ac2_approvals WHERE id=? AND org_id=? AND environment=?',
+      [id, a.org, a.environment],
+    );
+    if (!approval) fail(404, 'Approval not found');
+    if (approval.approver !== a.actor || approval.requester === a.actor)
+      fail(403, 'Assigned non-requesting approver required');
+    if (approval.status !== 'pending' || approval.expires_at < now())
+      fail(409, 'Approval is closed or expired');
+    await dbRun(
+      'UPDATE ac2_approvals SET status=?,reason=?,decided_at=? WHERE id=?',
+      [d.decision, d.reason, now(), id],
+    );
+    await audit(a.org, a.actor, 'approval.' + d.decision, id);
+    await emit(a, 'approval.decided', { id, status: d.decision });
+    return { id, status: d.decision, executed: false };
+  });
+}
+export async function requireApproval(
+  a: Access,
+  id: string | undefined,
+  action: string,
+  resource: string,
+) {
+  if (!id) fail(409, 'An approved request is required');
+  const approval = await dbGet(
+    "SELECT * FROM ac2_approvals WHERE id=? AND org_id=? AND environment=? AND action=? AND resource_id=? AND status='approved' AND expires_at>?",
+    [id, a.org, a.environment, action, resource, now()],
+  );
+  if (!approval || approval.requester !== a.actor)
+    fail(
+      403,
+      'An unexpired approval for this requester and resource is required',
+    );
+  const approver = await dbGet(
+    'SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',
+    [a.org, approval.approver],
+  );
+  if (!approver || !['owner', 'admin'].includes(approver.role))
+    fail(403, 'Approver authority revoked');
+  return approval;
+}

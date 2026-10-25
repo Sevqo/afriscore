@@ -1,3 +1,4 @@
+import { Stage2Workspace, stage2Tabs } from './stage2/Stage2Workspace';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from './App';
 export async function api(
@@ -275,6 +276,7 @@ export function Checkout() {
 }
 const tabs = [
   'Overview',
+  ...stage2Tabs,
   'Payments',
   'Orders',
   'Invoices',
@@ -322,7 +324,10 @@ export function BusinessApp() {
     headers?: Record<string, string>,
   ) => api(base + suffix, method, body, environment, headers);
   async function load() {
-    if (!org) return;
+    if (!org || stage2Tabs.includes(tab)) {
+      setError('');
+      return;
+    }
     setBusy(true);
     setError('');
     setData(null);
@@ -894,6 +899,16 @@ export function BusinessApp() {
                     </button>
                   </div>
                 </form>
+              )}
+              {stage2Tabs.includes(tab) && (
+                <Stage2Workspace
+                  key={org + environment + tab}
+                  section={tab}
+                  org={org}
+                  environment={environment}
+                  role={organization?.role || 'viewer'}
+                  onNavigate={setTab}
+                />
               )}
               {busy && !data && (
                 <div className="skeleton" role="status">

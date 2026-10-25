@@ -1,4 +1,17 @@
-# Implementation status
+# Implementation status — Stage 2
+Reviewed: 2026-10-25. Phase 1/2 foundation retained; main baseline 7786e7c includes the user's concurrent-development updates.
+
+Phases 3/4 now have an integrated local sandbox implementation. Delivered: currency/date/provenance-aware intelligence, four forecast horizons/scenarios, expense corrections/obligations, optional read-only AI explanations, ten durable in-app automation templates, preferences/notifications/assigned approvals, item shipments/encrypted evidence, opaque buyer portal, protected purchase/dispute/release/refund simulator, explicit connector imports and retries, explainable risk review, private engineering docs/aggregate operations and ten original editable SVG scenes.
+
+Migration 002-stage2 is additive. Existing financial allocation/journal and legacy consent APIs remain authoritative. Standard checkout/invoicing cannot double-collect active protected orders; full receipt requires all purchased quantities shipped. No real funds, live partner or financing is introduced.
+
+Current verification and final report: [STAGE2_TEST_RESULTS.md](STAGE2_TEST_RESULTS.md). Operational limits: [COMPLIANCE_GAPS_STAGE2.md](COMPLIANCE_GAPS_STAGE2.md). Domain methods: INTELLIGENCE.md, FORECASTING.md, AUTOMATIONS.md, AI_ASSISTANT.md, PROTECTED_PAYMENTS.md, DISPUTES.md, DELIVERY_EVIDENCE.md and ILLUSTRATION_SYSTEM.md.
+
+Acceptance remains bounded: real AI output was blocked by project credit exhaustion; protected payments/couriers/accounting/store feeds are simulated; external messaging, independent dispute operations, distributed workers/limits, physical evidence purge, richer analytics/backtesting, full API schemas and accessibility/load/security qualification remain open. Kai is documentation search; Compass is the existing milestone foundation; no live issue sync/autonomous engineering agent. PostgreSQL/Docker runtime was unavailable locally. This is not a production-readiness declaration or complete acceptance of every master-spec item. Capital/blockchain remain deferred.
+
+---
+
+# Stage 1 implementation record (historical)
 Owner: AfriCore engineering. Reviewed: 2026-10-25.
 
 Integrated Phase 1/2 sandbox implementation. This does not declare every master-spec acceptance item complete or production live. Existing infrastructure/data remain intact.

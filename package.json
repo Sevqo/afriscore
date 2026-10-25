@@ -18,7 +18,7 @@
     "test:pg": "npm run build && node --test --test-concurrency=1 \"dist/__tests__/*.test.js\"",
     "typecheck": "tsc --noEmit",
     "validate:openapi": "node scripts/validate-openapi.js",
-    "validate:platform": "node scripts/platform-openapi.js --check"
+    "validate:platform": "npm run build && node scripts/platform-openapi.js --check"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

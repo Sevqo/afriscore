@@ -19,3 +19,8 @@ Delivery incident: inspect Developer history, validate HTTPS/allowlist/certifica
 Reconciliation incident: preserve provider evidence, inspect request/currency/open amount, record review note. Automatic refund/reversal settlement is not enabled. Rollback binaries while retaining ac_ tables and financial history. Restore backups only under an approved incident procedure.
 
 Continue in a new session by reading AGENTS.md and IMPLEMENTATION_STATUS.md, then the relevant runbook. Complete remaining gates before claiming full phase acceptance or real-money readiness.
+
+## Stage 2 operation
+Build both root and website before start; additive migrations run automatically. Keep one API instance. Stage 2 worker polls every 15 seconds for workflows, approval expiry and connector retries. Review dead letters/run history; repair source/config before retry. Production protected-sale endpoints remain disabled regardless of AI configuration.
+
+Optional server-only OPENAI_API_KEY, AFRICORE_AI_MODEL and AFRICORE_AI_DAILY_REQUEST_LIMIT enable bounded AI explanations. Do not copy a developer .env into an image or frontend bundle. Credits must be funded independently; credit_balance_exhausted is a billing gate. See AI_ASSISTANT.md. A live API key does not enable payment partners. Backup encryption keys separately and restore-test evidence before launch. See COMPLIANCE_GAPS_STAGE2.md before changing availability.

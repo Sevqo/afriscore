@@ -14,3 +14,8 @@ Only trusted adapters/signed sandbox callbacks advance payment state. Financial 
 Verified engineer allowlist controls internal access independently of workspace role. Kai has no provider and does not generate fabricated replies or receive customer data.
 
 Remaining gates: external audit, retention/deletion, incident procedures, legal terms/support, distributed rate limits/worker leases, complete browser accessibility QA, PostgreSQL verification and real provider certification. No compliance claim. Database administrators can change workspace journal records; independent external anchoring is not implemented.
+
+## Stage 2 controls and limits
+Tenant/environment capabilities apply across Stage 2 routes. Commerce idempotency binds actor/action/input; buyer tokens are hashed, expire and are redacted in normal/error logs. Buyer views expose only their agreement/tracking/dispute. Separate assigned approvals require current owner/admin authority and expire. Model prompts contain minimized computed data with explicit consent, no direct DB/tool execution; prompts are not stored in AI usage.
+
+Evidence attachments are encrypted and served as authenticated downloads, validated for supported type/size/signature; malware scanning and physical purge remain open. Bearer buyer links are not verified identities. Approval records for non-commerce categories do not universally gate legacy mutations. Initial single-process limits, service-role RLS bypass and incomplete accessibility/load/security audits remain documented deployment constraints.

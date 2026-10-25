@@ -268,3 +268,42 @@ if (new URLSearchParams(window.location.search).get('media-test') === 'svg') {
     background: '#eef2ef',
   };
 }
+pages['/products/intelligence'] = {
+  category: 'AfriCore Intelligence',
+  title: 'Understand your records. Plan with context.',
+  description:
+    'See financial activity, data coverage, customer payment patterns and transparent scenario forecasts from your authorized records.',
+  points: [
+    'Forecast 7, 30, 60 or 90 days with explicit assumptions.',
+    'Distinguish verified collections from merchant-recorded expenses.',
+    'Ask the assistant to explain minimized evidence when its provider is configured.',
+  ],
+  availability:
+    'Forecasts are estimates. AI explanations require configured API access and available provider credits.',
+};
+pages['/products/automations'] = {
+  category: 'Business automations',
+  title: 'Give routine reviews a reliable rhythm.',
+  description:
+    'Set up controlled triggers, conditions and in-app notifications for everyday business follow-up.',
+  points: [
+    'Choose from ten structured workflow templates.',
+    'Inspect run history, retries and deduplicated triggers.',
+    'Pause workflows and manage personal notification preferences.',
+  ],
+  availability:
+    'In-app notifications are available. External email and messaging are not configured; no financial action is automated.',
+};
+pages['/products/protected-payments'] = {
+  category: 'Protected Payments · Sandbox',
+  title: 'Make each step visible.',
+  description:
+    'Test purchase agreements, partner payment evidence, delivery, buyer inspection and reviewed settlement through a realistic sandbox workflow.',
+  points: [
+    'Buyers use an opaque purchase link without a business workspace.',
+    'Evidence retains seller, buyer and partner provenance.',
+    'Disputes and releases require authorized review before the partner simulator confirms an outcome.',
+  ],
+  availability:
+    'Sandbox only. AfriCore does not hold funds. Production protection requires an authorized partner, contracts, operational controls and regulatory review.',
+};

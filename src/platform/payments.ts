@@ -1,3 +1,4 @@
+import { capture } from '../stage2/events';
 import { createHmac, randomUUID } from 'node:crypto';
 import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { hash, now, seal, unseal } from './crypto';
@@ -37,7 +38,8 @@ export async function update(a: Access, id: string, data: any) {
     [JSON.stringify(data), now(), id, a.org, a.environment],
   );
 }
-export async function enqueue(a: Access, type: string, data: any) {
+export async function enqueue(a: Access, type: string, data: any, captureEvent = true) {
+  if(captureEvent) await capture(a,type,data);
   const endpoints = await dbAll(
     'SELECT * FROM ac_endpoints WHERE org_id=? AND environment=?',
     [a.org, a.environment],

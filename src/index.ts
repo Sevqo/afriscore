@@ -3,6 +3,7 @@
 // process.env.DATABASE_URL at import time to choose SQLite vs PostgreSQL.
 import { config, validateConfig } from "./config";
 import { deliverWebhooks } from './platform/payments';
+import { processStage2 } from './stage2/worker';
 import type { Server } from "node:http";
 import { migrate, isPostgres, closeDb } from "./db";
 import { createApp } from "./app";
@@ -32,6 +33,8 @@ async function main(): Promise<void> {
   await migrate();
   const webhookTimer = setInterval(() => { deliverWebhooks().catch(error => logger.error('webhook_worker_failed', { message: String(error) })); }, 10000);
   webhookTimer.unref();
+  const stage2Timer=setInterval(()=>{processStage2().catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);
+  stage2Timer.unref();
 
   const app = createApp();
   const server: Server = app.listen(config.port, () => {

@@ -765,3 +765,8 @@ Quick start: root `npm ci` and `npm run build`; in `website`, `npm ci` and `npm 
 Read [implementation status](docs/IMPLEMENTATION_STATUS.md), [architecture](docs/ARCHITECTURE.md), [deployment](docs/DEPLOYMENT.md), [workspace API](docs/API.md) and [media system](docs/DESIGN_SYSTEM.md). `npm run validate:platform` checks new route documentation, while `npm run validate:openapi` validates existing APIs.
 
 Production registration/recovery awaits email delivery. Live payments are disabled; sandbox checkout moves no funds. Acceptance gaps and continuation work are explicit in the status document.
+
+## AfriCore Stage 2 workspace
+Phases 3/4 now add deterministic financial intelligence and scenario forecasts, a read-only optional AI explanation adapter, persisted in-app automations/approvals, item fulfillment/evidence, protected-payment and dispute sandbox journeys, connector simulations, internal engineering views and ten original SVG scenes. Start with [Stage 2 results](docs/STAGE2_TEST_RESULTS.md) and [implementation status](docs/IMPLEMENTATION_STATUS.md). These workspace calculations differ from the legacy /v1 analytics described above; see [INTELLIGENCE](docs/INTELLIGENCE.md) and [FORECASTING](docs/FORECASTING.md).
+
+Local setup: npm ci; npm --prefix website ci; npm run build; npm --prefix website run build; npm start. For concurrent API/Vite development use npm run dev (retains phone-testing configuration). Migrations run at API startup. Live payment/custody integrations stay disabled. OPENAI_API_KEY and AFRICORE_AI_MODEL are optional server-only settings; secure local setup is ignored by Git and is not supplied by cloning. Current project credits blocked the synthetic live AI check. No production deployment is included.

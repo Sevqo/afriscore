@@ -60,6 +60,7 @@ ENV NODE_ENV=production \
 
 COPY package.json platform-openapi.json ./
 COPY dashboard ./dashboard
+COPY docs ./docs
 COPY --from=website-build /app/website/dist ./website/dist
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

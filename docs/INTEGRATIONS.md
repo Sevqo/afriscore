@@ -8,3 +8,6 @@ Unavailable: authorized M-Pesa/banks/POS/eTIMS/accounting/inventory. Provider ac
 CSV: external_id,amount_minor,currency,type,occurred_at,source,counterparty. Type inflow/outflow; timezone-bearing ISO8601; positive integer minor units. Source/external ID dedupe per org/environment. Quoted fields and escaped quotes are parsed, then validated/committed atomically. Imports cannot mark invoices paid.
 
 Applications own scoped org/environment API credentials stored as hashes and shown once. Rotation creates replacement then revokes old. Webhook secrets are separately encrypted; durable deliveries support retry/dead-letter/replay.
+
+## Stage 2 connector registry
+sandbox_accounting, sandbox_store and sandbox_courier have deterministic manual sync, status/history, disconnect/reconnect, normalization version, 12/hour organization cap and three-attempt exponential retry. Accounting/store batches require explicit user import, use stable deduplication IDs and remain sandbox_simulated/unverified. Courier samples cannot mark a shipment provider-verified. Bank/M-Pesa/eTIMS production entries are unavailable with no fake success. Existing CSV import remains member-authorized. Live adapters need OAuth/credentials, source permissions, field mapping, callback authentication and provider tests.

@@ -31,6 +31,8 @@ function statusClass(status: number): string {
   return `${Math.floor(status / 100)}xx`;
 }
 
+const latencySamples:number[]=[];
+export function operationalSnapshot(){const sorted=[...latencySamples].sort((a,b)=>a-b);const requests=[...state.requests.values()].reduce((s,n)=>s+n,0),errors=[...state.requests].filter(([k])=>k.endsWith('5xx')).reduce((s,[,n])=>s+n,0);return {requests,in_flight:state.inFlight,p95_latency_ms:sorted.length?sorted[Math.min(sorted.length-1,Math.floor(sorted.length*.95))]:null,latency_sample_size:sorted.length,error_rate:requests?errors/requests:0,uptime_seconds:Math.floor((Date.now()-state.startedAt)/1000)};}
 export function metricsMiddleware(req: Request, res: Response, next: NextFunction): void {
   state.inFlight++;
   const started = process.hrtime.bigint();
@@ -38,6 +40,7 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
   res.on("finish", () => {
     state.inFlight = Math.max(0, state.inFlight - 1);
     const durationMs = Number(process.hrtime.bigint() - started) / 1_000_000;
+    latencySamples.push(durationMs); if(latencySamples.length>1000)latencySamples.shift();
     const routeKey = `${req.method}|${statusClass(res.statusCode)}`;
 
     state.requests.set(routeKey, (state.requests.get(routeKey) ?? 0) + 1);
@@ -87,6 +90,7 @@ export function renderMetrics(): string {
 
 /** Test helper. */
 export function resetMetrics(): void {
+  latencySamples.length=0;
   state.requests.clear();
   state.durations.clear();
   state.inFlight = 0;

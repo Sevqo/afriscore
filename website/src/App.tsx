@@ -1,3 +1,6 @@
+import { editorial, publicPageMedia } from './editorial';
+import { EducationalFlow } from './EducationalFlow';
+import { BuyerPortal } from './stage2/BuyerPortal';
 import { useState } from 'react';
 import { pages, media } from './content';
 import {
@@ -16,6 +19,9 @@ const groups: Record<string, [string, string][]> = {
     ['Cash flow & reporting', '/products/cash-flow'],
     ['AfriCore Connect', '/products/connect'],
     ['AfriCore Data', '/products/data'],
+    ['AfriCore Intelligence', '/products/intelligence'],
+    ['Business automations', '/products/automations'],
+    ['Protected Payments · Sandbox', '/products/protected-payments'],
   ],
   Solutions: [
     ['Social commerce', '/solutions/social-commerce'],
@@ -260,7 +266,7 @@ function Home() {
         eyebrow="PAYMENT RECONCILIATION"
         title="A payment received. A record resolved."
         description="Connect confirmed transactions to the right request, order or invoice. Keep exceptions visible, duplicate events harmless and financial history intact."
-        media={media.reconciliation}
+        media={editorial.reconciliation}
         reverse
       >
         <a className="text-link" href="/products/reconciliation">
@@ -363,7 +369,9 @@ function Home() {
               text={text}
               href={'/solutions/' + slug}
               media={{
-                ...media[i % 2 ? 'workspace' : 'reconciliation'],
+                ...editorial[
+                  ['payments', 'business', 'invoicing', 'developers'][i]
+                ],
                 background: ['#e4eee8', '#e8e9e2', '#dce7e8', '#e6e3dc'][i],
               }}
             />
@@ -426,24 +434,27 @@ function Home() {
           </li>
         </ol>
       </section>
+      <EducationalFlow />
       <section className="future-section">
-        <span className="eyebrow">THE ROAD AHEAD · FUTURE CAPABILITIES</span>
-        <h2>A foundation for what’s next.</h2>
+        <span className="eyebrow">PLATFORM AVAILABILITY</span>
+        <h2>Built today. Clear about what’s next.</h2>
         <div>
           <article>
             <h3>Financial intelligence</h3>
-            <p>Future forecasting and deeper operational insight.</p>
-            <span className="badge">Planned · Phase 3</span>
+            <p>Scenario forecasting and financial analysis in sandbox.</p>
+            <span className="badge">Sandbox · Available</span>
           </article>
           <article>
-            <h3>Partner-led financing</h3>
-            <p>Future applications and authorized partner workflows.</p>
-            <span className="badge">Planned · Phase 3</span>
+            <h3>AfriCore Capital</h3>
+            <p>Financing is deferred and outside this release.</p>
+            <span className="badge">Future · Not offered</span>
           </article>
           <article>
             <h3>Protected payments</h3>
-            <p>Future partner-led buyer and supplier protection.</p>
-            <span className="badge">Planned · Phase 4</span>
+            <p>
+              Partner-orchestrated purchase and dispute workflows in sandbox.
+            </p>
+            <span className="badge">Sandbox · No real funds</span>
           </article>
         </div>
       </section>
@@ -517,6 +528,7 @@ function Docs() {
 }
 export function App() {
   const path = window.location.pathname.replace(/\/$/, '') || '/';
+  if (path.startsWith('/buyer/')) return <BuyerPortal />;
   if (path.startsWith('/app')) return <BusinessApp />;
   if (path.startsWith('/checkout/')) return <Checkout />;
   if (['/signin', '/signup', '/recover', '/verify', '/reset'].includes(path))
@@ -555,11 +567,7 @@ export function App() {
               eyebrow="CONNECTED BY DESIGN"
               title="A stronger way to work."
               description={page.description}
-              media={
-                path.includes('reconciliation')
-                  ? media.reconciliation
-                  : media.workspace
-              }
+              media={publicPageMedia[path] || media.workspace}
             >
               <ul className="feature-points">
                 {page.points.map((p) => (

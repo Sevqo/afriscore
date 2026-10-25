@@ -1,3 +1,4 @@
+import { stage2Events } from '../stage2/events';
 import { Router } from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -291,6 +292,15 @@ platform.post(
           )
             fail(409, 'Order already invoiced');
           const order = await record(a, parsed.order_id, 'orders');
+          const { all: stage2Objects } = await import('../stage2/store');
+          if (
+            (await stage2Objects(a, 'protected_sales')).some(
+              (s) =>
+                s.order_id === order.id &&
+                !['cancelled', 'expired'].includes(s.state),
+            )
+          )
+            fail(409, 'Protected orders use the protected purchase workflow');
           if (
             order.paid_minor > 0 ||
             order.payment_status !== 'unpaid' ||
@@ -356,6 +366,20 @@ platform.patch(
     await dbTransaction(async () => {
       await dbRun('UPDATE ac_organizations SET name=name WHERE id=?', [a.org]);
       const d = await record(a, String(req.params.id), kind);
+      if (kind === 'orders') {
+        const { all: stage2Objects } = await import('../stage2/store');
+        if (
+          (await stage2Objects(a, 'protected_sales')).some(
+            (s) =>
+              s.order_id === d.id &&
+              !['cancelled', 'expired'].includes(s.state),
+          )
+        )
+          fail(
+            409,
+            'Use the protected purchase and shipment workflows for this order',
+          );
+      }
       await dbRun(
         'UPDATE ac_records SET updated_at=updated_at WHERE id=? AND org_id=?',
         [d.id, a.org],
@@ -375,6 +399,14 @@ platform.patch(
             .parse(req.body),
         };
       else if (kind === 'orders' && req.body.fulfillment_status) {
+        const { all: stage2Objects } = await import('../stage2/store');
+        if (
+          (await stage2Objects(a, 'shipments')).some((s) => s.order_id === d.id)
+        )
+          fail(
+            409,
+            'Use the shipment workflow to preserve evidence provenance',
+          );
         const status = z
           .enum(['processing', 'fulfilled', 'cancelled'])
           .parse(req.body.fulfillment_status);
@@ -464,6 +496,15 @@ platform.post(
       }
       if (a.environment !== 'sandbox') await mpesaProvider.initiate({}, '');
       const doc = await record(a, d.document_id);
+      const { all: stage2Objects } = await import('../stage2/store');
+      if (
+        (await stage2Objects(a, 'protected_sales')).some(
+          (s) =>
+            [doc.id, doc.order_id].filter(Boolean).includes(s.order_id) &&
+            !['cancelled', 'expired'].includes(s.state),
+        )
+      )
+        fail(409, 'Use the protected-payment workflow for this order');
       if (
         !['invoices', 'orders'].includes(doc.kind) ||
         !['issued', 'partially_paid', 'awaiting_payment'].includes(doc.status)
@@ -892,6 +933,7 @@ platform.delete(
   }),
 );
 const subscriptions = [
+  ...stage2Events,
   'invoice.created',
   'invoice.issued',
   'invoice.paid',

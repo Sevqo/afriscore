@@ -13,5 +13,8 @@ Descriptors live in content.ts; assets in public/media. Replace a descriptor src
 ## Replacement test
 /?media-test=svg replaces the workspace product screenshot descriptor with the original transparent reconciliation.svg, preserving the 24/17 ratio and FeatureSection composition. Verify at desktop and 390px mobile. Only centralized content configuration changes. Record observed checks in IMPLEMENTATION_STATUS.md.
 
-## Stage 2 — AfriCore Editorial Illustration System
+## Historical Stage 1 extension notes (superseded below)
 Future original art: flat vector scenes, confident outlines, expressive stylized people, clear silhouettes, limited coordinated colors, and recognizable African small-business environments. Robinhood general storytelling and the user-described illustration example are direction only; never duplicate characters/assets. Introduce scenes selectively for payments, invoicing, reconciliation and cash flow. Protected-payment stories retain future labels. Use existing typed media and optional CSS/SVG motion. No full character library is implemented now.
+
+## Stage 2 editorial and workspace UI
+See ILLUSTRATION_SYSTEM.md for ten original SVG scenes, typed route media and generator. Strong hierarchy, existing brand CTAs, whitespace and real UI evidence remain the public layout anchors. Stage 2 workspace views include source/assurance labels, chart tables, explicit empty/data-quality/error states and sandbox copy. Educational motion uses keyboard tabs and prefers-reduced-motion. Fulfillment uses order line quantity controls; raw backend IDs remain in advanced approval/link workflows and need further UX refinement. Modal focus trapping and a full assistive-technology audit remain open.
