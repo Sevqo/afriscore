@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "start:dev": "ts-node src/index.ts",
     "dev": "ts-node src/index.ts",
+    "dev:website": "npm --prefix website run dev",
     "worker": "node dist/worker.js",
     "worker:dev": "ts-node src/worker.ts",
     "clean:test": "node scripts/clean-test-db.js",

@@ -625,6 +625,29 @@ It describes the working sandbox honestly and does not claim live
 institutional integrations. Its code samples mirror the request/response
 shapes documented here; keep them in sync when the API changes.
 
+### Test the website on a phone
+
+Connect your phone and computer to the same trusted Wi-Fi network. From the
+repository root, install dependencies once with `npm ci` and
+`npm ci --prefix website`. Start the API in one terminal:
+
+```bash
+npm run dev
+```
+
+Start Vite in a second terminal:
+
+```bash
+npm run dev:website
+```
+
+Vite listens on the local network at port `5175` and proxies `/api` requests
+to the API on the computer. Find the computer's local IPv4 address (run
+`ipconfig` on Windows), then open `http://<computer-ip>:5175` on your phone;
+for example, `http://192.168.1.25:5175`. If Windows Firewall prompts you,
+allow Node.js on private networks. Do not expose this development server to
+public networks.
+
 The operational business dashboard and lender card are served by the API
 itself at `/dashboard` (see [Business track](#business-track)) — dependency
 free, same origin, no build step. The website remains the marketing surface.
