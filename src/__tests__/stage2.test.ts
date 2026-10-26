@@ -384,12 +384,14 @@ test('automations deduplicate schedules, persist runs, pause and respect opt out
     }),
   );
   assert.equal(
-    (
-      await dbGet(
-        'SELECT COUNT(*) AS total FROM ac2_notifications WHERE org_id=? AND user_id=? AND dedupe_key=?',
-        [org, ownerId, 'muted-check'],
-      )
-    ).total,
+    Number(
+      (
+        await dbGet(
+          'SELECT COUNT(*) AS total FROM ac2_notifications WHERE org_id=? AND user_id=? AND dedupe_key=?',
+          [org, ownerId, 'muted-check'],
+        )
+      ).total,
+    ),
     0,
   );
   await api(url('/notification-preferences'), 'PUT', {
@@ -404,7 +406,22 @@ test('automations deduplicate schedules, persist runs, pause and respect opt out
     1,
   );
 });
-test('assistant is tool-scoped, minimizes data, fails truthfully and logs usage without prompts', async () => {
+test('assistant is tool-scoped, minimizes data, fails truthfully and logs usage without prompts', async (t) => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousModel = process.env.AFRICORE_AI_MODEL;
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousModel === undefined) delete process.env.AFRICORE_AI_MODEL;
+    else process.env.AFRICORE_AI_MODEL = previousModel;
+  });
+  delete process.env.OPENAI_API_KEY;
+  assert.equal(
+    (await askAssistant(access(), { question: 'Explain cash flow' })).status,
+    'not_configured',
+  );
+  // Synthetic value: every configured call below uses an injected fixture provider.
+  process.env.OPENAI_API_KEY = 'fixture-only-no-network';
   process.env.AFRICORE_AI_MODEL = 'fixture-model';
   const fake: ExplanationProvider = {
     name: 'fixture',
@@ -600,11 +617,13 @@ test('protected sale payment, shipment, buyer acceptance, approval and partner r
   );
   assert.equal(providerEvents.length, 1);
   assert.equal(
-    (
-      await dbGet('SELECT COUNT(*) AS total FROM ac_journal WHERE org_id=?', [
-        org,
-      ])
-    ).total,
+    Number(
+      (
+        await dbGet('SELECT COUNT(*) AS total FROM ac_journal WHERE org_id=?', [
+          org,
+        ])
+      ).total,
+    ),
     0,
   );
 });

@@ -261,7 +261,7 @@ platform.post(
             : 'operations',
       );
     let d: any;
-    await dbTransaction(async () => {
+    const created = await dbTransaction(async () => {
       if (kind === 'customers')
         d = z
           .object({
@@ -348,8 +348,9 @@ platform.post(
       } else fail(405, 'Use the transaction import endpoint');
       const saved = await save(a, kind, d);
       if (kind === 'invoices') await enqueue(a, 'invoice.created', saved);
-      res.status(201).json(saved);
+      return saved;
     });
+    res.status(201).json(created);
   }),
 );
 platform.patch(
@@ -364,7 +365,7 @@ platform.patch(
             ? 'admin'
             : 'finance',
       );
-    await dbTransaction(async () => {
+    const updated = await dbTransaction(async () => {
       await dbRun('UPDATE ac_organizations SET name=name WHERE id=?', [a.org]);
       const d = await record(a, String(req.params.id), kind);
       if (kind === 'orders') {
@@ -464,8 +465,9 @@ platform.patch(
       } else fail(405, 'Unsupported update');
       await update(a, d.id, result);
       await audit(a.org, a.actor, kind + '.updated', d.id);
-      res.json(result);
+      return result;
     });
+    res.json(updated);
   }),
 );
 platform.post(
@@ -478,7 +480,7 @@ platform.post(
         .min(8)
         .max(200)
         .parse(req.headers['idempotency-key']);
-    await dbTransaction(async () => {
+    const response = await dbTransaction(async () => {
       await dbRun('UPDATE ac_organizations SET name=name WHERE id=?', [a.org]);
       const previous = await dbGet(
         'SELECT * FROM ac_requests WHERE org_id=? AND environment=? AND idempotency_key=?',
@@ -487,13 +489,15 @@ platform.post(
       if (previous) {
         if (previous.document_id !== d.document_id)
           fail(409, 'Idempotency key already used with different input');
-        res.json({
-          ...previous,
-          checkout_hash: undefined,
-          checkout_url: null,
-          message: 'Checkout secret is shown once; use the original URL.',
-        });
-        return;
+        return {
+          status: 200,
+          data: {
+            ...previous,
+            checkout_hash: undefined,
+            checkout_url: null,
+            message: 'Checkout secret is shown once; use the original URL.',
+          },
+        };
       }
       if (a.environment !== 'sandbox') await mpesaProvider.initiate({}, '');
       const doc = await record(a, d.document_id);
@@ -550,16 +554,21 @@ platform.post(
       );
       await enqueue(a, 'payment.pending', { request_id: id });
       await audit(a.org, a.actor, 'payment_request.created', id);
-      res.status(201).json({
-        id,
-        amount_minor: amount,
-        currency: doc.currency,
-        status: 'pending',
-        checkout_url: '/checkout/' + token,
-        expires_at: expires,
-        environment: a.environment,
-      });
+      return {
+        status: 201,
+        data: {
+          id,
+          amount_minor: amount,
+          currency: doc.currency,
+          status: 'pending',
+          checkout_url: '/checkout/' + token,
+          expires_at: expires,
+          environment: a.environment,
+        },
+      };
     });
+    // Publish the checkout only after its transaction is committed.
+    res.status(response.status).json(response.data);
   }),
 );
 platform.get(

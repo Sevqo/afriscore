@@ -730,11 +730,13 @@ test('direct order collections update independent payment status and prevent rei
     owner,
     { 'Idempotency-Key': 'direct-order-' + unique },
   );
-  await request(
+  assert.equal(payment.status, 201);
+  const settled = await request(
     '/api/v1/checkout/' + payment.data.checkout_url.split('/').pop() + '/pay',
     'POST',
     { scenario: 'success' },
   );
+  assert.equal(settled.status, 200);
   const saved = (
     await request(
       prefix + '/records/orders/' + order.data.id,

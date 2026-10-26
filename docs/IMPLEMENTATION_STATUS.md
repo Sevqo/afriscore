@@ -5,6 +5,10 @@ Current validation/acceptance gaps: [STAGE3_TEST_RESULTS.md](STAGE3_TEST_RESULTS
 
 This is a sandbox implementation, not complete production acceptance of the master specification. Real signatures and local-chain transactions are implemented; no public testnet deployment, production KMS/issuer authority, government source verification, OpenID wallet conformance, independent security audit or legal certification is claimed. No cryptocurrency, custody, lending or Capital feature is introduced.
 
+## CI correction — 2026-10-26
+
+Workspace record creation/updates and checkout creation now return HTTP success only after their database transactions commit, preventing immediate checkout requests from racing PostgreSQL visibility. Assistant tests use a synthetic key with injected fixture providers and restore their environment; no CI API secret or external request is required. COUNT assertions normalize PostgreSQL bigint strings. Local validation: all 194 tests pass on SQLite and an isolated PostgreSQL 17 database, typecheck, both OpenAPI inventories, website build and local-chain independent verification pass. GitHub CI also validates PostgreSQL 16.
+
 ---
 
 # Stage 2 implementation record (historical)
