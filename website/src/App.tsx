@@ -1,3 +1,14 @@
+import { DeveloperTutorial } from './education/DeveloperTutorial';
+import {
+  ProductEducation,
+  Ecosystem,
+  GettingStarted,
+  InteractiveExample,
+  HeroWorkflow,
+} from './education/Components';
+import { Learn } from './education/Learn';
+import { guides, demoLink } from './education/guides';
+import { usePageMetadata } from './education/metadata';
 import { groups, productSections } from './navigation';
 import { TrustPublic } from './stage3/TrustPublic';
 import { startDemo } from './demo/transport';
@@ -11,7 +22,6 @@ import { pages, media } from './content';
 import {
   FeatureSection,
   EditorialCard,
-  HeroMedia,
   MediaCarousel,
 } from './components/Media';
 import { BusinessApp, AuthPage, Checkout } from './BusinessApp';
@@ -196,9 +206,9 @@ function Footer() {
       <div className="footer-top">
         <Logo />
         <p>
-          The programmable infrastructure
+          Customers, invoices and payment records.
           <br />
-          layer for African business.
+          One connected business workspace.
         </p>
       </div>
       <div className="footer-links">
@@ -247,13 +257,14 @@ function Home() {
         <div className="hero-copy">
           <span className="eyebrow">The connected business platform</span>
           <h1>
-            Powering the next <br />
-            chapter of African <br />
-            business.
+            Keep your business <br />
+            in order. Know <br />
+            what comes next.
           </h1>
           <p>
-            Bring payments, operations and business trust together. One
-            foundation for everything you’re building.
+            Bring customers, invoices, payment records and business proof
+            together. Understand what is paid, what is still owed, and what
+            needs your attention.
           </p>
           <div className="actions">
             <a className="button" href="/demo">
@@ -269,7 +280,7 @@ function Home() {
             Kenya first. Built for the continent.
           </div>
         </div>
-        <HeroMedia media={media.hero} />
+        <HeroWorkflow />
         <div className="hero-bottom">
           <span>Business infrastructure</span>
           <span>Payments. Intelligence. Trust.</span>
@@ -297,18 +308,19 @@ function Home() {
           ))}
         </div>
       </section>
+      <Ecosystem />
       <section className="mission">
         <span className="eyebrow">ONE MISSION. A STRONGER FOUNDATION.</span>
         <h2>
-          Big ambition shouldn’t
+          Still checking several screens
           <br />
-          get lost in small tasks.
+          to find out who paid?
         </h2>
         <p>
-          African businesses move fast. Their systems don’t always move
-          together. We’re building the common layer that connects daily
-          operations with financial infrastructure — so businesses can focus on
-          what they do best.
+          An order lives in a chat, its invoice is in a spreadsheet, and a
+          payment appears somewhere else. AfriCore links the records so you can
+          follow a sale, review trusted payment evidence and see what is still
+          owed.
         </p>
         <a className="text-link" href="/about">
           Meet AfriCore <Icon name="right" />
@@ -318,9 +330,9 @@ function Home() {
         <div>
           <span className="eyebrow">AFRICORE BUSINESS</span>
           <h2>
-            Your business.
+            Customers. Orders. Invoices.
             <br />
-            One clear picture.
+            One connected record.
           </h2>
         </div>
         <a className="text-link" href="/products/business">
@@ -472,13 +484,17 @@ function Home() {
           {[
             [
               'Social commerce',
-              'Turn the conversation into an order.',
+              'Record the order, share a checkout link and inspect confirmation.',
               'social-commerce',
             ],
-            ['Growing SMEs', 'Make daily operations work together.', 'smes'],
+            [
+              'Growing SMEs',
+              'Keep customers, invoices and employee responsibilities together.',
+              'smes',
+            ],
             [
               'Contractors & suppliers',
-              'Keep delivery and receivables in view.',
+              'Track delivery, due dates and the amount still owed.',
               'contractors',
             ],
             ['Fintechs & SaaS', 'Build on shared infrastructure.', 'fintechs'],
@@ -554,7 +570,9 @@ function Home() {
           </li>
         </ol>
       </section>
+      <InteractiveExample kind="reconciliation" />
       <EducationalFlow />
+      <GettingStarted />
       <section className="future-section">
         <span className="eyebrow">PLATFORM AVAILABILITY</span>
         <h2>Built today. Clear about what’s next.</h2>
@@ -594,6 +612,7 @@ function Docs() {
       <a className="button" href="/api/openapi.json">
         Download OpenAPI <Icon name="right" />
       </a>
+      <DeveloperTutorial />
       <div className="docs-grid">
         {[
           [
@@ -646,8 +665,27 @@ function Docs() {
     </main>
   );
 }
+const headlines: Record<string, string> = {
+  '/products/business': 'Customers, orders and payment records. Together.',
+  '/products/pay': 'Send a payment link. Follow a trusted result.',
+  '/products/reconciliation': 'Know which payment belongs to which order.',
+  '/products/invoicing': 'Send invoices. Track what you’re owed.',
+  '/products/cash-flow': 'Understand money in, money out and what is missing.',
+  '/products/intelligence': 'Turn covered records into clearer decisions.',
+  '/products/automations': 'Give repeatable work a visible follow-up.',
+  '/products/business-passport':
+    'Give your business a profile you can share by choice.',
+  '/products/trust-network': 'See who confirmed which business relationship.',
+  '/products/verifiable-credentials':
+    'A signed statement. Separate checks for trust.',
+  '/products/blockchain-verification':
+    'Check a proof without publishing private records.',
+  '/solutions/social-commerce': 'Turn conversations into organized orders.',
+  '/solutions/contractors': 'Keep deliveries, invoices and payments connected.',
+};
 export function App() {
   const path = window.location.pathname.replace(/\/$/, '') || '/';
+  usePageMetadata(path);
   if (path === '/verify-credential') return <TrustPublic mode="verify" />;
   if (path.startsWith('/trust/share/')) return <TrustPublic mode="share" />;
   if (path.startsWith('/passport/')) return <TrustPublic mode="profile" />;
@@ -656,7 +694,8 @@ export function App() {
   if (path.startsWith('/checkout/')) return <Checkout />;
   if (path === '/demo') {
     startDemo();
-    location.replace('/app');
+    const view=new URLSearchParams(location.search).get('view')||'Overview';
+    location.replace('/app#'+encodeURIComponent(view));
     return <p>Opening demo workspace…</p>;
   }
   if (['/signin', '/signup', '/recover', '/verify', '/reset'].includes(path))
@@ -671,17 +710,19 @@ export function App() {
       <main id="main">
         {path === '/' ? (
           <Home />
+        ) : path === '/learn' || path.startsWith('/learn/') ? (
+          <Learn slug={path.split('/')[2]} />
         ) : path === '/docs' ? (
           <Docs />
         ) : page ? (
           <>
             <section className="page-hero">
               <span className="eyebrow">{page.category}</span>
-              <h1>{page.title}</h1>
-              <p>{page.description}</p>
+              <h1>{headlines[path] || page.title}</h1>
+              <p>{guides[path]?.summary || page.description}</p>
               <div className="actions">
-                <a className="button" href="/signup">
-                  Get started <Icon name="right" />
+                <a className="button" href={guides[path]?demoLink(path):'/signup'}>
+                  {guides[path]?'Try this workflow':'Get started'} <Icon name="right" />
                 </a>
                 <a className="text-link light" href="/docs">
                   Explore documentation <Icon name="right" />
@@ -691,19 +732,23 @@ export function App() {
                 <p className="availability">{page.availability}</p>
               )}
             </section>
-            <FeatureSection
-              eyebrow="CONNECTED BY DESIGN"
-              title="A stronger way to work."
-              description={page.description}
-              media={publicPageMedia[path] || media.workspace}
-            >
-              <ul className="feature-points">
-                {page.points.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            </FeatureSection>
-            <CTA />
+            {guides[path] ? (
+              <ProductEducation path={path} />
+            ) : (
+              <FeatureSection
+                eyebrow="CONNECTED BY DESIGN"
+                title="A stronger way to work."
+                description={page.description}
+                media={publicPageMedia[path] || media.workspace}
+              >
+                <ul className="feature-points">
+                  {page.points.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              </FeatureSection>
+            )}
+            {!guides[path] && <CTA />}
           </>
         ) : (
           <section className="mission">

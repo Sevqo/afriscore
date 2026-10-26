@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader runner --port 5175",
-    "build": "tsc -b && vite build --configLoader runner",
+    "build": "tsc -b && vite build --configLoader runner && node scripts/prerender.mjs && npm run test:content",
     "typecheck": "tsc -b --pretty false",
-    "preview": "vite preview --configLoader runner --host 127.0.0.1 --port 5175"
+    "preview": "vite preview --configLoader runner --host 127.0.0.1 --port 5175",
+    "test:content": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.6",

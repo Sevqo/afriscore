@@ -1,4 +1,4 @@
-import { DataTable } from '../components/DataTable';
+import { InteractiveChart, financialSeries } from '../charts/InteractiveChart';
 import { transport } from '../demo/transport';
 import { useState, type FormEvent, type ReactNode } from 'react';
 export type API = (
@@ -105,80 +105,33 @@ export function Trend({
   forecast?: boolean;
   currency: string;
 }) {
-  const values = points.map((p) =>
-      forecast
-        ? p.cumulative_net_movement_minor
-        : p.confirmed_inflows_minor - p.recorded_outflows_minor,
-    ),
-    max = Math.max(1, ...values.map((v) => Math.abs(v))),
-    poly = values
-      .map(
-        (v, i) =>
-          `${40 + (i / Math.max(1, values.length - 1)) * 720},${130 - (v / max) * 95}`,
-      )
-      .join(' ');
+  const data = points.map((p) => ({
+    date: p.date,
+    inflows: Number(p.confirmed_inflows_minor ?? p.inflow_minor ?? 0),
+    outflows: Number(p.recorded_outflows_minor ?? p.outflow_minor ?? 0),
+    net: forecast
+      ? Number(p.cumulative_net_movement_minor)
+      : Number(p.confirmed_inflows_minor || 0) -
+        Number(p.recorded_outflows_minor || 0),
+  }));
   return (
-    <div className="trend-chart">
-      <svg
-        viewBox="0 0 800 270"
-        role="img"
-        aria-label={
-          forecast
-            ? 'Estimated net movement, not a bank balance'
-            : 'Recorded net movement over selected dates'
-        }
-      >
-        <line
-          x1="40"
-          y1="130"
-          x2="760"
-          y2="130"
-          stroke="var(--line)"
-          strokeDasharray="4 4"
-        />
-        <polyline
-          points={poly}
-          fill="none"
-          stroke="var(--accent-text)"
-          strokeWidth="3"
-        />
-        {points.length > 0 && (
-          <>
-            <text x="40" y="250">
-              {points[0].date}
-            </text>
-            <text x="640" y="250">
-              {points.at(-1).date}
-            </text>
-          </>
-        )}
-      </svg>
-      <p>
-        {forecast ? 'Forecast estimate' : 'Recorded movement'} · {currency} ·
-        Source coverage applies.
-      </p>
-      <details>
-        <summary>Accessible data table</summary>
-        <div className="table-scroll">
-          <DataTable>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Net movement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {points.map((p, i) => (
-                <tr key={p.date}>
-                  <td>{p.date}</td>
-                  <td>{money(values[i], currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </DataTable>
-        </div>
-      </details>
-    </div>
+    <InteractiveChart
+      headingLevel={3}
+      title={forecast ? 'Projected net movement' : 'Money in and money out'}
+      points={data}
+      series={
+        forecast
+          ? [{ key: 'net', label: 'Projected net movement', color: '#426900' }]
+          : financialSeries
+      }
+      currency={currency}
+      forecast={forecast}
+      description={
+        forecast
+          ? 'Scenario estimate, not a guaranteed receipt or bank balance.'
+          : 'Provider-confirmed inflows and recorded outflows. Missing records affect this view; this is not a bank balance or profit.'
+      }
+    />
   );
 }
 export function Timeline({ items }: { items: any[] }) {

@@ -1,4 +1,7 @@
 # AfriCore agent guide
+
+For content/education/chart work read docs/CONTENT_STRATEGY.md, CONTENT_STYLE_GUIDE.md, CONTENT_ACCURACY.md, CONTENT_QA.md and CHART_EXPERIENCE.md. Canonical guide data lives in website/src/education/guides.ts; articles/glossary in Learn.tsx. Keep workflow, example, availability, FAQ and related links consistent. Label fiction and local simulations. Preserve requested-versus-confirmed money, currency/source coverage, forecast assumptions and independent proof checks. Do not imply profit/bank balance or claim truth from a signature/anchor. Maintain prerendered route HTML/metadata and run the website build (includes content/chart tests). New art must retain contextual alt text and prompt provenance. Never restore decorative green top rules or replace meaningful HTML explanations with tiny image text.
+
 Read README.md and docs/IMPLEMENTATION_STATUS.md first, then ARCHITECTURE.md, DATABASE.md, SECURITY.md and the relevant domain document before architecture changes.
 
 Preserve legacy /v1 consent APIs, migrations and data. New workspace APIs use /api/v1 and /api/auth. Do not auto-assign legacy businesses to new users. Financial amounts use integer minor units and explicit currencies. Never trust frontend success assertions or merchant imports as provider proof. Keep events/journal append-only through services and environments isolated.

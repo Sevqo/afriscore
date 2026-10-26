@@ -9,8 +9,8 @@ export const media: Record<string, Media> = {
   },
   workspace: {
     kind: 'screenshot',
-    src: '/media/workspace.svg',
-    alt: 'Illustrative AfriCore workspace with example sandbox figures',
+    src: '/media/editorial/reconciliation.svg',
+    alt: 'Example invoice of KSh 2,500, confirmed receipt of KSh 1,500 and KSh 1,000 still outstanding',
     aspectRatio: '24 / 17',
     background: '#eef2ef',
   },
@@ -198,11 +198,11 @@ export const pages: Record<
     category: 'About AfriCore',
     title: 'Built around the realities of African business.',
     description:
-      'Our mission is to make fragmented business and financial systems work together, starting in Kenya.',
+      'AfriCore helps owners keep customers, orders, invoices and payment evidence together, starting in Kenya. The goal is to make daily business records understandable and useful without pretending that a sandbox is a live financial partnership.',
     points: [
       'Business tools and developer infrastructure share one foundation.',
       'Kenya first, with explicit currency and country data.',
-      'Financing and protected payments remain future capabilities.',
+      'Protected-payment workflows are available only in sandbox; financing remains deferred.',
     ],
   },
   '/contact': {

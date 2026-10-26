@@ -34,6 +34,8 @@ Geometry: buttons 3px, inputs 5px, operational panels 6px, menus 6px, editorial 
 - `MediaBlock`/`FeatureSection`: typed replaceable image/video descriptors, alt text, image error fallback, focal point/crop support and stable ratio. `EditorialCard`: media, category, headline and supporting copy; 18px radius. `MediaCarousel`: native scrolling/snapping, previous/next buttons and arrow keys; no autoplay.
 - `DataTable`: labels compact tables of up to five columns for mobile stacked records. Wider ledgers retain contained horizontal scrolling. Numeric cells align right and use tabular numerals. Financial values and source labels remain unchanged.
 - `Overlay`/`useFocusScope`: contain focus, Escape, body scroll lock and return focus to the trigger. Native select/date controls remain available.
-- Passport card: near-black, green top rule, explicit assurance labels, white metadata. Tabs use an underline rather than giant pills. No change to issuance, evidence, sharing or verification permissions.
+- Passport card: near-black, neutral hairline border, explicit assurance labels, white metadata. Financial metric cards also use neutral borders without decorative green top rules. Tabs use an underline rather than giant pills. No change to issuance, evidence, sharing or verification permissions.
+
+Education components use readable HTML workflows, labelled fictional examples, native FAQ disclosures and local-only simulations. Shared charts use series labels, distinct line styles, exact readouts, pointer/touch selection, keyboard date exploration and data-table alternatives. See CHART_EXPERIENCE.md and CONTENT_STRATEGY.md. Preserve reduced-motion behavior and semantic heading order.
 
 See TYPOGRAPHY.md, NAVIGATION.md, RESPONSIVE_DESIGN.md and VISUAL_QA.md for implementation and validation details.

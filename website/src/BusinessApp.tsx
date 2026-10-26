@@ -1,3 +1,10 @@
+import { MediaBlock } from './components/Media';
+import { editorial } from './editorial';
+import {
+  FinancialActivity,
+  RecordAnalytics,
+  ReconciliationOverview,
+} from './charts/WorkspaceCharts';
 import { DataTable } from './components/DataTable';
 import { Overlay } from './components/Overlay';
 import { Icon, type IconName } from './components/Icon';
@@ -736,6 +743,11 @@ export function BusinessApp() {
             </article>
           ))}
         </div>
+        <FinancialActivity
+          load={call}
+          scope={org + environment}
+          currency={data.currency}
+        />
         <div className="dashboard-columns">
           <section className="panel">
             <h2>Receivables aging</h2>
@@ -1385,6 +1397,12 @@ export function BusinessApp() {
                   )}
                 </>
               )}
+              {tab === 'Invoices' && data?.data?.length > 0 && (
+                <RecordAnalytics records={data.data} kind="invoices" />
+              )}
+              {tab === 'Payments' && data?.data?.length > 0 && (
+                <RecordAnalytics records={data.data} kind="payments" />
+              )}
               {tab === 'Payments' && (
                 <section className="panel">
                   <h2>Payment requests</h2>
@@ -1421,6 +1439,28 @@ export function BusinessApp() {
                     creation.
                   </p>
                 </section>
+              )}
+              {tab === 'Reconciliation' && (
+                <ReconciliationOverview data={data} />
+              )}
+              {tab === 'Reconciliation' && (
+                <details className="panel learning-helper">
+                  <summary>How payment matching works</summary>
+                  <ol>
+                    <li>Use a provider-confirmed payment event.</li>
+                    <li>
+                      Match its reference, amount and currency to a request.
+                    </li>
+                    <li>
+                      Review duplicates, mismatches or unallocated records.
+                    </li>
+                    <li>Record a review note; retain the original evidence.</li>
+                  </ol>
+                  <p>
+                    Imported credits and a customer’s screenshot cannot confirm
+                    a payment.
+                  </p>
+                </details>
               )}
               {tab === 'Reconciliation' && (
                 <>
@@ -1784,7 +1824,7 @@ function LineItemsInput({ currency }: { currency: string }) {
 function Empty({ text }: { text: string }) {
   return (
     <div className="empty-state">
-      <Icon name="grid" width="32" height="32" />
+      <MediaBlock media={editorial.empty} />
       <h3>A clear place to begin.</h3>
       <p>{text}</p>
     </div>

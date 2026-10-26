@@ -1,4 +1,13 @@
 # Implementation status — Stage 3 sandbox beta
+
+## Content, illustration and chart continuation — 2026-10-26
+
+Completed the two education/illustration briefs and screenshot fixes on the existing visual system: 23 typed explanations, 16 Learn articles, 12 glossary terms, seven labelled fictional stories, four local simulations, reusable workflows/FAQs/annotated HTML visuals and contextual workspace help. Seven original WebP business scenes and 24 editable process diagrams replace the old figures/vague mockup. Metric/Passport green top rules are neutral borders. Shared charts add date ranges, exact values, pointer/touch controls, keyboard exploration, legends, tables and honest loading/empty/source coverage. Sparse dates use elapsed calendar time.
+
+Build now prerenders 50 public pages with route metadata, Open Graph text and canonicals; AFRICORE_SITE_URL enables absolute deployment URLs/sitemap. Navigation includes Learn and glossary. Product demos select the relevant section without resetting data. Existing backend data/auth/financial semantics are preserved; /learn server fallback is additive.
+
+Latest local gates: SQLite 194/194, PostgreSQL 17 194/194, typecheck, both API contracts, isolated local-chain verification, website production build and ten content/chart tests passed. Browser review covered public routes, eight responsive widths and interactive examples/charts. See CONTENT_QA.md for precise observations and limits; CONTENT_STRATEGY.md, CONTENT_STYLE_GUIDE.md, CONTENT_ACCURACY.md, PRODUCT_EXPLANATIONS.md, EDUCATIONAL_CONTENT.md, FINANCIAL_GLOSSARY.md, ILLUSTRATION_SYSTEM.md and CHART_EXPERIENCE.md for maintenance. Prior sections below are historical and their earlier unverified PostgreSQL/trend notes do not describe this latest local run. Production/legal/integration gates remain.
+
 Reviewed 2026-10-26. Stage 1/2 remain intact; baseline b7879a9. New work adds database-free demo login and an isolated connected multi-account demo, plus Business Passport, credential engine, evidence network, named-recipient sharing/verification, local EVM proof infrastructure and trust operations.
 
 Current validation/acceptance gaps: [STAGE3_TEST_RESULTS.md](STAGE3_TEST_RESULTS.md). Immediate access: [DEMO_LOGIN.md](DEMO_LOGIN.md). Security/profile/runbooks: STAGE3_SECURITY_REVIEW.md, CREDENTIAL_ARCHITECTURE.md, KEY_MANAGEMENT.md, PROOF_ANCHORING.md and COMPLIANCE_GAPS_STAGE3.md.

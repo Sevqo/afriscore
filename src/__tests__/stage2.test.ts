@@ -957,6 +957,8 @@ test('direct public/auth/buyer links and OpenAPI downloads work in hidden parent
       '/products/business',
       '/products/intelligence',
       '/products/protected-payments',
+      '/learn',
+      '/learn/reconciliation',
       '/buyer/synthetic-preview',
     ]) {
       const r = await fetch(base + path);

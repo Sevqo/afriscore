@@ -836,7 +836,7 @@ footer {
   gap: 16px;
 }
 .metric-grid .panel {
-  border-top: 3px solid var(--accent);
+  border-top: 1px solid var(--line);
   padding: 20px;
 }
 .metric-grid strong {
@@ -1053,7 +1053,7 @@ td code {
   border-radius: var(--radius);
   background: #1a1a1a;
   color: white;
-  border-top: 4px solid var(--accent);
+  border-top: 1px solid var(--line);
   display: grid;
   gap: 20px;
   margin: 24px 0;

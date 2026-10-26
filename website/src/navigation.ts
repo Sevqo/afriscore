@@ -32,6 +32,8 @@ export const groups: Record<string, [string, string][]> = {
     ['API sandbox', '/sandbox'],
   ],
   Resources: [
+    ['AfriCore Learn', '/learn'],
+    ['Financial glossary', '/learn/glossary'],
     ['Help & support', '/support'],
     ['Security & trust', '/security'],
     ['Pricing', '/pricing'],

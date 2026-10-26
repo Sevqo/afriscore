@@ -140,7 +140,7 @@ export function createApp() {
     next();
   });
   app.use(express.static(path.join(process.cwd(), 'website/dist')));
-  app.get(['/demo','/verify-credential','/trust/{*path}','/passport/{*path}','/app','/app/{*path}','/checkout/{*path}','/buyer/{*path}','/signin','/signup','/recover','/reset','/verify','/products/{*path}','/solutions/{*path}','/developers','/docs','/sandbox','/security','/about','/contact','/support','/pricing','/privacy','/terms'], (_req,res) => res.sendFile('index.html',{root:path.join(process.cwd(),'website/dist')}));
+  app.get(['/learn','/learn/{*path}','/demo','/verify-credential','/trust/{*path}','/passport/{*path}','/app','/app/{*path}','/checkout/{*path}','/buyer/{*path}','/signin','/signup','/recover','/reset','/verify','/products/{*path}','/solutions/{*path}','/developers','/docs','/sandbox','/security','/about','/contact','/support','/pricing','/privacy','/terms'], (_req,res) => res.sendFile('index.html',{root:path.join(process.cwd(),'website/dist')}));
   app.use((req: RequestWithContext, res) => res.status(404).json({ error: "not_found", path: req.originalUrl }));
 
   // Terminal handler: body-parser errors become 400/413, thrown errors keep

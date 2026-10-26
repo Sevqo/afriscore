@@ -187,6 +187,16 @@ export function PassportWorkspace({
           </button>
         ))}
       </nav>
+      <details className="panel learning-helper">
+        <summary>What do the proof checks mean?</summary>
+        <p>
+          A signature checks integrity. Current status checks expiry or
+          revocation. Issuer recognition and evidence assurance need separate
+          review. Choose minimal claims for a named recipient rather than
+          sharing the entire profile.
+        </p>
+        <a href="/learn/business-passport">Learn about Business Passports</a>
+      </details>
       {error && (
         <div className="alert error" role="alert">
           {error}
