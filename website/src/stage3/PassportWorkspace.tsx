@@ -1,3 +1,4 @@
+import { Icon } from '../components/Icon';
 import { useEffect, useState } from 'react';
 import { Field, Form, Provenance, request, Timeline } from '../stage2/UI';
 import { isDemo } from '../demo/transport';
@@ -276,11 +277,11 @@ export function PassportWorkspace({
                 </p>
                 {p.public_profile ? (
                   <a href={'/passport/' + p.id}>
-                    View minimal public profile ↗
+                    View minimal public profile <Icon name="right" />
                   </a>
                 ) : (
                   <button onClick={() => setTab('Verification Requests')}>
-                    Review a sharing request →
+                    Review a sharing request <Icon name="right" />
                   </button>
                 )}
               </section>

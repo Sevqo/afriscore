@@ -1,25 +1,39 @@
-# Design system
-Owner: AfriCore engineering/design. Reviewed: 2026-10-25.
+# AfriCore design system
 
-NVIDIA-inspired editorial hierarchy, bold typography, dark heroes, white/light sections, spacious grids and restrained motion remain the foundation. All supplied SVGs/copy are original AfriCore assets. No proprietary NVIDIA/Robinhood artwork is copied. No reference screenshots or illustration image accompanied the pasted specifications.
+Reviewed 2026-10-26. The platform uses a black, white and neutral editorial system with deliberate green accents, adapted from the proportions and navigation principles of NVIDIA's public website. AfriCore branding, content and original artwork remain its own. No proprietary fonts, imagery or source were copied. No reference screenshots accompanied the redesign attachment; comparisons used the live reference and written requirements.
 
-Tokens in website/src/style.css: ink #101b16, accent #19a576, accent-light #b5f1d8, line #dfe7e1, surface #f3f6f3. Locally bundled DM Sans and Space Mono, fluid type, focus outlines, semantic forms/tables and loading/empty/error states. Breakpoints: 1150/850/560px. Operational shell uses denser spacing.
+## Shared source
 
-## Modular media
-Media.tsx provides MediaBlock, HeroMedia, ProductShowcase, FeatureSection/MediaTextSection/EducationalSection, EditorialCard and MediaCarousel. Discriminated Media supports image/svg/screenshot with alt, mobileSrc, fit, position, background, transparency, ratio, eager and animation options; video supports poster/controls/playsInline/metadata preload. Containers own aspect ratio, independently of the source.
+`dashboard/shared/theme.css` is the canonical semantic token and locally hosted font source. Vite imports it through `website/src/tokens.css`; the legacy console imports it directly. `website/src/style.css` retains domain layout rules; `system.css` owns shared components, shells and responsive variants. Do not reintroduce competing shell rules in domain CSS.
 
-Descriptors live in content.ts; assets in public/media. Replace a descriptor src/kind/alt without changing section layout, typography, CTA or breakpoints. Use contain for transparent SVG/PNG/WebP and cover for photography. Never inline untrusted SVG. Hero loads eagerly; other images lazy load. Image failures show accessible fallbacks. picture supports mobile assets. Native videos require intentional playback. CSS motion respects prefers-reduced-motion; no animation dependency was added.
+| Purpose | Token/value |
+| --- | --- |
+| Primary action | accent #76B900, black text |
+| Hover action | accent-hover #5A8D00, black text |
+| Accessible accent text/focus | accent-text #426900 |
+| Primary text/immersive background | ink #000000 |
+| Operational text | text #1A1A1A |
+| Secondary text | muted #666666 |
+| Main surface | white #FFFFFF |
+| Secondary surfaces | surface #F7F7F7, surface-alt #EEEEEE |
+| Hairline border | line #D1D1D1 |
+| Selected navigation | accent-light #EAF3DB |
+| Success | #326600 on #EEF5E4 |
+| Warning | #805700 on #FFF8E5 |
+| Error | #A22B20 on #FFF0ED |
 
-## Replacement test
-/?media-test=svg replaces the workspace product screenshot descriptor with the original transparent reconciliation.svg, preserving the 24/17 ratio and FeatureSection composition. Verify at desktop and 390px mobile. Only centralized content configuration changes. Record observed checks in IMPLEMENTATION_STATUS.md.
+Green #76B900 is suitable for black button text and dark-background accents; use the darker accent-text for small links/icons on white. Status words remain visible; color alone never communicates payment or verification states.
 
-## Historical Stage 1 extension notes (superseded below)
-Future original art: flat vector scenes, confident outlines, expressive stylized people, clear silhouettes, limited coordinated colors, and recognizable African small-business environments. Robinhood general storytelling and the user-described illustration example are direction only; never duplicate characters/assets. Introduce scenes selectively for payments, invoicing, reconciliation and cash flow. Protected-payment stories retain future labels. Use existing typed media and optional CSS/SVG motion. No full character library is implemented now.
+Geometry: buttons 3px, inputs 5px, operational panels 6px, menus 6px, editorial cards 18px. Circles remain for meaningful status dots/illustration geometry. Spacing scale: 4/8/12/16/24/32/48/64px. Public gutters fluid 20–80px; mobile 20–24px. Compact workspace gutters 12–40px. Marketing sections use 56–80px vertical spacing; operational panels use 16–24px for daily work. Neutral hairlines replace decorative shadows; menu shadow is 0 8px 24px #00000014.
 
-## Stage 2 editorial and workspace UI
-See ILLUSTRATION_SYSTEM.md for ten original SVG scenes, typed route media and generator. Strong hierarchy, existing brand CTAs, whitespace and real UI evidence remain the public layout anchors. Stage 2 workspace views include source/assurance labels, chart tables, explicit empty/data-quality/error states and sandbox copy. Educational motion uses keyboard tabs and prefers-reduced-motion. Fulfillment uses order line quantity controls; raw backend IDs remain in advanced approval/link workflows and need further UX refinement. Modal focus trapping and a full assistive-technology audit remain open.
+## Components
 
-## Stage 3 Passport and verification UI
-Existing typography/core brand tokens/media architecture remain. Passport adds a restrained dark identity card, precise assurance labels, responsive section navigation, minimal-claim previews, recipient/purpose controls and separate verification checks. Public /verify-credential and opted-in /passport/:id pages share existing branding. Seven original scenes extend the SVG generator: passport, credential-issuance, trust-network, privacy, verification, anchoring and credibility (17 total).
+- Button variants: `.button`, `.secondary-button`, `.text-link`, `.icon-button`; explicit hover, disabled, active and focus states. Domain actions retain their existing submission handlers.
+- `Icon.tsx`: currentColor SVG primitives, 20px standard, stroke 1.6. Decorative icons are hidden from assistive technology; icon-only controls need an accessible name. Ordinary navigation uses chevrons, never emoji arrows. Legacy console uses the equivalent shared SVG sprite.
+- `Header`: one public menu dataset, sticky white header, desktop product columns, mobile category accordion, search, Escape and focus restoration. Public verification pages share it.
+- `MediaBlock`/`FeatureSection`: typed replaceable image/video descriptors, alt text, image error fallback, focal point/crop support and stable ratio. `EditorialCard`: media, category, headline and supporting copy; 18px radius. `MediaCarousel`: native scrolling/snapping, previous/next buttons and arrow keys; no autoplay.
+- `DataTable`: labels compact tables of up to five columns for mobile stacked records. Wider ledgers retain contained horizontal scrolling. Numeric cells align right and use tabular numerals. Financial values and source labels remain unchanged.
+- `Overlay`/`useFocusScope`: contain focus, Escape, body scroll lock and return focus to the trigger. Native select/date controls remain available.
+- Passport card: near-black, green top rule, explicit assurance labels, white metadata. Tabs use an underline rather than giant pills. No change to issuance, evidence, sharing or verification permissions.
 
-No coin/token-price aesthetics or decorative financial dashboards. Mobile tabs scroll within their container and long IDs wrap. Backend-ID entry remains an advanced sandbox UX limitation; broader business discovery/issuer directory and full assistive-technology audit remain future work.
+See TYPOGRAPHY.md, NAVIGATION.md, RESPONSIVE_DESIGN.md and VISUAL_QA.md for implementation and validation details.

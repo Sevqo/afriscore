@@ -1,3 +1,5 @@
+import { DataTable } from '../components/DataTable';
+import { Icon } from '../components/Icon';
 import {
   Field,
   Form,
@@ -127,7 +129,7 @@ export function IntelligenceView({
               className="text-button"
               onClick={() => onNavigate(i.action)}
             >
-              Review {i.action.toLowerCase()} →
+              Review {i.action.toLowerCase()} <Icon name="right" />
             </button>
           </article>
         ))}
@@ -139,7 +141,7 @@ export function IntelligenceView({
           payments are not proof of fraud.
         </p>
         <div className="table-scroll">
-          <table>
+          <DataTable>
             <thead>
               <tr>
                 <th>Customer</th>
@@ -168,7 +170,7 @@ export function IntelligenceView({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       </section>
       <div className="dashboard-columns">
@@ -444,7 +446,7 @@ export function ForecastView({
           <section className="panel">
             <h2>Projected receivables</h2>
             <div className="table-scroll">
-              <table>
+              <DataTable>
                 <thead>
                   <tr>
                     <th>Invoice</th>
@@ -463,7 +465,7 @@ export function ForecastView({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </DataTable>
             </div>
           </section>
         </>

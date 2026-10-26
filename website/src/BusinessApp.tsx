@@ -1,3 +1,8 @@
+import { DataTable } from './components/DataTable';
+import { Overlay } from './components/Overlay';
+import { Icon, type IconName } from './components/Icon';
+import { useRef } from 'react';
+import { useFocusScope } from './components/useFocusScope';
 import { PassportWorkspace } from './stage3/PassportWorkspace';
 import {
   transport,
@@ -116,7 +121,7 @@ export function AuthPage({ mode }: { mode: string }) {
                 location.href = '/app';
               }}
             >
-              Enter demo workspace →
+              Enter demo workspace <Icon name="right" />
             </button>
             <small>
               Or sign in with {DEMO_EMAIL} / {DEMO_PASSWORD}
@@ -157,7 +162,13 @@ export function AuthPage({ mode }: { mode: string }) {
           )}
           <ErrorBox error={error} />
           <button className="button" disabled={busy}>
-            {busy ? 'Working…' : 'Continue →'}
+            {busy ? (
+              'Working…'
+            ) : (
+              <>
+                Continue <Icon name="right" />
+              </>
+            )}
           </button>
         </form>
         {result && (
@@ -175,7 +186,7 @@ export function AuthPage({ mode }: { mode: string }) {
                 <p>Development verification token (shown locally):</p>
                 <code className="one-time">{result.verification_token}</code>
                 <a href={'/verify?token=' + result.verification_token}>
-                  Verify email →
+                  Verify email <Icon name="right" />
                 </a>
               </>
             )}
@@ -184,11 +195,13 @@ export function AuthPage({ mode }: { mode: string }) {
                 <p>Development recovery token:</p>
                 <code className="one-time">{result.recovery_token}</code>
                 <a href={'/reset?token=' + result.recovery_token}>
-                  Reset password →
+                  Reset password <Icon name="right" />
                 </a>
               </>
             )}
-            <a href="/app">Open workspace →</a>
+            <a href="/app">
+              Open workspace <Icon name="right" />
+            </a>
           </div>
         )}
         <div className="auth-links">
@@ -274,7 +287,13 @@ export function Checkout() {
                     )
                   }
                 >
-                  {busy ? 'Processing…' : 'Simulate payment →'}
+                  {busy ? (
+                    'Processing…'
+                  ) : (
+                    <>
+                      Simulate payment <Icon name="right" />
+                    </>
+                  )}
                 </button>
               </>
             )}
@@ -308,28 +327,58 @@ export function Checkout() {
     </div>
   );
 }
-const tabs = [
-  'Overview',
-  'Business Passport',
-  ...stage2Tabs,
-  'Payments',
-  'Orders',
-  'Invoices',
-  'Customers',
-  'Cash Flow',
-  'Transactions',
-  'Reconciliation',
-  'Reports',
-  'Integrations',
-  'Developers',
-  'Team',
-  'Settings',
+const navigation: { label: string; icon: IconName; items: string[] }[] = [
+  {
+    label: 'Workspace',
+    icon: 'grid',
+    items: ['Overview', 'Customers', 'Orders', 'Invoices', 'Payments'],
+  },
+  {
+    label: 'Finance & intelligence',
+    icon: 'chart',
+    items: [
+      'Intelligence',
+      'Cash Flow',
+      'Forecasts',
+      'Transactions',
+      'Reconciliation',
+      'Reports',
+      'Assistant',
+    ],
+  },
+  {
+    label: 'Operations',
+    icon: 'document',
+    items: [
+      'Automations',
+      'Notifications',
+      'Approvals',
+      'Fulfillment',
+      'Protected Payments',
+      'Disputes',
+    ],
+  },
+  {
+    label: 'Business trust',
+    icon: 'shield',
+    items: ['Business Passport', 'Risk Review'],
+  },
+  {
+    label: 'Build & connect',
+    icon: 'code',
+    items: ['Connect', 'Integrations', 'Developers', 'Engineering'],
+  },
+  { label: 'Administration', icon: 'settings', items: ['Team', 'Settings'] },
 ];
+const tabs = navigation.flatMap((group) => group.items);
 export function BusinessApp() {
   const [me, setMe] = useState<any>(null),
     [orgs, setOrgs] = useState<any[]>([]),
     [org, setOrg] = useState(''),
-    [tab, setTab] = useState('Overview'),
+    [tab, setTab] = useState(() => {
+      const saved = decodeURIComponent(location.hash.slice(1));
+      return tabs.includes(saved) ? saved : 'Overview';
+    }),
     [environment, setEnvironment] = useState('sandbox'),
     [data, setData] = useState<any>(null),
     [customers, setCustomers] = useState<any[]>([]),
@@ -340,6 +389,29 @@ export function BusinessApp() {
     [query, setQuery] = useState(''),
     [selected, setSelected] = useState<any>(null),
     [documentCurrency, setDocumentCurrency] = useState('KES');
+  const [navOpen, setNavOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  useFocusScope(navOpen, () => setNavOpen(false), navRef);
+  useEffect(() => {
+    const change = () => {
+      const value = decodeURIComponent(location.hash.slice(1));
+      setTab(tabs.includes(value) ? value : 'Overview');
+      setNavOpen(false);
+    };
+    window.addEventListener('popstate', change);
+    return () => window.removeEventListener('popstate', change);
+  }, []);
+  useEffect(() => {
+    if (decodeURIComponent(location.hash.slice(1)) !== tab)
+      history.pushState(null, '', '#' + encodeURIComponent(tab));
+  }, [tab]);
+  useEffect(() => {
+    const resize = () => {
+      if (innerWidth > 1024) setNavOpen(false);
+    };
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
   const base = '/api/v1/organizations/' + org;
   useEffect(() => {
     api('/api/auth/me')
@@ -495,6 +567,12 @@ export function BusinessApp() {
     writable =
       organization &&
       ['owner', 'admin', 'finance', 'operations'].includes(organization.role);
+  // The browser demo stores profile fields directly; the API stores serialized profile JSON.
+  const profile = organization?.profile
+    ? typeof organization.profile === 'string'
+      ? JSON.parse(organization.profile)
+      : organization.profile
+    : organization;
   function docForm() {
     return (
       <>
@@ -632,7 +710,7 @@ export function BusinessApp() {
           </Field>
         </div>
         <button className="button" disabled={busy}>
-          Create workspace →
+          Create workspace <Icon name="right" />
         </button>
       </form>
     );
@@ -691,7 +769,7 @@ export function BusinessApp() {
             <div className="quick-actions">
               {['Customers', 'Orders', 'Invoices', 'Reports'].map((t) => (
                 <button key={t} onClick={() => setTab(t)}>
-                  {t} ↗
+                  {t} <Icon name="right" />
                 </button>
               ))}
             </div>
@@ -710,7 +788,7 @@ export function BusinessApp() {
           <h2>Recent provider events</h2>
           {data.events?.length ? (
             <div className="table-scroll">
-              <table>
+              <DataTable>
                 <thead>
                   <tr>
                     <th>Provider reference</th>
@@ -731,7 +809,7 @@ export function BusinessApp() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </DataTable>
             </div>
           ) : (
             <Empty text="No verified payment activity yet. Create an invoice and test a checkout." />
@@ -743,26 +821,66 @@ export function BusinessApp() {
   }
   return (
     <div className="business-shell">
-      <aside className="sidebar">
-        <Logo />
-        <span className="workspace-label">BUSINESS WORKSPACE</span>
+      {navOpen && (
+        <button
+          className="nav-scrim"
+          aria-label="Close business navigation"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+      <aside
+        className={'sidebar ' + (navOpen ? 'is-open' : '')}
+        ref={navRef}
+        role={navOpen ? 'dialog' : undefined}
+        aria-modal={navOpen ? true : undefined}
+        aria-label="Workspace menu"
+        id="workspace-menu"
+      >
+        <div className="sidebar-brand">
+          <Logo />
+          <button
+            data-autofocus
+            className="icon-button app-nav-close"
+            aria-label="Close business navigation"
+            onClick={() => setNavOpen(false)}
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+        <span className="workspace-label">Business workspace</span>
         <nav aria-label="Business navigation">
-          {tabs.map((t) => (
-            <button
-              className={tab === t ? 'active' : ''}
-              key={t}
-              onClick={() => {
-                setTab(t);
-                setCreating(false);
-              }}
+          {navigation.map((group) => (
+            <details
+              key={group.label}
+              className="workspace-nav-group"
+              open={group.items.includes(tab) || undefined}
             >
-              {t}
-              <span>{t === tab ? '↗' : ''}</span>
-            </button>
+              <summary>
+                <Icon name={group.icon} />
+                {group.label}
+                <Icon name="down" />
+              </summary>
+              {group.items.map((t) => (
+                <button
+                  className={tab === t ? 'active' : ''}
+                  key={t}
+                  aria-current={tab === t ? 'page' : undefined}
+                  onClick={() => {
+                    setTab(t);
+                    setCreating(false);
+                    setNavOpen(false);
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </details>
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <a href="/docs">Developer docs ↗</a>
+          <a href="/docs">
+            Developer docs <Icon name="right" />
+          </a>
           <button
             onClick={() =>
               api('/api/auth/signout', 'POST', {}).then(
@@ -776,6 +894,15 @@ export function BusinessApp() {
       </aside>
       <div className="app-main">
         <header className="app-header">
+          <button
+            className="icon-button app-nav-toggle"
+            aria-label="Open business navigation"
+            aria-expanded={navOpen}
+            aria-controls="workspace-menu"
+            onClick={() => setNavOpen(true)}
+          >
+            <Icon name="menu" />
+          </button>
           <div>
             <select
               aria-label="Switch organization"
@@ -854,7 +981,7 @@ export function BusinessApp() {
               {notice.startsWith('http') && (
                 <p>
                   <a href={notice} target="_blank" rel="noreferrer">
-                    Open checkout ↗
+                    Open checkout <Icon name="right" />
                   </a>
                 </p>
               )}
@@ -925,7 +1052,7 @@ export function BusinessApp() {
                   )}
                   <div className="actions">
                     <button className="button" disabled={busy}>
-                      Save →
+                      Save <Icon name="right" />
                     </button>
                     <button
                       type="button"
@@ -1054,13 +1181,13 @@ export function BusinessApp() {
                       onChange={(e) => setQuery(e.target.value)}
                     />
                     <button className="quiet-button" onClick={load}>
-                      Refresh ↻
+                      Refresh
                     </button>
                   </div>
                   <section className="panel record-panel">
                     {data?.data?.length ? (
                       <div className="table-scroll">
-                        <table>
+                        <DataTable>
                           <thead>
                             <tr>
                               <th>Reference / name</th>
@@ -1167,7 +1294,7 @@ export function BusinessApp() {
                                 </tr>
                               ))}
                           </tbody>
-                        </table>
+                        </DataTable>
                       </div>
                     ) : (
                       !busy && (
@@ -1263,7 +1390,7 @@ export function BusinessApp() {
                   <h2>Payment requests</h2>
                   {data?.data?.length ? (
                     <div className="table-scroll">
-                      <table>
+                      <DataTable>
                         <thead>
                           <tr>
                             <th>Request</th>
@@ -1284,7 +1411,7 @@ export function BusinessApp() {
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </DataTable>
                     </div>
                   ) : (
                     <Empty text="Create a payment link from an issued order or invoice." />
@@ -1420,16 +1547,16 @@ export function BusinessApp() {
                       {organization?.name} · {organization?.verification_status}
                     </p>
                     <p>
-                      Default currency:{' '}
-                      {organization &&
-                        JSON.parse(organization.profile).currency}{' '}
-                      · Default display timezone: Africa/Nairobi
+                      Default currency: {organization && profile?.currency} ·
+                      Default display timezone: Africa/Nairobi
                     </p>
                     <p>
                       Identity and business verification are not completed
                       automatically.
                     </p>
-                    <a href="/verify">Verify your email →</a>
+                    <a href="/verify">
+                      Verify your email <Icon name="right" />
+                    </a>
                   </section>
                   <section className="panel">
                     <h2>Audit history</h2>
@@ -1447,7 +1574,7 @@ export function BusinessApp() {
                 </>
               )}
               {selected && (
-                <div className="modal-backdrop">
+                <Overlay onClose={() => setSelected(null)}>
                   <section
                     className={
                       'record-modal panel ' +
@@ -1460,16 +1587,14 @@ export function BusinessApp() {
                     <button
                       className="close-modal"
                       onClick={() => setSelected(null)}
-                      autoFocus
                     >
-                      Close ×
+                      Close <Icon name="close" />
                     </button>
                     <h2>{selected.reference || selected.name}</h2>
                     {selected.kind === 'invoices' ? (
                       <>
                         <p>
-                          {organization?.name} ·{' '}
-                          {JSON.parse(organization.profile).email}
+                          {organization?.name} · {profile?.email}
                         </p>
                         <p>
                           Invoice · {selected.issue_date} · Due{' '}
@@ -1480,7 +1605,7 @@ export function BusinessApp() {
                           {customers.find((c) => c.id === selected.customer_id)
                             ?.name || selected.customer_id}
                         </p>
-                        <table>
+                        <DataTable>
                           <thead>
                             <tr>
                               <th>Item</th>
@@ -1499,7 +1624,7 @@ export function BusinessApp() {
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </DataTable>
                         <p>
                           Subtotal:{' '}
                           {money(selected.subtotal_minor, selected.currency)} ·
@@ -1550,7 +1675,7 @@ export function BusinessApp() {
                       </button>
                     )}
                   </section>
-                </div>
+                </Overlay>
               )}
             </>
           )}
@@ -1659,7 +1784,7 @@ function LineItemsInput({ currency }: { currency: string }) {
 function Empty({ text }: { text: string }) {
   return (
     <div className="empty-state">
-      <span aria-hidden="true">◇</span>
+      <Icon name="grid" width="32" height="32" />
       <h3>A clear place to begin.</h3>
       <p>{text}</p>
     </div>

@@ -2,9 +2,9 @@ import type { Media } from './components/Media';
 export const media: Record<string, Media> = {
   hero: {
     kind: 'svg',
-    src: '/media/infrastructure.svg',
+    src: '/media/connected-platform.svg',
     alt: 'Business activity, invoices, payments and financial intelligence connected through AfriCore',
-    aspectRatio: '4 / 3',
+    aspectRatio: '1 / 1',
     eager: true,
   },
   workspace: {

@@ -110,7 +110,13 @@ export function createApp() {
   // Local, dependency-free business-track UI (owner dashboard + lender card).
   // Served from the API origin so browser calls need no CORS configuration.
   // This is a local demo surface; it does not bypass API auth or consent.
-  app.use("/dashboard", express.static(path.join(process.cwd(), "dashboard"), { index: "index.html" }));
+  app.use("/dashboard", express.static(path.join(process.cwd(), "dashboard"), {
+    index: "index.html",
+    setHeaders(res) {
+      // This HTML console needs same-origin assets; API responses retain default-src 'none'.
+      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    },
+  }));
 
   app.use("/v1/businesses", businessRoutes);
   app.use("/v1/businesses/:id", businessDataRoutes);

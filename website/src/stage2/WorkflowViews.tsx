@@ -1,3 +1,4 @@
+import { DataTable } from '../components/DataTable';
 import {
   Field,
   Form,
@@ -140,7 +141,7 @@ export function AutomationView({
       <section className="panel">
         <h2>Run history</h2>
         <div className="table-scroll">
-          <table>
+          <DataTable>
             <thead>
               <tr>
                 <th>Run</th>
@@ -163,7 +164,7 @@ export function AutomationView({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       </section>
     </>

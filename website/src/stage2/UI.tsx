@@ -1,4 +1,5 @@
-import {transport} from '../demo/transport';
+import { DataTable } from '../components/DataTable';
+import { transport } from '../demo/transport';
 import { useState, type FormEvent, type ReactNode } from 'react';
 export type API = (
   suffix: string,
@@ -132,10 +133,15 @@ export function Trend({
           y1="130"
           x2="760"
           y2="130"
-          stroke="#bdccbf"
+          stroke="var(--line)"
           strokeDasharray="4 4"
         />
-        <polyline points={poly} fill="none" stroke="#198764" strokeWidth="3" />
+        <polyline
+          points={poly}
+          fill="none"
+          stroke="var(--accent-text)"
+          strokeWidth="3"
+        />
         {points.length > 0 && (
           <>
             <text x="40" y="250">
@@ -154,7 +160,7 @@ export function Trend({
       <details>
         <summary>Accessible data table</summary>
         <div className="table-scroll">
-          <table>
+          <DataTable>
             <thead>
               <tr>
                 <th>Date</th>
@@ -169,7 +175,7 @@ export function Trend({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       </details>
     </div>

@@ -1,3 +1,5 @@
+import { Overlay } from '../components/Overlay';
+import { Icon } from '../components/Icon';
 import { useEffect, useState } from 'react';
 import {
   Field,
@@ -340,7 +342,7 @@ export function DisputeView({
                 {d.status} · {d.id}
               </p>
               <button className="text-button" onClick={() => onDetail(d)}>
-                Inspect timeline & evidence →
+                Inspect timeline & evidence <Icon name="right" />
               </button>
             </div>
             {d.status !== 'resolved' && (
@@ -416,15 +418,15 @@ export function RecordDetail({
     if (['shipments', 'disputes'].includes(record.kind)) load();
   }, [record.id]);
   return (
-    <div className="modal-backdrop">
+    <Overlay onClose={onClose}>
       <section
         className="record-modal panel"
         role="dialog"
         aria-modal="true"
         aria-label="History and evidence"
       >
-        <button className="close-modal" onClick={onClose} autoFocus>
-          Close ×
+        <button className="close-modal" onClick={onClose}>
+          Close <Icon name="close" />
         </button>
         <h2>{record.title || record.tracking_reference || record.reason}</h2>
         <p className="record-id">{record.id}</p>
@@ -478,6 +480,6 @@ export function RecordDetail({
           </Form>
         )}
       </section>
-    </div>
+    </Overlay>
   );
 }

@@ -1,11 +1,11 @@
 // Original AfriCore SVG artwork. Shared geometry and palette; no downloaded or traced assets.
 const fs = require('node:fs');
 const p = {
-  ink: '#172d49',
+  ink: '#242424',
   orange: '#eea064',
-  blue: '#638ac5',
-  cyan: '#91d2cd',
-  cream: '#f7f3eb',
+  blue: '#8b9b6a',
+  cyan: '#bed783',
+  cream: '#f5f3ee',
   skin: '#b97550',
   light: '#d6a07a',
   green: '#37836b',
@@ -52,7 +52,7 @@ function chart(x, y) {
   return `<g transform="translate(${x} ${y})">${rect(0, 0, 245, 165, '#fff', 9)}${line(25, 135, 225, 135)}${line(25, 30, 25, 135)}${rect(47, 90, 24, 45, p.cyan, 3)}${rect(90, 60, 24, 75, p.blue, 3)}${rect(133, 75, 24, 60, p.orange, 3)}${rect(176, 42, 24, 93, p.cyan, 3)}</g>`;
 }
 function scene(name, title, content) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" fill="none"><title>${title}</title><desc>Original AfriCore conceptual editorial illustration. Educational story, not evidence of a live transaction.</desc><g stroke="${p.ink}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${circle(412, 265, 212, p.cream)}<g stroke="#d8e5df">${circle(412, 265, 232, 'none')}${line(75, 448, 725, 448)}${path('M692 105L700 113L692 121L684 113Z', p.cyan)}${circle(102, 157, 5, p.orange)}${line(656, 401, 670, 401)}</g>${content}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" fill="none"><title>${title}</title><desc>Original AfriCore conceptual editorial illustration. Educational story, not evidence of a live transaction.</desc><g stroke="${p.ink}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${circle(412, 265, 212, p.cream)}<g stroke="#d1d1d1">${circle(412, 265, 232, 'none')}${line(75, 448, 725, 448)}${path('M692 105L700 113L692 121L684 113Z', p.cyan)}${circle(102, 157, 5, p.orange)}${line(656, 401, 670, 401)}</g>${content}</g></svg>`;
   fs.writeFileSync(`website/public/media/editorial/${name}.svg`, svg + '\n');
 }
 scene(

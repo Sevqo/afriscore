@@ -1,4 +1,11 @@
-import { useState, type ReactNode, type CSSProperties } from 'react';
+import { Icon } from './Icon';
+import {
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type CSSProperties,
+} from 'react';
 export type Media =
   | {
       kind: 'image' | 'svg' | 'screenshot';
@@ -122,8 +129,12 @@ export function EditorialCard({
       <a href={href}>
         <MediaBlock media={media} />
         <div className="card-copy">
+          <span className="card-category">AfriCore · Business solutions</span>
           <h3>
-            {title} <span aria-hidden="true">↗</span>
+            {title}{' '}
+            <span aria-hidden="true">
+              <Icon name="right" />
+            </span>
           </h3>
           <p>{text}</p>
         </div>
@@ -132,13 +143,68 @@ export function EditorialCard({
   );
 }
 export function MediaCarousel({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null),
+    id = useId();
+  const [position, setPosition] = useState({ start: true, end: false });
+  function move(direction: number) {
+    const el = ref.current;
+    if (!el) return;
+    const card = el.querySelector('article');
+    const step =
+      (card?.getBoundingClientRect().width || el.clientWidth * 0.85) + 24;
+    el.scrollBy({
+      left: direction * step,
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
+  }
   return (
-    <div
-      className="media-carousel"
-      tabIndex={0}
-      aria-label="Explore solutions; scroll horizontally"
-    >
-      {children}
+    <div className="carousel-section">
+      <div
+        id={id}
+        ref={ref}
+        className="media-carousel"
+        tabIndex={0}
+        role="region"
+        aria-label="Business solutions"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setPosition({
+            start: el.scrollLeft < 4,
+            end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4,
+          });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            move(e.key === 'ArrowRight' ? 1 : -1);
+          }
+        }}
+      >
+        {children}
+      </div>
+      <div className="carousel-controls">
+        <span>Explore the possibilities</span>
+        <button
+          className="icon-button"
+          aria-label="Previous solution"
+          aria-controls={id}
+          disabled={position.start}
+          onClick={() => move(-1)}
+        >
+          <Icon name="left" />
+        </button>
+        <button
+          className="icon-button"
+          aria-label="Next solution"
+          aria-controls={id}
+          disabled={position.end}
+          onClick={() => move(1)}
+        >
+          <Icon name="right" />
+        </button>
+      </div>
     </div>
   );
 }

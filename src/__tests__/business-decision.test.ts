@@ -242,7 +242,18 @@ describe("decision card endpoint and ledger wiring", () => {
     const page = await fetch(`${baseUrl}/dashboard/`);
     assert.strictEqual(page.status, 200);
     const html = await page.text();
-    assert.ok(html.includes("AfriScore"));
+    assert.ok(html.includes("AfriCore"));
+    const policy = page.headers.get("content-security-policy") || "";
+    assert.ok(policy.includes("script-src 'self'"));
+    assert.ok(policy.includes("style-src 'self'"));
+    assert.ok(policy.includes("font-src 'self'"));
+    assert.ok(!policy.includes("unsafe-inline"));
+    assert.ok(!policy.includes("https:"));
+    const theme = await fetch(`${baseUrl}/dashboard/shared/theme.css`);
+    assert.strictEqual(theme.status, 200);
+    assert.ok((await theme.text()).includes("#76b900"));
+    const apiResponse = await fetch(`${baseUrl}/v1/does-not-exist`);
+    assert.strictEqual(apiResponse.headers.get("content-security-policy"), "default-src 'none'; frame-ancestors 'none'");
     assert.ok(html.includes("Lender card"));
 
     const script = await fetch(`${baseUrl}/dashboard/app.js`);

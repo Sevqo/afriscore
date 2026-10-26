@@ -1,9 +1,12 @@
+import { groups, productSections } from './navigation';
 import { TrustPublic } from './stage3/TrustPublic';
 import { startDemo } from './demo/transport';
 import { editorial, publicPageMedia } from './editorial';
 import { EducationalFlow } from './EducationalFlow';
 import { BuyerPortal } from './stage2/BuyerPortal';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Icon } from './components/Icon';
+import { useFocusScope } from './components/useFocusScope';
 import { pages, media } from './content';
 import {
   FeatureSection,
@@ -12,49 +15,6 @@ import {
   MediaCarousel,
 } from './components/Media';
 import { BusinessApp, AuthPage, Checkout } from './BusinessApp';
-const groups: Record<string, [string, string][]> = {
-  Products: [
-    ['AfriCore Business', '/products/business'],
-    ['Business Passport · Beta', '/products/business-passport'],
-    ['Trust Network', '/products/trust-network'],
-    ['Verifiable Credentials', '/products/verifiable-credentials'],
-    ['Blockchain Verification', '/products/blockchain-verification'],
-    ['Business Verification', '/products/business-verification'],
-    ['Passport Privacy', '/products/passport-privacy'],
-    ['AfriCore Pay', '/products/pay'],
-    ['Invoicing & receivables', '/products/invoicing'],
-    ['Payment reconciliation', '/products/reconciliation'],
-    ['Cash flow & reporting', '/products/cash-flow'],
-    ['AfriCore Connect', '/products/connect'],
-    ['AfriCore Data', '/products/data'],
-    ['AfriCore Intelligence', '/products/intelligence'],
-    ['Business automations', '/products/automations'],
-    ['Protected Payments · Sandbox', '/products/protected-payments'],
-  ],
-  Solutions: [
-    ['Social commerce', '/solutions/social-commerce'],
-    ['SMEs', '/solutions/smes'],
-    ['Contractors & suppliers', '/solutions/contractors'],
-    ['Fintechs & SaaS', '/solutions/fintechs'],
-  ],
-  Developers: [
-    ['Developer platform', '/developers'],
-    ['Verify a credential', '/verify-credential'],
-    ['Verification APIs', '/products/verification-api'],
-    ['Interactive demo', '/demo'],
-    ['API documentation', '/docs'],
-    ['API sandbox', '/sandbox'],
-  ],
-  Resources: [
-    ['Help & support', '/support'],
-    ['Security & trust', '/security'],
-    ['Pricing', '/pricing'],
-  ],
-  Company: [
-    ['About AfriCore', '/about'],
-    ['Contact', '/contact'],
-  ],
-};
 export function Logo() {
   return (
     <a href="/" className="logo" aria-label="AfriCore home">
@@ -65,45 +25,168 @@ export function Logo() {
     </a>
   );
 }
-function Header() {
+export function Header() {
   const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const root = useRef<HTMLElement>(null);
+  const close = () => {
+    setOpen(false);
+    setCategory('');
+    setSearching(false);
+  };
+  useFocusScope(open || searching, close, root);
+  useEffect(() => {
+    function key(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
+    function outside(e: MouseEvent) {
+      if (!root.current?.contains(e.target as Node)) setCategory('');
+    }
+    function resize() {
+      if (window.innerWidth > 1024) setOpen(false);
+    }
+    document.addEventListener('keydown', key);
+    document.addEventListener('click', outside);
+    window.addEventListener('resize', resize);
+    return () => {
+      document.removeEventListener('keydown', key);
+      document.removeEventListener('click', outside);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
   return (
-    <header className="site-header">
+    <header className="site-header" ref={root}>
       <Logo />
-      <button
-        className="menu-toggle"
-        aria-expanded={open}
-        aria-controls="main-nav"
-        onClick={() => setOpen(!open)}
-      >
-        Menu {open ? '−' : '+'}
-      </button>
+      <div className="header-tools">
+        <button
+          className="icon-button"
+          aria-label={searching ? 'Close search' : 'Search AfriCore'}
+          aria-expanded={searching}
+          onClick={() => {
+            setSearching(!searching);
+            setOpen(false);
+          }}
+        >
+          <Icon name={searching ? 'close' : 'search'} />
+        </button>
+        <a
+          className="icon-button mobile-account"
+          href="/signin"
+          aria-label="Sign in"
+        >
+          <Icon name="user" />
+        </a>
+        <button
+          className="menu-toggle icon-button"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-expanded={open}
+          aria-controls="main-nav"
+          onClick={() => {
+            setOpen(!open);
+            setSearching(false);
+          }}
+        >
+          <Icon name={open ? 'close' : 'menu'} />
+        </button>
+      </div>
       <nav
         id="main-nav"
         className={open ? 'open' : ''}
         aria-label="Main navigation"
       >
         {Object.entries(groups).map(([label, links]) => (
-          <details key={label}>
-            <summary>
-              {label} <span>⌄</span>
-            </summary>
-            <div className="nav-menu">
-              {links.map(([text, url]) => (
-                <a key={url} href={url}>
-                  {text} <span>↗</span>
-                </a>
-              ))}
-            </div>
-          </details>
+          <div className="nav-group" key={label}>
+            <button
+              className="nav-category"
+              data-autofocus={open && label === 'Products' ? true : undefined}
+              aria-expanded={category === label}
+              aria-controls={'nav-' + label}
+              onClick={() => setCategory(category === label ? '' : label)}
+            >
+              {label}
+              <Icon name="down" />
+            </button>
+            {
+              <div
+                className="nav-menu"
+                id={'nav-' + label}
+                hidden={category !== label}
+              >
+                <span className="nav-caption">
+                  Explore {label.toLowerCase()}
+                </span>
+                {(label === 'Products'
+                  ? productSections.map((section) => ({
+                      title: section.title,
+                      links: section.paths.map((path) =>
+                        links.find(([, url]) => url === path)!,
+                      ),
+                    }))
+                  : [{ title: '', links }]
+                ).map((section) => (
+                  <div className="nav-column" key={section.title}>
+                    {section.title && <h3>{section.title}</h3>}
+                    {section.links.map(([text, url]) => (
+                      <a
+                        href={url}
+                        key={url}
+                        aria-current={
+                          location.pathname === url ? 'page' : undefined
+                        }
+                        onClick={close}
+                      >
+                        {text}
+                        <Icon name="right" />
+                      </a>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            }
+          </div>
         ))}
+        <a className="support-link" href="/support">
+          Support
+        </a>
         <a className="signin-link" href="/signin">
           Sign in
         </a>
-        <a className="button small" href="/signup">
-          Get started <span>↗</span>
+        <a className="button small" href="/demo">
+          Explore demo
         </a>
       </nav>
+      {searching && (
+        <section
+          className="site-search"
+          role="search"
+          aria-label="Search AfriCore pages"
+        >
+          <label htmlFor="site-query">Find a product or resource</label>
+          <input
+            id="site-query"
+            data-autofocus
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search payments, Passport, developers…"
+          />
+          <div className="search-results">
+            {Object.values(groups)
+              .flat()
+              .filter(([title]) =>
+                title.toLowerCase().includes(query.toLowerCase()),
+              )
+              .map(([title, url]) => (
+                <a key={url} href={url}>
+                  {title}
+                  <Icon name="right" />
+                </a>
+              ))}
+          </div>
+        </section>
+      )}
     </header>
   );
 }
@@ -151,7 +234,7 @@ function CTA() {
         connected business.
       </h2>
       <a className="button" href="/signup">
-        Create your sandbox workspace <span>↗</span>
+        Create your sandbox workspace <Icon name="right" />
       </a>
       <p>Explore the platform safely. No real funds move in sandbox.</p>
     </section>
@@ -162,36 +245,56 @@ function Home() {
     <>
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow">BUSINESS, WITHOUT THE FRAGMENTATION</span>
+          <span className="eyebrow">The connected business platform</span>
           <h1>
-            The infrastructure
-            <br />
-            powering African
-            <br />
-            <em>business.</em>
+            Powering the next <br />
+            chapter of African <br />
+            business.
           </h1>
           <p>
-            Manage payments, simplify invoicing, understand your cash flow, and
-            connect your business to the financial tools it needs. All through
-            one platform.
+            Bring payments, operations and business trust together. One
+            foundation for everything you’re building.
           </p>
           <div className="actions">
-            <a className="button" href="/signup">
-              Get started <span>↗</span>
+            <a className="button" href="/demo">
+              Explore AfriCore
+              <Icon name="right" />
             </a>
             <a className="text-link light" href="#platform">
-              Explore the platform <span>↓</span>
+              Discover the platform
+              <Icon name="down" />
             </a>
           </div>
           <div className="hero-caption">
-            <span className="status-dot" />
             Kenya first. Built for the continent.
           </div>
         </div>
         <HeroMedia media={media.hero} />
         <div className="hero-bottom">
-          <span>01 / THE CONNECTED BUSINESS</span>
-          <span>PAYMENTS · OPERATIONS · INFRASTRUCTURE</span>
+          <span>Business infrastructure</span>
+          <span>Payments. Intelligence. Trust.</span>
+          <a href="/products/business">
+            Discover what’s possible
+            <Icon name="right" />
+          </a>
+        </div>
+      </section>
+      <section className="quick-links" aria-label="Platform quick links">
+        <h2>Explore AfriCore</h2>
+        <div>
+          {[
+            ['Business', '/products/business'],
+            ['Payments', '/products/pay'],
+            ['Intelligence', '/products/intelligence'],
+            ['Business Passport', '/products/business-passport'],
+            ['Trust Network', '/products/trust-network'],
+            ['Developers', '/developers'],
+          ].map(([label, href]) => (
+            <a key={href} href={href}>
+              {label}
+              <Icon name="right" />
+            </a>
+          ))}
         </div>
       </section>
       <section className="mission">
@@ -208,7 +311,7 @@ function Home() {
           what they do best.
         </p>
         <a className="text-link" href="/about">
-          Meet AfriCore ↗
+          Meet AfriCore <Icon name="right" />
         </a>
       </section>
       <div className="section-heading" id="platform">
@@ -221,7 +324,7 @@ function Home() {
           </h2>
         </div>
         <a className="text-link" href="/products/business">
-          Explore Business ↗
+          Explore Business <Icon name="right" />
         </a>
       </div>
       <FeatureSection
@@ -231,7 +334,7 @@ function Home() {
         media={media.workspace}
       >
         <a className="text-link" href="/products/business">
-          See the workspace ↗
+          See the workspace <Icon name="right" />
         </a>
       </FeatureSection>
       <section className="product-strip">
@@ -245,7 +348,9 @@ function Home() {
             Create a payment request. Share a checkout link. Track a verified
             result.
           </p>
-          <b>Explore AfriCore Pay ↗</b>
+          <b>
+            Explore AfriCore Pay <Icon name="right" />
+          </b>
         </a>
         <a href="/products/invoicing">
           <span>02 / ORGANIZE</span>
@@ -257,7 +362,9 @@ function Home() {
           <p>
             Track what’s due, what’s overdue and what has been partially paid.
           </p>
-          <b>Explore invoicing ↗</b>
+          <b>
+            Explore invoicing <Icon name="right" />
+          </b>
         </a>
         <a href="/products/cash-flow">
           <span>03 / UNDERSTAND</span>
@@ -270,7 +377,9 @@ function Home() {
             See incoming collections and receivables with transparent data
             sources.
           </p>
-          <b>Explore reporting ↗</b>
+          <b>
+            Explore reporting <Icon name="right" />
+          </b>
         </a>
       </section>
       <FeatureSection
@@ -281,7 +390,7 @@ function Home() {
         reverse
       >
         <a className="text-link" href="/products/reconciliation">
-          Connect the dots ↗
+          Connect the dots <Icon name="right" />
         </a>
       </FeatureSection>
       <section className="developer-feature dark">
@@ -299,10 +408,10 @@ function Home() {
           </p>
           <div className="actions">
             <a href="/docs" className="button">
-              Read the docs ↗
+              Read the docs <Icon name="right" />
             </a>
             <a href="/sandbox" className="text-link light">
-              Explore sandbox ↗
+              Explore sandbox <Icon name="right" />
             </a>
           </div>
         </div>
@@ -336,7 +445,7 @@ function Home() {
         <div className="connector-row">
           {['CSV imports', 'Sandbox provider', 'AfriCore Pay'].map((v) => (
             <span key={v}>
-              ↔ {v}
+              {v}
               <small>Available in sandbox</small>
             </span>
           ))}
@@ -345,7 +454,7 @@ function Home() {
           </span>
         </div>
         <a className="text-link" href="/products/connect">
-          Explore integrations ↗
+          Explore integrations <Icon name="right" />
         </a>
       </section>
       <section className="solutions-section">
@@ -357,7 +466,7 @@ function Home() {
               <br />A common foundation.
             </h2>
           </div>
-          <span className="scroll-hint">Scroll to explore →</span>
+          <span className="scroll-hint">Swipe or use the controls</span>
         </div>
         <MediaCarousel>
           {[
@@ -383,7 +492,7 @@ function Home() {
                 ...editorial[
                   ['payments', 'business', 'invoicing', 'developers'][i]
                 ],
-                background: ['#e4eee8', '#e8e9e2', '#dce7e8', '#e6e3dc'][i],
+                background: ['#eeeeee', '#f3f3f3', '#e9e9e9', '#f1f1f1'][i],
               }}
             />
           ))}
@@ -402,7 +511,7 @@ function Home() {
           and verification are complete.
         </p>
         <a className="text-link" href="/security">
-          Our approach to trust ↗
+          Our approach to trust <Icon name="right" />
         </a>
       </section>
       <section className="how-section">
@@ -483,7 +592,7 @@ function Docs() {
         consent-gated infrastructure APIs remain at <code>/v1</code>.
       </p>
       <a className="button" href="/api/openapi.json">
-        Download OpenAPI ↗
+        Download OpenAPI <Icon name="right" />
       </a>
       <div className="docs-grid">
         {[
@@ -572,10 +681,10 @@ export function App() {
               <p>{page.description}</p>
               <div className="actions">
                 <a className="button" href="/signup">
-                  Get started ↗
+                  Get started <Icon name="right" />
                 </a>
                 <a className="text-link light" href="/docs">
-                  Explore documentation ↗
+                  Explore documentation <Icon name="right" />
                 </a>
               </div>
               {page.availability && (

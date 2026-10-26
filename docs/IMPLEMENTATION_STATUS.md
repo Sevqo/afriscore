@@ -9,6 +9,10 @@ This is a sandbox implementation, not complete production acceptance of the mast
 
 Workspace record creation/updates and checkout creation now return HTTP success only after their database transactions commit, preventing immediate checkout requests from racing PostgreSQL visibility. Assistant tests use a synthetic key with injected fixture providers and restore their environment; no CI API secret or external request is required. COUNT assertions normalize PostgreSQL bigint strings. Local validation: all 194 tests pass on SQLite and an isolated PostgreSQL 17 database, typecheck, both OpenAPI inventories, website build and local-chain independent verification pass. GitHub CI also validates PostgreSQL 16.
 
+## Platform visual overhaul — 2026-10-26
+
+Shared green/black/white/neutral tokens and locally bundled fonts now cover public routes, all workspace sections, Passport/verification, auth/buyer/checkout and the legacy console. Added sticky navigation, grouped desktop/mobile menus, search, substantial original hero media, quick links, controlled editorial carousel, compact financial panels, mobile record tables and focus-managed overlays. Original illustrations remain editable. Existing demo Settings profile rendering and console asset-policy bugs found in browser QA are corrected; no migrations/data reset. Validation: 194 SQLite and 194 PostgreSQL tests, type/build/API validators and local-chain independent verification pass. Coverage, screenshots, exact tokens and remaining device/accessibility qualification: [UI_OVERHAUL.md](UI_OVERHAUL.md), [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [VISUAL_QA.md](VISUAL_QA.md).
+
 ---
 
 # Stage 2 implementation record (historical)

@@ -1,0 +1,56 @@
+@font-face {
+  font-family: 'DM Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 1000;
+  src: url('./fonts/dm-sans-latin-wght-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('./fonts/space-mono-latin-400-normal.woff2') format('woff2');
+}
+:root {
+  --ink: #000000;
+  --text: #1a1a1a;
+  --muted: #666666;
+  --accent: #76b900;
+  --accent-hover: #5a8d00;
+  --accent-text: #426900;
+  --accent-light: #eaf3db;
+  --line: #d1d1d1;
+  --surface: #f7f7f7;
+  --surface-alt: #eeeeee;
+  --white: #ffffff;
+  --success: #326600;
+  --success-surface: #eef5e4;
+  --warning: #805700;
+  --warning-surface: #fff8e5;
+  --danger: #a22b20;
+  --danger-surface: #fff0ed;
+  --radius-button: 3px;
+  --radius-input: 5px;
+  --radius: 6px;
+  --radius-editorial: 18px;
+  --radius-menu: 6px;
+  --shadow-menu: 0 8px 24px #00000014;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --gutter: clamp(20px, 4.5vw, 80px);
+  --content-width: 1440px;
+  --header-height: 68px;
+  --motion-fast: 160ms;
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --font-body: 'DM Sans Variable', Arial, sans-serif;
+  --font-code: 'Space Mono', monospace;
+  --type-display: clamp(38px, 4.6vw, 68px);
+  --type-section: clamp(30px, 3.2vw, 48px);
+}

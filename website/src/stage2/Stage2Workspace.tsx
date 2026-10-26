@@ -1,3 +1,4 @@
+import { Icon } from '../components/Icon';
 import { useEffect, useState } from 'react';
 import { IntelligenceView, ForecastView } from './IntelligenceViews';
 import { AssistantView } from './AssistantView';
@@ -175,7 +176,7 @@ export function Stage2Workspace({
                 target="_blank"
                 rel="noreferrer"
               >
-                Open sandbox buyer link ↗
+                Open sandbox buyer link <Icon name="right" />
               </a>
             </p>
           )}
