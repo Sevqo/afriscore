@@ -1,5 +1,8 @@
 # AfriCore agent guide
 
+For product-experience/reliability work read docs/HOMEPAGE_REFINEMENT.md, PRODUCT_DIFFERENTIATION.md, CONTENT_ARCHITECTURE.md, PRODUCT_FUNCTIONAL_AUDIT.md, END_TO_END_TEST_RESULTS.md, DEFECT_REGISTER.md and RELIABILITY_IMPROVEMENTS.md. Preserve the compact content-sized hero, real synthetic UI composition and invoice teaching below it. Keep products distinct. Preserve filter-before-pagination, literal search escaping, stable page order, stale-request scope/version guards and per-workspace worker failure isolation. Test query changes on both database engines. Distinguish rendered screens/browser-demo behavior from connected backend journeys and external production authorization.
+
+
 For content/education/chart work read docs/CONTENT_STRATEGY.md, CONTENT_STYLE_GUIDE.md, CONTENT_ACCURACY.md, CONTENT_QA.md and CHART_EXPERIENCE.md. Canonical guide data lives in website/src/education/guides.ts; articles/glossary in Learn.tsx. Keep workflow, example, availability, FAQ and related links consistent. Label fiction and local simulations. Preserve requested-versus-confirmed money, currency/source coverage, forecast assumptions and independent proof checks. Do not imply profit/bank balance or claim truth from a signature/anchor. Maintain prerendered route HTML/metadata and run the website build (includes content/chart tests). New art must retain contextual alt text and prompt provenance. Never restore decorative green top rules or replace meaningful HTML explanations with tiny image text.
 
 Read README.md and docs/IMPLEMENTATION_STATUS.md first, then ARCHITECTURE.md, DATABASE.md, SECURITY.md and the relevant domain document before architecture changes.

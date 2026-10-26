@@ -1,5 +1,18 @@
 # Visual QA — 2026-10-26
 
+## Product-experience refinement (latest)
+
+Baseline hero captured before edits: requested 390 px width 1288.7 px tall; 1440 px width 858.6 px. Final:619.9 px and 470 px (~52%/~45% reduction). All seven requested widths 320/375/390/430/768/1024/1440 pass document-overflow checks; content stays unclipped and sticky navigation remains. Actual synthetic workspace/checkout captures form a non-human product composition. The detailed invoice flow remains below the hero. Main-content links are 14 instead of 30.
+
+Sixteen distinct major product pages at 320/1440 (32 checks) have one H 1, expected experience, no overflow or broken completed images. Browser interactions passed: second receipt closes the illustrative invoice; duplicate receipt remains ignored; payment failure explanation; conservative collections 162, 500; overdue automation follow-up; disputed relationship review. Existing art, learning pages, shared menu and chart controls remain.
+
+Connected isolated browser: owner sign-in, customer/order/invoice/checkout journey, delayed pending then paid/matched result, refresh persistence, responsive customer correction, all 26 mobile workspace sections and 25 desktop sections reviewed. Engineering correctly denies an ordinary owner; allowlisted operator access and organization switch succeeded. These are render/selected-journey observations, not an assertion that every button was manually clicked. Backend suites supply additional mutation/failure evidence.
+
+Artifacts: .tmp/product-audit/hero-before-390.png, hero-before-1440.png, hero-after-390.png, hero-after-1440.png, hero-final.json, product-checks.json, connected-modules-mobile.json, connected-modules-desktop.json, connected-checkout-paid.png, operator-engineering.png and interactions.json. Device emulation is not physical-device/Safari or full assistive-technology qualification. Screenshot host sometimes requires a 1 px repaint; actual measurements are recorded separately.
+
+
+
+
 ## Observed browser checks
 
 Used the in-app browser's Playwright and screenshot interfaces against the built website at 127.0.0.1:4173. Reviewed the existing homepage and Intelligence workspace before implementation, and the live NVIDIA reference. This is a substantial reference-inspired adaptation, not a pixel-perfect reproduction; the attachment supplied no reference screenshot files.

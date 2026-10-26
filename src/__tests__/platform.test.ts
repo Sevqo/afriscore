@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Server } from 'node:http';
 import { configureTestEnv } from './helpers';
 configureTestEnv('platform');
-import { migrate, dbGet, dbAll, closeDb } from '../db';
+import { migrate, dbGet, dbAll, dbRun, closeDb } from '../db';
 import { createApp } from '../app';
 import { totals, documentSchema, permitted } from '../platform/domain';
 import { processProviderResult } from '../platform/payments';
@@ -786,4 +786,415 @@ test('webhook listing and replay respect environment isolation', async () => {
     ).status,
     404,
   );
+});
+
+test('record search and status filters run before stable pagination and keep wildcard text literal', async () => {
+  const outsider = (
+    await request('/api/auth/signup', 'POST', {
+      email: email('isolated-' + Math.random()),
+      password: 'audit-only-strong-password',
+    })
+  ).cookie;
+  const prefix = `/api/v1/organizations/${org}`;
+  const target = await request(
+    prefix + '/records/customers',
+    'POST',
+    { name: 'Older target 100%_ literal' },
+    owner,
+  );
+  assert.equal(target.status, 201);
+  await dbRun('UPDATE ac_records SET created_at=? WHERE id=?', [
+    '2020-01-01T00:00:00Z',
+    target.data.id,
+  ]);
+  await request(
+    prefix + '/records/customers',
+    'POST',
+    { name: 'Newer unrelated customer' },
+    owner,
+  );
+  const search = await request(
+    prefix + '/records/customers?limit=1&q=' + encodeURIComponent('100%_'),
+    'GET',
+    undefined,
+    owner,
+  );
+  assert.equal(search.data.data.length, 1);
+  assert.equal(search.data.data[0].id, target.data.id);
+  const absent = await request(
+    prefix +
+      '/records/customers?limit=1&q=' +
+      encodeURIComponent('100%_does-not-exist'),
+    'GET',
+    undefined,
+    owner,
+  );
+  assert.deepEqual(absent.data.data, []);
+  const doc = {
+    customer_id: customer,
+    items: [
+      { description: 'Filter fixture', quantity: 1, unit_price_minor: 100 },
+    ],
+    issue_date: '2026-10-01',
+    due_date: '2026-10-30',
+    notes: 'status-pagination-fixture',
+  };
+  const issued = await request(
+    prefix + '/records/invoices',
+    'POST',
+    doc,
+    owner,
+  );
+  await request(
+    prefix + '/records/invoices/' + issued.data.id,
+    'PATCH',
+    { status: 'issued' },
+    owner,
+  );
+  await dbRun('UPDATE ac_records SET created_at=? WHERE id=?', [
+    '2020-01-01T00:00:00Z',
+    issued.data.id,
+  ]);
+  await request(prefix + '/records/invoices', 'POST', doc, owner);
+  const filtered = await request(
+    prefix +
+      '/records/invoices?limit=1&status=issued&q=status-pagination-fixture',
+    'GET',
+    undefined,
+    owner,
+  );
+  assert.equal(filtered.data.data[0].id, issued.data.id);
+  const pageA = await request(
+    prefix + '/records/customers?limit=1',
+    'GET',
+    undefined,
+    owner,
+  );
+  const pageB = await request(
+    prefix + '/records/customers?limit=1&offset=1',
+    'GET',
+    undefined,
+    owner,
+  );
+  assert.notEqual(pageA.data.data[0].id, pageB.data.data[0].id);
+  assert.equal(
+    (
+      await request(
+        prefix + '/records/customers?limit=1&q=target',
+        'GET',
+        undefined,
+        outsider,
+      )
+    ).status,
+    403,
+  );
+  assert.deepEqual(
+    (
+      await request(
+        prefix + '/records/customers?q=target',
+        'GET',
+        undefined,
+        owner,
+        { 'X-Environment': 'production' },
+      )
+    ).data.data,
+    [],
+  );
+});
+
+test('retailer journey allocates KSh 1500 then KSh 1000, updates order and report, survives rereads and rejects replay', async () => {
+  const outsider = (
+    await request('/api/auth/signup', 'POST', {
+      email: email('isolated-' + Math.random()),
+      password: 'audit-only-strong-password',
+    })
+  ).cookie;
+  const prefix = `/api/v1/organizations/${org}`;
+  const doc = {
+    customer_id: customer,
+    items: [
+      {
+        description: 'Journey supplies',
+        quantity: 1,
+        unit_price_minor: 250000,
+      },
+    ],
+    issue_date: '2026-10-01',
+    due_date: '2026-10-30',
+  };
+  const saleOrder = await request(
+    prefix + '/records/orders',
+    'POST',
+    doc,
+    owner,
+  );
+  assert.equal(saleOrder.status, 201);
+  await request(
+    prefix + '/records/orders/' + saleOrder.data.id,
+    'PATCH',
+    { status: 'awaiting_payment' },
+    owner,
+  );
+  const inv = await request(
+    prefix + '/records/invoices',
+    'POST',
+    { ...doc, order_id: saleOrder.data.id },
+    owner,
+  );
+  assert.equal(inv.status, 201);
+  await request(
+    prefix + '/records/invoices/' + inv.data.id,
+    'PATCH',
+    { status: 'issued' },
+    owner,
+  );
+  const baseline = (await request(prefix + '/report', 'GET', undefined, owner))
+    .data;
+  const payment = await request(
+    prefix + '/payment-requests',
+    'POST',
+    { document_id: inv.data.id },
+    owner,
+    { 'Idempotency-Key': 'journey-payment-' + unique },
+  );
+  assert.equal(payment.status, 201);
+  process.env.AFRICORE_SANDBOX_CALLBACK_SECRET =
+    'test-only-sandbox-callback-key-at-least-32-characters';
+  async function callback(
+    request_id: string,
+    reference: string,
+    amount_minor: number,
+  ) {
+    const body = {
+      request_id,
+      reference,
+      status: 'succeeded',
+      amount_minor,
+      currency: 'KES',
+    };
+    const stamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHmac(
+      'sha256',
+      process.env.AFRICORE_SANDBOX_CALLBACK_SECRET!,
+    )
+      .update(stamp + '.' + JSON.stringify(body))
+      .digest('hex');
+    return request('/api/v1/callbacks/sandbox', 'POST', body, '', {
+      'AfriCore-Timestamp': stamp,
+      'AfriCore-Signature': signature,
+    });
+  }
+  const first = await callback(
+    payment.data.id,
+    'journey-first-' + unique,
+    150000,
+  );
+  assert.equal(first.status, 200);
+  assert.equal(first.data.reconciliation, 'matched');
+  const partial = (
+    await request(
+      prefix + '/records/invoices/' + inv.data.id,
+      'GET',
+      undefined,
+      owner,
+    )
+  ).data;
+  assert.equal(partial.status, 'partially_paid');
+  assert.equal(partial.total_minor - partial.paid_minor, 100000);
+  const remainder = await request(
+    prefix + '/payment-requests',
+    'POST',
+    { document_id: inv.data.id },
+    owner,
+    { 'Idempotency-Key': 'journey-remainder-' + unique },
+  );
+  assert.equal(remainder.data.amount_minor, 100000);
+  const final = await callback(
+    remainder.data.id,
+    'journey-final-' + unique,
+    100000,
+  );
+  assert.equal(final.status, 200);
+  const replay = await callback(
+    remainder.data.id,
+    'journey-final-' + unique,
+    100000,
+  );
+  assert.equal(replay.data.duplicate, true);
+  for (let read = 0; read < 2; read++) {
+    const saved = (
+      await request(
+        prefix + '/records/invoices/' + inv.data.id,
+        'GET',
+        undefined,
+        owner,
+      )
+    ).data;
+    assert.equal(saved.status, 'paid');
+    assert.equal(saved.paid_minor, 250000);
+  }
+  assert.equal(
+    (
+      await request(
+        prefix + '/records/orders/' + saleOrder.data.id,
+        'GET',
+        undefined,
+        owner,
+      )
+    ).data.payment_status,
+    'paid',
+  );
+  const report = (await request(prefix + '/report', 'GET', undefined, owner))
+    .data;
+  assert.equal(
+    report.confirmed_inflows_minor - baseline.confirmed_inflows_minor,
+    250000,
+  );
+  assert.equal(baseline.outstanding_minor - report.outstanding_minor, 250000);
+  const allocations = await dbAll(
+    'SELECT * FROM ac_allocations WHERE document_id=?',
+    [inv.data.id],
+  );
+  assert.equal(allocations.length, 2);
+  assert.equal(
+    allocations.reduce((sum, a) => sum + Number(a.amount_minor), 0),
+    250000,
+  );
+  const csv = await fetch(base + prefix + '/report?format=csv', {
+    headers: { Cookie: owner },
+  });
+  assert.equal(csv.status, 200);
+  assert.ok((await csv.text()).includes(inv.data.reference));
+  assert.equal(
+    (
+      await request(
+        prefix + '/records/invoices/' + inv.data.id,
+        'GET',
+        undefined,
+        outsider,
+      )
+    ).status,
+    403,
+  );
+});
+
+test('recovery revokes existing sessions, consumes the token once and permits only the new password', async () => {
+  const address = email('recovery-audit'),
+    oldPassword = 'test-old-password-strong',
+    newPassword = 'test-new-password-strong';
+  const signup = await request('/api/auth/signup', 'POST', {
+    email: address,
+    password: oldPassword,
+  });
+  assert.equal(signup.status, 201);
+  await request('/api/auth/verify', 'POST', {
+    token: signup.data.verification_token,
+  });
+  const signin = await request('/api/auth/signin', 'POST', {
+    email: address,
+    password: oldPassword,
+  });
+  assert.equal(signin.status, 200);
+  assert.equal(
+    (await request('/api/auth/me', 'GET', undefined, signin.cookie)).status,
+    200,
+  );
+  const recovery = await request('/api/auth/recover', 'POST', {
+    email: address,
+  });
+  assert.equal(recovery.status, 200);
+  assert.equal(
+    (
+      await request('/api/auth/reset', 'POST', {
+        token: recovery.data.recovery_token,
+        password: newPassword,
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await request('/api/auth/me', 'GET', undefined, signin.cookie)).status,
+    401,
+  );
+  assert.equal(
+    (
+      await request('/api/auth/reset', 'POST', {
+        token: recovery.data.recovery_token,
+        password: newPassword,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request('/api/auth/signin', 'POST', {
+        email: address,
+        password: oldPassword,
+      })
+    ).status,
+    401,
+  );
+  const fresh = await request('/api/auth/signin', 'POST', {
+    email: address,
+    password: newPassword,
+  });
+  assert.equal(fresh.status, 200);
+  assert.equal(
+    (await request('/api/auth/signout', 'POST', {}, fresh.cookie)).status,
+    200,
+  );
+  assert.equal(
+    (await request('/api/auth/me', 'GET', undefined, fresh.cookie)).status,
+    401,
+  );
+});
+
+test('customer corrections permit clearing optional contact data and reject blank names without losing history', async () => {
+  const prefix = `/api/v1/organizations/${org}`;
+  const created = await request(
+    prefix + '/records/customers',
+    'POST',
+    { name: 'Correction customer', email: 'old@example.test' },
+    owner,
+  );
+  assert.equal(created.status, 201);
+  const updated = await request(
+    prefix + '/records/customers/' + created.data.id,
+    'PATCH',
+    {
+      name: '  Updated customer  ',
+      email: '',
+      phone: '',
+      notes: 'Corrected contact',
+    },
+    owner,
+  );
+  assert.equal(updated.status, 200);
+  assert.equal(updated.data.name, 'Updated customer');
+  assert.equal(updated.data.email, '');
+  assert.equal(
+    (
+      await request(
+        prefix + '/records/customers/' + created.data.id,
+        'PATCH',
+        { name: '   ' },
+        owner,
+      )
+    ).status,
+    400,
+  );
+  const saved = (
+    await request(
+      prefix + '/records/customers/' + created.data.id,
+      'GET',
+      undefined,
+      owner,
+    )
+  ).data;
+  assert.equal(saved.name, 'Updated customer');
+  assert.equal(saved.notes, 'Corrected contact');
+  const history = await dbAll('SELECT * FROM ac_audit WHERE resource_id=?', [
+    created.data.id,
+  ]);
+  assert.ok(history.length >= 2);
 });

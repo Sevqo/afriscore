@@ -39,3 +39,5 @@ Geometry: buttons 3px, inputs 5px, operational panels 6px, menus 6px, editorial 
 Education components use readable HTML workflows, labelled fictional examples, native FAQ disclosures and local-only simulations. Shared charts use series labels, distinct line styles, exact readouts, pointer/touch selection, keyboard date exploration and data-table alternatives. See CHART_EXPERIENCE.md and CONTENT_STRATEGY.md. Preserve reduced-motion behavior and semantic heading order.
 
 See TYPOGRAPHY.md, NAVIGATION.md, RESPONSIVE_DESIGN.md and VISUAL_QA.md for implementation and validation details.
+
+Product-experience amendment: experience.css supplies the compact homepage/device composition and distinct teaching layouts using existing tokens, buttons, native controls and hairlines. Real synthetic UI captures are labelled, dimensioned WebP assets. Preserve the design language while varying explanation by product; do not restore a generic repeated section stack or decorative hero art.

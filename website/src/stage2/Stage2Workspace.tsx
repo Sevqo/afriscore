@@ -1,5 +1,6 @@
 import { Icon } from '../components/Icon';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createRequestGate } from '../components/requestGate';
 import { IntelligenceView, ForecastView } from './IntelligenceViews';
 import { AssistantView } from './AssistantView';
 import {
@@ -56,18 +57,33 @@ export function Stage2Workspace({
     finance = ['owner', 'admin', 'finance'].includes(role),
     operations = ['owner', 'admin', 'finance', 'operations'].includes(role),
     admin = ['owner', 'admin'].includes(role);
+  const scope = org + '\0' + environment + '\0' + section + '\0' + currency;
+  const currentScope = useRef(scope),
+    gate = useRef(createRequestGate());
+  currentScope.current = scope;
   async function load() {
+    if (currentScope.current !== scope) return;
+    const latest = gate.current.begin(),
+      current = () => latest() && currentScope.current === scope;
+    const publishData = (value: any) => {
+        if (current()) setData(value);
+      },
+      publishSecondary = (value: any) => {
+        if (current()) setSecondary(value);
+      };
+    setData(null);
+    setSecondary({});
     setError('');
     setBusy(true);
     try {
       if (section === 'Intelligence') {
-        setData(await api('/intelligence?currency=' + currency));
-        setSecondary({
+        publishData(await api('/intelligence?currency=' + currency));
+        publishSecondary({
           expenses: (await api('/expenses')).data,
           obligations: (await api('/obligations')).data,
         });
       } else if (section === 'Forecasts')
-        setData(
+        publishData(
           await api('/forecasts', 'POST', {
             currency,
             horizon: 30,
@@ -75,26 +91,29 @@ export function Stage2Workspace({
           }),
         );
       else if (section === 'Automations') {
-        setData(await api('/automations'));
-        setSecondary({
+        publishData(await api('/automations'));
+        publishSecondary({
           templates: (await api('/automations/templates')).data,
           runs: (await api('/automation-runs')).data,
         });
       } else if (section === 'Notifications')
-        setData(await api('/notifications'));
+        publishData(await api('/notifications'));
       else if (section === 'Approvals') {
-        setData(await api('/approvals'));
-        setSecondary({ team: (await api('/team')).data });
+        publishData(await api('/approvals'));
+        publishSecondary({ team: (await api('/team')).data });
       } else if (section === 'Fulfillment') {
-        setData(await api('/shipments'));
-        setSecondary({ orders: (await api('/records/orders?limit=100')).data });
+        publishData(await api('/shipments'));
+        publishSecondary({
+          orders: (await api('/records/orders?limit=100')).data,
+        });
       } else if (section === 'Protected Payments')
-        setData(await api('/protected-sales'));
-      else if (section === 'Disputes') setData(await api('/disputes'));
+        publishData(await api('/protected-sales'));
+      else if (section === 'Disputes') publishData(await api('/disputes'));
       else if (section === 'Connect') {
-        setData(await api('/connectors'));
-        setSecondary({ catalog: (await api('/connectors/catalog')).data });
-      } else if (section === 'Risk Review') setData(await api('/risk-signals'));
+        publishData(await api('/connectors'));
+        publishSecondary({ catalog: (await api('/connectors/catalog')).data });
+      } else if (section === 'Risk Review')
+        publishData(await api('/risk-signals'));
       else if (section === 'Engineering') {
         const ops = await request(
             '/internal/stage2/operations',
@@ -108,30 +127,33 @@ export function Stage2Workspace({
             undefined,
             environment,
           );
-        setData({ ops, docs: docs.data });
-      } else setData({});
+        publishData({ ops, docs: docs.data });
+      } else publishData({});
     } catch (e) {
-      setError((e as Error).message);
+      if (current()) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (current()) setBusy(false);
     }
   }
   useEffect(() => {
     load();
+    return () => gate.current.invalidate();
   }, [section, org, environment, currency]);
   const action: Action = async (fn, message = 'Saved.') => {
+    if (currentScope.current !== scope) return null;
     setError('');
     setBusy(true);
     try {
       const result = await fn();
+      if (currentScope.current !== scope) return null;
       setNotice(message);
       await load();
       return result;
     } catch (e) {
-      setError((e as Error).message);
+      if (currentScope.current === scope) setError((e as Error).message);
       return null;
     } finally {
-      setBusy(false);
+      if (currentScope.current === scope) setBusy(false);
     }
   };
   return (
@@ -196,7 +218,7 @@ export function Stage2Workspace({
           currency={currency}
           writable={finance}
           onNavigate={onNavigate}
-          setData={setData}
+              setData={(result) => { if(currentScope.current === scope) setData(result); }}
         />
       )}
       {section === 'Forecasts' && (
@@ -204,7 +226,7 @@ export function Stage2Workspace({
           data={data}
           currency={currency}
           api={api}
-          setData={setData}
+              setData={(result) => { if(currentScope.current === scope) setData(result); }}
         />
       )}
       {section === 'Assistant' && (

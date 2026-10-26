@@ -1,0 +1,15 @@
+# Defect register — product reliability audit
+
+| ID | Finding and root cause | Repair and evidence |
+| --- | --- | --- |
+| R1 | Record search/status filtering ran after LIMIT/OFFSET, hiding older matching records | Apply tenant/environment/kind and parameterized literal search/status predicates before stable created_at/id pagination. Backend regression creates an older match, newer nonmatch, literal wildcard text and status-filtered invoice. Both database engines tested. |
+| R2 | An earlier workspace load could overwrite newer navigation/tenant/environment/currency state | Scope-and-version gate suppresses stale completion and action refreshes in the main shell and Stage 2 finance loader; invalidate on cleanup and clear old currency data. Async regression completes the old tenant after the current request. Record search is debounced and pages reset on scope/query change. |
+| R3 | One Stage 2 workspace failure aborted the tick before other businesses ran | Catch/report each workspace/environment failure and continue; preserve original failed state for repair. Regression inserts a broken job, confirms the next tenant succeeds and a second tick does not duplicate its reminder. |
+| R4 | Customer update rejected clearing an optional email and accepted whitespace-only names | Allow an empty optional email, trim/validate names, retain audit history. Backend regression verifies correction, rejected blank name and persisted reread. Mobile connected form test clears email and survives refresh. |
+| R5 | Customer details offered only a blocking name prompt and raw JSON | Replace with labelled name/email/phone/notes form, busy state and existing authorized PATCH. Close only after success. Viewers receive no edit form. |
+| R6 | Order form exposed an invoice-only linked-order field and invoice-specific help | Show the link field only for invoices; explain draft→issue for orders. Connected order/invoice browser journey passed. |
+| W1 | Tall hero and repeated product/navigation structures obscured the first impression | Content-sized product composition, invoice example below hero, four groups, 30→14 homepage links; differentiated product experiences and browser geometry/content tests. |
+
+Initial new audit tests incorrectly reused a session deliberately revoked by the existing recovery test. Fresh unrelated fixture accounts corrected those assertions; this was test setup, not weakened authorization. The first website check correctly caught a missing simulation label, which was restored before the final build.
+
+Known gaps are tracked in PRODUCT_FUNCTIONAL_AUDIT.md. Missing live providers, external email, formal credit notes, general archive/delete, distributed worker leases, provider-specific source modification/removal/backfills, OpenID wallet conformance, KMS, physical-device/accessibility and load qualification are not silently marked fixed.

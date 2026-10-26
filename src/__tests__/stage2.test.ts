@@ -16,6 +16,7 @@ import {
 import { runAutomations, notify } from '../stage2/automation';
 import { askAssistant, ExplanationProvider } from '../stage2/assistant';
 import { sync } from '../stage2/integrations';
+import { processStage2 } from '../stage2/worker';
 let server: Server,
   base: string,
   owner = '',
@@ -1127,4 +1128,144 @@ test('protected order guards and expired approvals cannot authorize collection o
     { 'X-Environment': 'production', ...idempotent() },
   );
   assert.equal(production.status, 503);
+});
+
+test('a broken workspace job cannot starve another tenant and worker retries do not duplicate its notification', async () => {
+  const workflow = await api(
+    `/api/v1/organizations/${org2}/automations`,
+    'POST',
+    {
+      name: 'Independent tenant daily review',
+      template: 'daily_summary',
+      enabled: true,
+      schedule: { frequency: 'daily', hour: 0 },
+    },
+    other,
+  );
+  assert.equal(workflow.status, 201);
+  const brokenId = randomUUID(),
+    stamp = new Date().toISOString();
+  await dbRun(
+    'INSERT INTO ac2_runs(id,org_id,environment,workflow_id,trigger_key,status,next_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
+    [
+      brokenId,
+      org,
+      'sandbox',
+      randomUUID(),
+      'missing-workflow',
+      'pending',
+      '2020-01-01T00:00:00Z',
+      stamp,
+      stamp,
+    ],
+  );
+  try {
+    const result = await processStage2();
+    assert.ok(result.failed! >= 1);
+    let runs = await dbAll('SELECT * FROM ac2_runs WHERE workflow_id=?', [
+      workflow.data.id,
+    ]);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].status, 'succeeded');
+    await processStage2();
+    runs = await dbAll('SELECT * FROM ac2_runs WHERE workflow_id=?', [
+      workflow.data.id,
+    ]);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].attempts, 1);
+    const notices = await dbAll(
+      'SELECT * FROM ac2_notifications WHERE org_id=? AND resource_id IS NOT NULL',
+      [org2],
+    );
+    assert.equal(
+      notices.filter((n) => n.dedupe_key === 'automation:' + runs[0].id).length,
+      1,
+    );
+  } finally {
+    await dbRun('DELETE FROM ac2_runs WHERE id=?', [brokenId]);
+  }
+});
+
+test('assistant quota is reserved before provider execution and every tool returns bounded source evidence', async (t) => {
+  const previous = {
+    key: process.env.OPENAI_API_KEY,
+    model: process.env.AFRICORE_AI_MODEL,
+    limit: process.env.AFRICORE_AI_DAILY_REQUEST_LIMIT,
+  };
+  t.after(() => {
+    for (const [name, value] of [
+      ['OPENAI_API_KEY', previous.key],
+      ['AFRICORE_AI_MODEL', previous.model],
+      ['AFRICORE_AI_DAILY_REQUEST_LIMIT', previous.limit],
+    ] as const) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+  delete process.env.OPENAI_API_KEY;
+  for (const tool of [
+    'financial_summary',
+    'receivables',
+    'forecast',
+    'reconciliation',
+  ]) {
+    const result = await askAssistant(access(), {
+      question: 'Explain the permitted records',
+      tool,
+      currency: 'KES',
+    });
+    assert.equal(result.status, 'not_configured');
+    assert.ok(result.evidence);
+    assert.equal(result.evidence.tool, tool);
+    assert.equal(result.evidence.currency, 'KES');
+    const serialized = JSON.stringify(result.evidence);
+    assert.ok(!serialized.includes('Fixture customer'));
+    assert.ok(!serialized.includes('example.test'));
+  }
+  const existing = Number(
+    (
+      await dbGet(
+        'SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE org_id=? AND created_at>=?',
+        [org, day() + 'T00:00:00'],
+      )
+    ).total,
+  );
+  process.env.OPENAI_API_KEY = 'fixture-only-no-network';
+  process.env.AFRICORE_AI_MODEL = 'fixture-model';
+  process.env.AFRICORE_AI_DAILY_REQUEST_LIMIT = String(existing + 1);
+  let calls = 0;
+  const provider: ExplanationProvider = {
+    name: 'fixture',
+    async explain() {
+      calls++;
+      return {
+        text: 'Only the supplied evidence is available.',
+        input_tokens: 1,
+        output_tokens: 1,
+      };
+    },
+  };
+  const result = await askAssistant(
+    access(),
+    { question: 'Explain my recorded movement', consent_to_provider: true },
+    provider,
+  );
+  assert.equal(result.status, 'answered');
+  assert.equal((result as any).actions_executed, false);
+  await assert.rejects(
+    askAssistant(
+      access(),
+      { question: 'Try another request', consent_to_provider: true },
+      provider,
+    ),
+    (e: any) => e.status === 429,
+  );
+  assert.equal(calls, 1);
+  await assert.rejects(
+    askAssistant(
+      access(),
+      { question: 'Run a destructive tool', tool: 'delete_records' },
+      provider,
+    ),
+  );
 });

@@ -1,4 +1,5 @@
 import { DeveloperTutorial } from "./DeveloperTutorial";
+import { ProductExperience, experienceKinds } from "./ProductExperiences";
 import { useState } from "react";
 import { Icon } from "../components/Icon";
 import { MediaBlock } from "../components/Media";
@@ -337,6 +338,54 @@ export function InteractiveExample({
 export function ProductEducation({ path }: { path: string }) {
   const guide = guides[path];
   if (!guide) return null;
+  if (path.startsWith("/products/") && experienceKinds[path.split("/").at(-1)!])
+    return (
+      <div className="product-education">
+        <nav className="breadcrumbs" aria-label="Breadcrumb">
+          <a href="/">Home</a>
+          <Icon name="right" />
+          <span>{guide.name}</span>
+        </nav>
+        <section className="product-introduction">
+          <div>
+            <span className="eyebrow">{guide.name}</span>
+            <h2>{guide.problem}</h2>
+            <h3>Who this helps</h3>
+            <p>{guide.audience}</p>
+          </div>
+          {publicPageMedia[path] && (
+            <MediaBlock media={publicPageMedia[path]} />
+          )}
+        </section>
+        <ProductExperience path={path} />
+        <section className="compact-product-help">
+          <p className="content-limitation">
+            <strong>Current availability:</strong> {guide.limit}
+          </p>
+          <details>
+            <summary>Questions about {guide.name}</summary>
+            <ProductFAQ items={guide.faqs} />
+          </details>
+        </section>
+        <section className="product-connections">
+          <h2>Where to go next</h2>
+          <div>
+            <a href={demoLink(path)}>
+              Explore this workspace section <Icon name="right" />
+            </a>
+            <a href={"/learn/" + guide.lesson}>
+              Read the detailed learning guide <Icon name="right" />
+            </a>
+            {guide.related.slice(0, 2).map((href) => (
+              <a key={href} href={href}>
+                {guides[href]?.name || "API documentation"}
+                <Icon name="right" />
+              </a>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
   return (
     <div className="product-education">
       <nav className="breadcrumbs" aria-label="Breadcrumb">

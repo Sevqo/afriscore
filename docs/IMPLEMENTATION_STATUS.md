@@ -1,5 +1,16 @@
 # Implementation status — Stage 3 sandbox beta
 
+## Product experience and functional reliability — 2026-10-26
+
+Release verification: final SQLite **200/200**, PostgreSQL 17 **200/200**, website **14/14** content/chart/experience tests, root typecheck, both API contracts and isolated local EVM/independent credential verification passed. No configured lint script. Full module/readiness matrix: PRODUCT_FUNCTIONAL_AUDIT.md. External integrations, real model-answer evaluation, production authorization and device/load/conformance gates remain explicitly open.
+
+Homepage hero reduced from 1288.7 px to 619.9 px at requested 390 px width (~52%), and 858.6 px to 470 px at 1440 px (~45%). Real synthetic workspace/checkout WebP composition replaces the opening lesson; its invoice example remains below four product groups. Main links reduced 30→14. Sixteen major products have distinct teaching structures; Learn, original art, navigation and design tokens remain.
+
+Fixed search/status filtering after pagination, stale main-workspace completion, Stage 2 worker cross-workspace starvation, customer optional-email/blank-name validation, customer edit UX and invoice-only order controls. No migration/new endpoint/production setting/financial mock substitution. SQLite 200/200, website 14/14, API contracts, typecheck and local-chain verification passed. Final PostgreSQL/CI outcome is recorded with release verification. Connected browser retailer flow, persisted mobile customer edit, all 26 mobile sections, owner denial/allowlisted operator access and organization switching reviewed. See PRODUCT_FUNCTIONAL_AUDIT.md, END_TO_END_TEST_RESULTS.md and VISUAL_QA.md for precise evidence, per-module readiness and remaining external/device/load gates.
+
+
+
+
 ## Content, illustration and chart continuation — 2026-10-26
 
 Completed the two education/illustration briefs and screenshot fixes on the existing visual system: 23 typed explanations, 16 Learn articles, 12 glossary terms, seven labelled fictional stories, four local simulations, reusable workflows/FAQs/annotated HTML visuals and contextual workspace help. Seven original WebP business scenes and 24 editable process diagrams replace the old figures/vague mockup. Metric/Passport green top rules are neutral borders. Shared charts add date ranges, exact values, pointer/touch controls, keyboard exploration, legends, tables and honest loading/empty/source coverage. Sparse dates use elapsed calendar time.

@@ -16,6 +16,44 @@ import {
   groupDatedAmounts,
 } from "../src/charts/model.ts";
 import { guides } from "../src/education/guides.ts";
+import { matchingExample } from "../src/education/experienceModel.ts";
+import { createRequestGate } from "../src/components/requestGate.ts";
+
+test("two receipts close the invoice once; duplicate, unknown, currency and excessive events cannot reduce it", () => {
+  assert.equal(matchingExample(false, "matched").remaining, 1000);
+  assert.deepEqual(
+    [
+      matchingExample(true, "matched").allocated,
+      matchingExample(true, "matched").remaining,
+    ],
+    [2500, 0],
+  );
+  for (const event of [
+    "duplicate",
+    "unmatched",
+    "mismatch",
+    "currency",
+    "invented",
+  ])
+    assert.equal(matchingExample(true, event).remaining, 1000);
+});
+test("a slow prior request cannot replace a newer workspace result or survive invalidation", async () => {
+  const gate = createRequestGate();
+  let completeOld;
+  const oldData = new Promise((r) => (completeOld = r));
+  let displayed = "";
+  const old = gate.begin();
+  const pending = oldData.then((value) => {
+    if (old()) displayed = value;
+  });
+  const recent = gate.begin();
+  if (recent()) displayed = "current workspace";
+  completeOld("previous tenant");
+  await pending;
+  assert.equal(displayed, "current workspace");
+  gate.invalidate();
+  assert.equal(recent(), false);
+});
 test("ranges use loaded dates, include boundaries and do not invent history", () => {
   const p = Array.from({ length: 40 }, (_, i) => ({
     date: new Date(Date.UTC(2026, 0, i + 1)).toISOString().slice(0, 10),
@@ -182,4 +220,47 @@ test("controls do not advertise an unloaded year or forecast horizon", () => {
   assert.equal(rangeAvailable(p, "1Y"), false);
   assert.equal(rangeAvailable(p, "90D", true), false);
   assert.equal(rangeAvailable(p, "ALL"), true);
+});
+
+test("homepage keeps one compact product composition and reduces competing main links", () => {
+  const html = fs.readFileSync("dist/index.html", "utf8");
+  const main = html.split("<main")[1].split("</main>")[0];
+  assert.ok(main.includes("hero-compact"));
+  const hero = main.split("hero-compact")[1].split("</section>")[0];
+  assert.ok(hero.includes("/media/product/workspace.webp"));
+  assert.ok(hero.includes("/media/product/checkout.webp"));
+  assert.ok(!hero.includes("hero-workflow"));
+  assert.ok(!hero.includes("editorial-v2"));
+  assert.ok(main.indexOf("home-example") > main.indexOf("hero-compact"));
+  assert.ok(main.includes("KSh 2,500"));
+  assert.ok([...main.matchAll(/<a /g)].length <= 16);
+});
+
+test("major products have distinct central experiences rather than the repeated generic lesson", () => {
+  const kinds = {
+    business: "workspace",
+    pay: "payment",
+    invoicing: "invoice",
+    reconciliation: "matching",
+    "cash-flow": "cash",
+    intelligence: "decision",
+    automations: "rule",
+    connect: "source",
+    data: "normalization",
+    "business-passport": "passport",
+    "trust-network": "network",
+    "verifiable-credentials": "credential",
+    "blockchain-verification": "anchor",
+    "business-verification": "review",
+    "passport-privacy": "privacy",
+    "protected-payments": "protection",
+  };
+  for (const [slug, kind] of Object.entries(kinds)) {
+    const html = fs.readFileSync(
+      "dist/products/" + slug + "/index.html",
+      "utf8",
+    );
+    assert.ok(html.includes('data-experience="' + kind + '"'), slug);
+    assert.ok(!html.includes("What using it could look like"), slug);
+  }
 });

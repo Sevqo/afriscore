@@ -1,4 +1,5 @@
 import { MediaBlock } from './components/Media';
+import { createRequestGate } from './components/requestGate';
 import { editorial } from './editorial';
 import {
   FinancialActivity,
@@ -397,6 +398,28 @@ export function BusinessApp() {
     [selected, setSelected] = useState<any>(null),
     [documentCurrency, setDocumentCurrency] = useState('KES');
   const [navOpen, setNavOpen] = useState(false);
+  const [offset, setOffset] = useState(0),
+    [search, setSearch] = useState('');
+  const requestGate = useRef(createRequestGate());
+  const viewScope =
+    org + '\0' + environment + '\0' + tab + '\0' + offset + '\0' + search;
+  const currentScope = useRef(viewScope);
+  currentScope.current = viewScope;
+  const recordTabs = [
+    'Customers',
+    'Orders',
+    'Invoices',
+    'Transactions',
+    'Integrations',
+    'Developers',
+  ];
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setOffset(0);
+      setSearch(query);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query]);
   const navRef = useRef<HTMLElement>(null);
   useFocusScope(navOpen, () => setNavOpen(false), navRef);
   useEffect(() => {
@@ -438,8 +461,12 @@ export function BusinessApp() {
     headers?: Record<string, string>,
   ) => api(base + suffix, method, body, environment, headers);
   async function load() {
+    if (currentScope.current !== viewScope) return;
+    const latest = requestGate.current.begin();
+    const current = () => latest() && currentScope.current === viewScope;
     if (!org || tab === 'Business Passport' || stage2Tabs.includes(tab)) {
       setError('');
+      setBusy(false);
       return;
     }
     setBusy(true);
@@ -459,32 +486,50 @@ export function BusinessApp() {
             Settings: '/audit',
           } as Record<string, string>
         )[tab] || '/records/' + tab.toLowerCase();
-      const r = await call(suffix);
+      const r = await call(
+        suffix +
+          (recordTabs.includes(tab)
+            ? '?limit=25&offset=' + offset + '&q=' + encodeURIComponent(search)
+            : ''),
+      );
+      if (!current()) return;
       setData(r);
-      if (['Orders', 'Invoices'].includes(tab))
-        setCustomers((await call('/records/customers?limit=100')).data);
+      if (['Orders', 'Invoices'].includes(tab)) {
+        const result = await call('/records/customers?limit=100');
+        if (current()) setCustomers(result.data);
+      }
     } catch (e) {
-      setError((e as Error).message);
+      if (current()) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (current()) setBusy(false);
     }
   }
   useEffect(() => {
     setSelected(null);
     setNotice('');
     load();
+    return () => requestGate.current.invalidate();
+  }, [org, tab, environment, offset, search]);
+  useEffect(() => {
+    setOffset(0);
+    setQuery('');
+    setSearch('');
+    setCreating(false);
+    setCustomers([]);
   }, [org, tab, environment]);
   async function action(fn: () => Promise<any>) {
+    if (currentScope.current !== viewScope) return;
     setError('');
     setBusy(true);
     try {
       const result = await fn();
+      if (currentScope.current !== viewScope) return;
       await load();
       return result;
     } catch (e) {
-      setError((e as Error).message);
+      if (currentScope.current === viewScope) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (currentScope.current === viewScope) setBusy(false);
     }
   }
   async function onboarding(e: FormEvent<HTMLFormElement>) {
@@ -605,9 +650,11 @@ export function BusinessApp() {
               ))}
             </select>
           </Field>
-          <Field label="Linked order ID (optional)">
-            <input name="order_id" />
-          </Field>
+          {tab === 'Invoices' && (
+            <Field label="Linked order ID (optional)">
+              <input name="order_id" />
+            </Field>
+          )}
           <Field label="Issue date">
             <input
               required
@@ -650,7 +697,9 @@ export function BusinessApp() {
           <input name="payment_instructions" />
         </Field>
         <small>
-          Commercial invoice only. Not KRA-validated or eTIMS approved.
+          {tab === 'Invoices'
+            ? 'Commercial invoice only. Not KRA-validated or eTIMS approved.'
+            : 'Save a draft order, then issue it before requesting payment or creating its invoice.'}
         </small>
       </>
     );
@@ -960,7 +1009,28 @@ export function BusinessApp() {
               <p>
                 {tab === 'Overview'
                   ? 'A clearer picture of what is moving — and what needs your attention.'
-                  : 'Connected records. Clear actions. One workspace.'}
+                  : (
+                      {
+                        Customers:
+                          'Add customers, then link their orders and invoices. Open a row to inspect the saved details.',
+                        Orders:
+                          'Create itemized orders, track payment and fulfillment, then issue an eligible invoice.',
+                        Invoices:
+                          'Create a draft, issue it, then follow confirmed allocations and the remaining balance.',
+                        Payments:
+                          'Inspect payment requests and provider results. Confirmation, allocation and settlement are separate.',
+                        Reconciliation:
+                          'Review allocations and unmatched events. A review note never turns an unverified import into a receipt.',
+                        Team: 'Invite a member, choose a role and review access. Backend permissions apply to every request.',
+                        Developers:
+                          'Create an application, scope its server key and review signed webhook delivery.',
+                        Transactions:
+                          'Import source records with stable IDs. Imported credits do not confirm payment.',
+                        Settings:
+                          'Review workspace identity and recorded changes.',
+                      } as Record<string, string>
+                    )[tab] ||
+                    'Review records and follow the actions available to your role.'}
               </p>
             </div>
             {org &&
@@ -1188,6 +1258,7 @@ export function BusinessApp() {
                   <div className="table-toolbar">
                     <input
                       aria-label="Search records"
+                      maxLength={200}
                       placeholder="Search records…"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
@@ -1209,102 +1280,93 @@ export function BusinessApp() {
                             </tr>
                           </thead>
                           <tbody>
-                            {data.data
-                              .filter((r: any) =>
-                                JSON.stringify(r)
-                                  .toLowerCase()
-                                  .includes(query.toLowerCase()),
-                              )
-                              .map((r: any) => (
-                                <tr key={r.id}>
-                                  <td>
-                                    <button
-                                      className="text-button"
-                                      onClick={() => setSelected(r)}
-                                    >
-                                      {r.reference ||
-                                        r.name ||
-                                        r.provider ||
-                                        r.external_id}
-                                    </button>
-                                    <small className="record-id">{r.id}</small>
-                                  </td>
-                                  <td>
-                                    <span className="badge">
-                                      {r.status || r.type || 'active'}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {r.total_minor
-                                      ? money(r.total_minor, r.currency)
-                                      : r.amount_minor
-                                        ? money(r.amount_minor, r.currency)
-                                        : r.description || '—'}
-                                    {r.paid_minor > 0 && (
-                                      <small className="record-id">
-                                        Paid: {money(r.paid_minor, r.currency)}
-                                      </small>
+                            {data.data.map((r: any) => (
+                              <tr key={r.id}>
+                                <td>
+                                  <button
+                                    className="text-button"
+                                    onClick={() => setSelected(r)}
+                                  >
+                                    {r.reference ||
+                                      r.name ||
+                                      r.provider ||
+                                      r.external_id}
+                                  </button>
+                                  <small className="record-id">{r.id}</small>
+                                </td>
+                                <td>
+                                  <span className="badge">
+                                    {r.status || r.type || 'active'}
+                                  </span>
+                                </td>
+                                <td>
+                                  {r.total_minor
+                                    ? money(r.total_minor, r.currency)
+                                    : r.amount_minor
+                                      ? money(r.amount_minor, r.currency)
+                                      : r.description || '—'}
+                                  {r.paid_minor > 0 && (
+                                    <small className="record-id">
+                                      Paid: {money(r.paid_minor, r.currency)}
+                                    </small>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="row-actions">
+                                    {r.status === 'draft' && writable && (
+                                      <button
+                                        onClick={() =>
+                                          action(() =>
+                                            call(
+                                              '/records/' +
+                                                tab.toLowerCase() +
+                                                '/' +
+                                                r.id,
+                                              'PATCH',
+                                              {
+                                                status:
+                                                  tab === 'Invoices'
+                                                    ? 'issued'
+                                                    : 'awaiting_payment',
+                                              },
+                                            ),
+                                          )
+                                        }
+                                      >
+                                        Issue
+                                      </button>
                                     )}
-                                  </td>
-                                  <td>
-                                    <div className="row-actions">
-                                      {r.status === 'draft' && writable && (
+                                    {[
+                                      'issued',
+                                      'awaiting_payment',
+                                      'partially_paid',
+                                    ].includes(r.status) &&
+                                      writable && (
                                         <button
-                                          onClick={() =>
-                                            action(() =>
-                                              call(
-                                                '/records/' +
-                                                  tab.toLowerCase() +
-                                                  '/' +
-                                                  r.id,
-                                                'PATCH',
-                                                {
-                                                  status:
-                                                    tab === 'Invoices'
-                                                      ? 'issued'
-                                                      : 'awaiting_payment',
-                                                },
-                                              ),
-                                            )
-                                          }
+                                          onClick={() => requestPayment(r)}
                                         >
-                                          Issue
+                                          Payment link
                                         </button>
                                       )}
-                                      {[
-                                        'issued',
-                                        'awaiting_payment',
-                                        'partially_paid',
-                                      ].includes(r.status) &&
-                                        writable && (
-                                          <button
-                                            onClick={() => requestPayment(r)}
-                                          >
-                                            Payment link
-                                          </button>
-                                        )}
-                                      {tab === 'Invoices' && (
-                                        <button
-                                          onClick={() => {
-                                            setSelected(r);
-                                            setTimeout(
-                                              () => window.print(),
-                                              100,
-                                            );
-                                          }}
-                                        >
-                                          Print / PDF
-                                        </button>
-                                      )}
-                                      {tab === 'Developers' && (
-                                        <button onClick={() => credentials(r)}>
-                                          Generate key
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
+                                    {tab === 'Invoices' && (
+                                      <button
+                                        onClick={() => {
+                                          setSelected(r);
+                                          setTimeout(() => window.print(), 100);
+                                        }}
+                                      >
+                                        Print / PDF
+                                      </button>
+                                    )}
+                                    {tab === 'Developers' && (
+                                      <button onClick={() => credentials(r)}>
+                                        Generate key
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
                           </tbody>
                         </DataTable>
                       </div>
@@ -1396,6 +1458,33 @@ export function BusinessApp() {
                     />
                   )}
                 </>
+              )}
+              {recordTabs.includes(tab) && (
+                <nav className="record-pagination" aria-label="Record pages">
+                  <button
+                    className="secondary-button"
+                    disabled={busy || offset === 0}
+                    onClick={() => setOffset(Math.max(0, offset - 25))}
+                  >
+                    Previous page
+                  </button>
+                  <span role="status">
+                    {data?.data?.length
+                      ? 'Records ' +
+                        (offset + 1) +
+                        '–' +
+                        (offset + data.data.length)
+                      : 'No matching records'}
+                    {search ? ' matching “' + search + '”' : ''}
+                  </span>
+                  <button
+                    className="secondary-button"
+                    disabled={busy || !data?.data || data.data.length < 25}
+                    onClick={() => setOffset(offset + 25)}
+                  >
+                    Next page
+                  </button>
+                </nav>
               )}
               {tab === 'Invoices' && data?.data?.length > 0 && (
                 <RecordAnalytics records={data.data} kind="invoices" />
@@ -1693,26 +1782,68 @@ export function BusinessApp() {
                           Print / Save PDF
                         </button>
                       </>
+                    ) : selected.kind === 'customers' ? (
+                      <p>
+                        {selected.email || 'No email recorded'} ·{' '}
+                        {selected.phone || 'No phone recorded'}
+                      </p>
                     ) : (
                       <pre>{JSON.stringify(selected, null, 2)}</pre>
                     )}
-                    {selected.kind === 'customers' && (
-                      <button
-                        className="secondary-button"
-                        onClick={() => {
-                          const name = prompt('Customer name', selected.name);
-                          if (name)
-                            action(() =>
-                              call(
-                                '/records/customers/' + selected.id,
-                                'PATCH',
-                                { name },
-                              ),
-                            ).then(() => setSelected(null));
+                    {selected.kind === 'customers' && writable && (
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          const values = Object.fromEntries(
+                            new FormData(e.currentTarget),
+                          );
+                          const result = await action(() =>
+                            call(
+                              '/records/customers/' + selected.id,
+                              'PATCH',
+                              values,
+                            ),
+                          );
+                          if (result) {
+                            setSelected(null);
+                            setNotice('Customer updated.');
+                          }
                         }}
                       >
-                        Edit customer name
-                      </button>
+                        <Field label="Customer name">
+                          <input
+                            name="name"
+                            required
+                            maxLength={200}
+                            defaultValue={selected.name}
+                          />
+                        </Field>
+                        <Field label="Email">
+                          <input
+                            name="email"
+                            type="email"
+                            defaultValue={selected.email}
+                          />
+                        </Field>
+                        <Field label="Phone">
+                          <input
+                            name="phone"
+                            maxLength={50}
+                            defaultValue={selected.phone}
+                          />
+                        </Field>
+                        <Field label="Notes">
+                          <textarea
+                            name="notes"
+                            maxLength={3000}
+                            defaultValue={selected.notes}
+                          />
+                        </Field>
+                        <button className="button" disabled={busy}>
+                          Save customer changes
+                        </button>
+                        <ErrorBox error={error} />
+                      </form>
                     )}
                   </section>
                 </Overlay>

@@ -1,0 +1,9 @@
+# Content architecture
+
+The homepage explains the whole platform through four business jobs. Product pages explain a specific job. Learn holds detailed conceptual education; developer guides hold callable API details. Shared navigation retains the full inventory without repeating it throughout the homepage.
+
+Canonical purpose/audience/problem/workflow/example/limits/FAQ data remains in website/src/education/guides.ts. Sixteen major product pages now select distinct experiences from ProductExperiences.tsx: actual workspace walkthrough, payment-state explorer, two-receipt matching, invoice aging, interactive movement chart, decision scenario, automation rule, Connect/Data comparison, supplier Passport story, independent credential checks, relationship states, proof inclusion, evidence review, minimal disclosure and buyer/seller protection table. See PRODUCT_DIFFERENTIATION.md for the matrix. Supporting original illustrations remain on product/audience/learning pages; the homepage hero uses only product imagery.
+
+Major products no longer repeat the generic timeline/three-stage diagram/story/before-after/simulation/FAQ/final-CTA stack. Detailed FAQs are disclosed on demand; related destinations are limited. Other audience/developer guides retain the reusable education components where suitable. Product availability text remains visible. The payment journey is not reused as an invoice tutorial, and the reconciliation exercise is not passed off as every product's explanation.
+
+Public HTML prerendering, unique titles/descriptions/canonicals, Learn search/glossary and accessible native controls remain. The website build checks every major experience and all rendered internal links. Maintain the product outcome and unique visual explanation together; do not substitute generic platform prose. Deployment origin, legal policies and live integrations retain their existing gates.

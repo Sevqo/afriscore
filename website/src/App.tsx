@@ -1,29 +1,19 @@
+import { RefinedHome } from './education/RefinedHome';
 import { DeveloperTutorial } from './education/DeveloperTutorial';
-import {
-  ProductEducation,
-  Ecosystem,
-  GettingStarted,
-  InteractiveExample,
-  HeroWorkflow,
-} from './education/Components';
+import { ProductEducation } from './education/Components';
 import { Learn } from './education/Learn';
 import { guides, demoLink } from './education/guides';
 import { usePageMetadata } from './education/metadata';
 import { groups, productSections } from './navigation';
 import { TrustPublic } from './stage3/TrustPublic';
 import { startDemo } from './demo/transport';
-import { editorial, publicPageMedia } from './editorial';
-import { EducationalFlow } from './EducationalFlow';
+import { publicPageMedia } from './editorial';
 import { BuyerPortal } from './stage2/BuyerPortal';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './components/Icon';
 import { useFocusScope } from './components/useFocusScope';
 import { pages, media } from './content';
-import {
-  FeatureSection,
-  EditorialCard,
-  MediaCarousel,
-} from './components/Media';
+import { FeatureSection } from './components/Media';
 import { BusinessApp, AuthPage, Checkout } from './BusinessApp';
 export function Logo() {
   return (
@@ -251,354 +241,7 @@ function CTA() {
   );
 }
 function Home() {
-  return (
-    <>
-      <section className="hero">
-        <div className="hero-copy">
-          <span className="eyebrow">The connected business platform</span>
-          <h1>
-            Keep your business <br />
-            in order. Know <br />
-            what comes next.
-          </h1>
-          <p>
-            Bring customers, invoices, payment records and business proof
-            together. Understand what is paid, what is still owed, and what
-            needs your attention.
-          </p>
-          <div className="actions">
-            <a className="button" href="/demo">
-              Explore AfriCore
-              <Icon name="right" />
-            </a>
-            <a className="text-link light" href="#platform">
-              Discover the platform
-              <Icon name="down" />
-            </a>
-          </div>
-          <div className="hero-caption">
-            Kenya first. Built for the continent.
-          </div>
-        </div>
-        <HeroWorkflow />
-        <div className="hero-bottom">
-          <span>Business infrastructure</span>
-          <span>Payments. Intelligence. Trust.</span>
-          <a href="/products/business">
-            Discover what’s possible
-            <Icon name="right" />
-          </a>
-        </div>
-      </section>
-      <section className="quick-links" aria-label="Platform quick links">
-        <h2>Explore AfriCore</h2>
-        <div>
-          {[
-            ['Business', '/products/business'],
-            ['Payments', '/products/pay'],
-            ['Intelligence', '/products/intelligence'],
-            ['Business Passport', '/products/business-passport'],
-            ['Trust Network', '/products/trust-network'],
-            ['Developers', '/developers'],
-          ].map(([label, href]) => (
-            <a key={href} href={href}>
-              {label}
-              <Icon name="right" />
-            </a>
-          ))}
-        </div>
-      </section>
-      <Ecosystem />
-      <section className="mission">
-        <span className="eyebrow">ONE MISSION. A STRONGER FOUNDATION.</span>
-        <h2>
-          Still checking several screens
-          <br />
-          to find out who paid?
-        </h2>
-        <p>
-          An order lives in a chat, its invoice is in a spreadsheet, and a
-          payment appears somewhere else. AfriCore links the records so you can
-          follow a sale, review trusted payment evidence and see what is still
-          owed.
-        </p>
-        <a className="text-link" href="/about">
-          Meet AfriCore <Icon name="right" />
-        </a>
-      </section>
-      <div className="section-heading" id="platform">
-        <div>
-          <span className="eyebrow">AFRICORE BUSINESS</span>
-          <h2>
-            Customers. Orders. Invoices.
-            <br />
-            One connected record.
-          </h2>
-        </div>
-        <a className="text-link" href="/products/business">
-          Explore Business <Icon name="right" />
-        </a>
-      </div>
-      <FeatureSection
-        eyebrow="BUILT FOR YOUR WORKING DAY"
-        title="From the first order to the final payment."
-        description="Customers, orders, invoices and collections belong together. Give your team a shared workspace with clear permissions and a reliable view of what needs attention."
-        media={media.workspace}
-      >
-        <a className="text-link" href="/products/business">
-          See the workspace <Icon name="right" />
-        </a>
-      </FeatureSection>
-      <section className="product-strip">
-        <a href="/products/pay">
-          <span>01 / COLLECT</span>
-          <h3>
-            Payments with
-            <br />a clear destination.
-          </h3>
-          <p>
-            Create a payment request. Share a checkout link. Track a verified
-            result.
-          </p>
-          <b>
-            Explore AfriCore Pay <Icon name="right" />
-          </b>
-        </a>
-        <a href="/products/invoicing">
-          <span>02 / ORGANIZE</span>
-          <h3>
-            Send the invoice.
-            <br />
-            Keep the visibility.
-          </h3>
-          <p>
-            Track what’s due, what’s overdue and what has been partially paid.
-          </p>
-          <b>
-            Explore invoicing <Icon name="right" />
-          </b>
-        </a>
-        <a href="/products/cash-flow">
-          <span>03 / UNDERSTAND</span>
-          <h3>
-            Know what’s moving.
-            <br />
-            Plan what’s next.
-          </h3>
-          <p>
-            See incoming collections and receivables with transparent data
-            sources.
-          </p>
-          <b>
-            Explore reporting <Icon name="right" />
-          </b>
-        </a>
-      </section>
-      <FeatureSection
-        eyebrow="PAYMENT RECONCILIATION"
-        title="A payment received. A record resolved."
-        description="Connect confirmed transactions to the right request, order or invoice. Keep exceptions visible, duplicate events harmless and financial history intact."
-        media={editorial.reconciliation}
-        reverse
-      >
-        <a className="text-link" href="/products/reconciliation">
-          Connect the dots <Icon name="right" />
-        </a>
-      </FeatureSection>
-      <section className="developer-feature dark">
-        <div>
-          <span className="eyebrow">AFRICORE DEVELOPERS</span>
-          <h2>
-            Your next product.
-            <br />
-            Our shared foundation.
-          </h2>
-          <p>
-            Build business workflows with scoped APIs, isolated environments and
-            signed webhook events. The same infrastructure behind AfriCore
-            Business, ready for your integration.
-          </p>
-          <div className="actions">
-            <a href="/docs" className="button">
-              Read the docs <Icon name="right" />
-            </a>
-            <a href="/sandbox" className="text-link light">
-              Explore sandbox <Icon name="right" />
-            </a>
-          </div>
-        </div>
-        <div className="code-window">
-          <div>
-            <i />
-            <i />
-            <i />
-            <span>create-payment-request.ts</span>
-          </div>
-          <pre>
-            <code>{`// Start safely in sandbox\nconst payment = await fetch(\n  '/api/v1/organizations/{org}/payment-requests',\n  {\n    method: 'POST',\n    headers: {\n      Authorization: 'Bearer <your-key>',\n      'Content-Type': 'application/json',\n      'X-Environment': 'sandbox',\n      'Idempotency-Key': 'order-2026-001'\n    },\n    body: JSON.stringify({\n      document_id: '<issued-invoice-id>'\n    })\n  }\n);`}</code>
-          </pre>
-          <span className="code-note">
-            One API. Explicit states. Auditable events.
-          </span>
-        </div>
-      </section>
-      <section className="integration-section">
-        <span className="eyebrow">AFRICORE CONNECT + DATA</span>
-        <h2>
-          Many sources.
-          <br />
-          One consistent language.
-        </h2>
-        <p>
-          Start with CSV imports, sandbox transactions and AfriCore Pay.
-          Preserve source records and normalize the information your business
-          needs.
-        </p>
-        <div className="connector-row">
-          {['CSV imports', 'Sandbox provider', 'AfriCore Pay'].map((v) => (
-            <span key={v}>
-              {v}
-              <small>Available in sandbox</small>
-            </span>
-          ))}
-          <span className="future-connector">
-            Banks & accounting<small>Future authorized integrations</small>
-          </span>
-        </div>
-        <a className="text-link" href="/products/connect">
-          Explore integrations <Icon name="right" />
-        </a>
-      </section>
-      <section className="solutions-section">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">BUILT AROUND YOUR BUSINESS</span>
-            <h2>
-              Different ambitions.
-              <br />A common foundation.
-            </h2>
-          </div>
-          <span className="scroll-hint">Swipe or use the controls</span>
-        </div>
-        <MediaCarousel>
-          {[
-            [
-              'Social commerce',
-              'Record the order, share a checkout link and inspect confirmation.',
-              'social-commerce',
-            ],
-            [
-              'Growing SMEs',
-              'Keep customers, invoices and employee responsibilities together.',
-              'smes',
-            ],
-            [
-              'Contractors & suppliers',
-              'Track delivery, due dates and the amount still owed.',
-              'contractors',
-            ],
-            ['Fintechs & SaaS', 'Build on shared infrastructure.', 'fintechs'],
-          ].map(([title, text, slug], i) => (
-            <EditorialCard
-              key={slug}
-              title={title}
-              text={text}
-              href={'/solutions/' + slug}
-              media={{
-                ...editorial[
-                  ['payments', 'business', 'invoicing', 'developers'][i]
-                ],
-                background: ['#eeeeee', '#f3f3f3', '#e9e9e9', '#f1f1f1'][i],
-              }}
-            />
-          ))}
-        </MediaCarousel>
-      </section>
-      <section className="trust-band">
-        <span className="eyebrow">SECURITY IS PART OF THE FOUNDATION</span>
-        <h2>
-          Clear permissions.
-          <br />
-          Traceable decisions.
-        </h2>
-        <p>
-          Organization isolation, scoped credentials and auditable financial
-          events. Production collection remains disabled until provider access
-          and verification are complete.
-        </p>
-        <a className="text-link" href="/security">
-          Our approach to trust <Icon name="right" />
-        </a>
-      </section>
-      <section className="how-section">
-        <div>
-          <span className="eyebrow">HOW IT WORKS</span>
-          <h2>
-            From fragmented
-            <br />
-            to connected.
-          </h2>
-        </div>
-        <ol>
-          <li>
-            <b>01</b>
-            <div>
-              <h3>Bring your business together</h3>
-              <p>
-                Create a workspace, invite your team and add your customers.
-              </p>
-            </div>
-          </li>
-          <li>
-            <b>02</b>
-            <div>
-              <h3>Connect activity to payment</h3>
-              <p>
-                Create orders, issue invoices and share sandbox checkout links.
-              </p>
-            </div>
-          </li>
-          <li>
-            <b>03</b>
-            <div>
-              <h3>Make the records work for you</h3>
-              <p>
-                Reconcile verified events and understand outstanding
-                receivables.
-              </p>
-            </div>
-          </li>
-        </ol>
-      </section>
-      <InteractiveExample kind="reconciliation" />
-      <EducationalFlow />
-      <GettingStarted />
-      <section className="future-section">
-        <span className="eyebrow">PLATFORM AVAILABILITY</span>
-        <h2>Built today. Clear about what’s next.</h2>
-        <div>
-          <article>
-            <h3>Financial intelligence</h3>
-            <p>Scenario forecasting and financial analysis in sandbox.</p>
-            <span className="badge">Sandbox · Available</span>
-          </article>
-          <article>
-            <h3>AfriCore Capital</h3>
-            <p>Financing is deferred and outside this release.</p>
-            <span className="badge">Future · Not offered</span>
-          </article>
-          <article>
-            <h3>Protected payments</h3>
-            <p>
-              Partner-orchestrated purchase and dispute workflows in sandbox.
-            </p>
-            <span className="badge">Sandbox · No real funds</span>
-          </article>
-        </div>
-      </section>
-      <CTA />
-    </>
-  );
+  return <RefinedHome />;
 }
 function Docs() {
   return (
@@ -694,8 +337,8 @@ export function App() {
   if (path.startsWith('/checkout/')) return <Checkout />;
   if (path === '/demo') {
     startDemo();
-    const view=new URLSearchParams(location.search).get('view')||'Overview';
-    location.replace('/app#'+encodeURIComponent(view));
+    const view = new URLSearchParams(location.search).get('view') || 'Overview';
+    location.replace('/app#' + encodeURIComponent(view));
     return <p>Opening demo workspace…</p>;
   }
   if (['/signin', '/signup', '/recover', '/verify', '/reset'].includes(path))
@@ -721,8 +364,12 @@ export function App() {
               <h1>{headlines[path] || page.title}</h1>
               <p>{guides[path]?.summary || page.description}</p>
               <div className="actions">
-                <a className="button" href={guides[path]?demoLink(path):'/signup'}>
-                  {guides[path]?'Try this workflow':'Get started'} <Icon name="right" />
+                <a
+                  className="button"
+                  href={guides[path] ? demoLink(path) : '/signup'}
+                >
+                  {guides[path] ? 'Try this workflow' : 'Get started'}{' '}
+                  <Icon name="right" />
                 </a>
                 <a className="text-link light" href="/docs">
                   Explore documentation <Icon name="right" />

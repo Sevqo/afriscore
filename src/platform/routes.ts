@@ -1,9 +1,10 @@
-import {trustEvents} from '../stage3/contracts';
+import { trustEvents } from '../stage3/contracts';
 import { stage2Events } from '../stage2/events';
 import { Router } from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
+import { isPostgres } from '../db/adapter';
 import { access, audit, fail, route, user } from './auth';
 import { currencySchema, documentSchema, roles, totals } from './domain';
 import { hash, now, seal, secret } from './crypto';
@@ -215,24 +216,35 @@ platform.get(
         .min(0)
         .default(0)
         .parse(req.query.offset);
+    const q = z.string().trim().max(200).optional().parse(req.query.q),
+      status = z.string().max(100).optional().parse(req.query.status);
+    const predicates = ['org_id=?', 'environment=?', 'kind=?'];
+    const params: (string | number)[] = [a.org, a.environment, kind];
+    if (q) {
+      // Literal substring search: SQL wildcard characters in user text stay literal.
+      predicates.push("LOWER(data || id || created_at) LIKE ? ESCAPE '\\'");
+      params.push('%' + q.toLowerCase().replace(/[\\%_]/g, '\\$&') + '%');
+    }
+    if (status) {
+      predicates.push(
+        isPostgres
+          ? "(data::jsonb ->> 'status')=?"
+          : "json_extract(data, '$.status')=?",
+      );
+      params.push(status);
+    }
     const rows = await dbAll(
-      'SELECT * FROM ac_records WHERE org_id=? AND environment=? AND kind=? ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [a.org, a.environment, kind, limit, offset],
+      'SELECT * FROM ac_records WHERE ' +
+        predicates.join(' AND ') +
+        ' ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?',
+      [...params, limit, offset],
     );
-    let data = rows.map((r) => ({
+    const data = rows.map((r) => ({
       ...JSON.parse(r.data),
       id: r.id,
       kind: r.kind,
       created_at: r.created_at,
     }));
-    if (req.query.q)
-      data = data.filter((r) =>
-        JSON.stringify(r)
-          .toLowerCase()
-          .includes(String(req.query.q).toLowerCase()),
-      );
-    if (req.query.status)
-      data = data.filter((r) => r.status === req.query.status);
     res.json({ data, limit, offset });
   }),
 );
@@ -392,8 +404,8 @@ platform.patch(
           ...d,
           ...z
             .object({
-              name: z.string().min(1).max(200).optional(),
-              email: z.string().email().optional(),
+              name: z.string().trim().min(1).max(200).optional(),
+              email: z.string().email().or(z.literal('')).optional(),
               phone: z.string().max(50).optional(),
               notes: z.string().max(3000).optional(),
             })

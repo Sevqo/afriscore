@@ -336,12 +336,25 @@ export async function transport(
   if (recordMatch) {
     const key = '/records/' + recordMatch[1],
       row = recordMatch[2] ? find(key, recordMatch[2]) : null;
-    if (method === 'GET')
+    if (method === 'GET') {
+      const limit = Math.min(
+          100,
+          Math.max(1, Number(url.searchParams.get('limit') || 50)),
+        ),
+        offset = Math.max(0, Number(url.searchParams.get('offset') || 0)),
+        q = (url.searchParams.get('q') || '').toLowerCase(),
+        status = url.searchParams.get('status');
+      const filtered = rows(key).filter(
+        (r: any) =>
+          (!q || JSON.stringify(r).toLowerCase().includes(q)) &&
+          (!status || r.status === status),
+      );
       return finish(
         recordMatch[2]
           ? row || { message: 'Record not found' }
-          : { data: rows(key) },
+          : { data: filtered.slice(offset, offset + limit), limit, offset },
       );
+    }
     if (method === 'POST') {
       let d = {
         ...input,
