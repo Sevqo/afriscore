@@ -42,10 +42,19 @@ export async function audit(
     [randomUUID(), org, actor, action, resource || null, now()],
   );
 }
+function sessionCookieName() {
+  return process.env.AFRICORE_DEMO_SESSION === 'true' &&
+    process.env.NODE_ENV !== 'production'
+    ? 'ac_demo_session'
+    : 'ac_session';
+}
+function sessionToken(req: Request) {
+  return new RegExp(
+    '(?:^|;\\s*)' + sessionCookieName() + '=([a-f0-9]{64})(?:;|$)',
+  ).exec(req.headers.cookie || '')?.[1];
+}
 export async function user(req: Request) {
-  const token = /(?:^|;\s*)ac_session=([a-f0-9]{64})(?:;|$)/.exec(
-    req.headers.cookie || '',
-  )?.[1];
+  const token = sessionToken(req);
   if (!token) fail(401, 'Sign in required');
   const row = await dbGet(
     'SELECT u.id,u.email,u.verified FROM ac_users u JOIN ac_sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?',
@@ -159,7 +168,7 @@ async function session(res: Response, id: string) {
   );
   res.setHeader(
     'Set-Cookie',
-    `ac_session=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`,
+    `${sessionCookieName()}=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`,
   );
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -209,14 +218,12 @@ auth.post(
 auth.post(
   '/signout',
   route(async (req, res) => {
-    const token = /ac_session=([a-f0-9]{64})/.exec(
-      req.headers.cookie || '',
-    )?.[1];
+    const token = sessionToken(req);
     if (token)
       await dbRun('DELETE FROM ac_sessions WHERE token_hash=?', [hash(token)]);
     res.setHeader(
       'Set-Cookie',
-      'ac_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0',
+      sessionCookieName() + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0',
     );
     res.json({ signed_out: true });
   }),

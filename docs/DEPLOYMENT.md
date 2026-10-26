@@ -24,3 +24,10 @@ Continue in a new session by reading AGENTS.md and IMPLEMENTATION_STATUS.md, the
 Build both root and website before start; additive migrations run automatically. Keep one API instance. Stage 2 worker polls every 15 seconds for workflows, approval expiry and connector retries. Review dead letters/run history; repair source/config before retry. Production protected-sale endpoints remain disabled regardless of AI configuration.
 
 Optional server-only OPENAI_API_KEY, AFRICORE_AI_MODEL and AFRICORE_AI_DAILY_REQUEST_LIMIT enable bounded AI explanations. Do not copy a developer .env into an image or frontend bundle. Credits must be funded independently; credit_balance_exhausted is a billing gate. See AI_ASSISTANT.md. A live API key does not enable payment partners. Backup encryption keys separately and restore-test evidence before launch. See COMPLIANCE_GAPS_STAGE2.md before changing availability.
+
+## Stage 3 and demo operation
+npm run demo:web serves the browser-only synthetic demo; npm run demo:server builds/serves a separate loopback SQLite demo with owner/issuer/partner accounts. See DEMO_LOGIN.md. Never expose the public-password connected demo or its development token flow publicly.
+
+Normal startup applies003-stage3. Configure verified AFRICORE_TRUST_OPERATOR_EMAILS separately from engineering access. Passport/issuance/sharing/public-verification flags control beta behavior. External issuers, production anchoring and selective disclosure remain hard-disabled. Keep a single API instance until claims/shared limits are verified.
+
+npm run check:chain starts a temporary local EVM on18545, runs contract plus Stage 3/independent verification, then stops it. For manual local anchoring use chain:node/deploy and server-only RPC/address/chain/confirmation settings. Sepolia requires explicit AFRICORE_TESTNET_ANCHORING=true and authorized disposable resources; no public deployment has been performed. Mainnet IDs are rejected. Do not copy private keys or test databases into images. Docker packages existing app/docs; local contract development requires the dev dependencies and is not part of production custody.

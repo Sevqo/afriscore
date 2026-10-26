@@ -67,3 +67,34 @@ export const publicPageMedia: Record<string, Media> = {
   '/solutions/fintechs': editorial.developers,
   '/support': editorial.education,
 };
+
+Object.assign(publicPageMedia, {
+  '/products/business-passport': illustration(
+    'passport',
+    'An African business owner presents a private business passport.',
+  ),
+  '/products/business-verification': illustration(
+    'credibility',
+    'A business owner maintains an evidence-backed commercial history.',
+  ),
+  '/products/trust-network': illustration(
+    'trust-network',
+    'Commercial counterparties review a relationship.',
+  ),
+  '/products/verifiable-credentials': illustration(
+    'credential-issuance',
+    'A reviewed issuer hands over a signed minimal credential.',
+  ),
+  '/products/blockchain-verification': illustration(
+    'anchoring',
+    'Private document commitments join a common root without exposing records.',
+  ),
+  '/products/verification-api': illustration(
+    'verification',
+    'A verifier inspects a signed business credential.',
+  ),
+  '/products/passport-privacy': illustration(
+    'privacy',
+    'A business owner chooses which records to disclose.',
+  ),
+});

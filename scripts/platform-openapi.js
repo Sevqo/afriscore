@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const source = fs.readFileSync('src/platform/routes.ts', 'utf8');
 const auth = fs.readFileSync('src/platform/auth.ts', 'utf8');
 const stage2 = fs.readFileSync('src/stage2/routes.ts', 'utf8');
+const stage3 = fs.readFileSync('src/stage3/routes.ts', 'utf8');
 const { z } = require('zod');
 const contracts = require('../dist/stage2/contracts');
 const schemaNames = [
@@ -15,6 +16,16 @@ const schemaNames = [
   'disputeSchema',
   'assistantInput',
 ];
+const trustContracts = require('../dist/stage3/contracts');
+const trustSchemaNames = [
+  'passportInput',
+  'evidenceInput',
+  'identityInput',
+  'issueInput',
+  'relationshipInput',
+  'requestInput',
+  'grantInput',
+];
 const schemas = Object.fromEntries(
   schemaNames.map((name) => [
     name,
@@ -24,10 +35,16 @@ const schemas = Object.fromEntries(
     }),
   ]),
 );
+for (const name of trustSchemaNames)
+  schemas['trust_' + name] = z.toJSONSchema(trustContracts[name], {
+    target: 'openapi-3.0',
+    unrepresentable: 'any',
+  });
 const paths = {};
 const operations = [
   ...source.matchAll(/platform\.(get|post|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage2.matchAll(/stage2\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
+  ...stage3.matchAll(/stage3\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...auth.matchAll(/auth\.(get|post)\s*\(\s*'([^']+)'/g),
 ];
 for (const op of operations) {
@@ -98,28 +115,58 @@ for (const op of operations) {
         },
       },
     };
-  const schemaName = path.endsWith('/expenses')
-    ? 'expenseSchema'
-    : path.endsWith('/obligations')
-      ? 'obligationSchema'
-      : path.endsWith('/forecasts')
-        ? 'forecastSchema'
-        : path.endsWith('/automations')
-          ? 'automationSchema'
-          : path.endsWith('/shipments')
-            ? 'shipmentSchema'
-            : path.endsWith('/protected-sales')
-              ? 'saleSchema'
-              : path.endsWith('/assistant')
-                ? 'assistantInput'
-                : path.endsWith('/disputes')
-                  ? 'disputeSchema'
-                  : path.endsWith('/evidence')
-                    ? 'evidenceSchema'
-                    : null;
+  const schemaName = path.includes('/trust/')
+    ? path.endsWith('/passport')
+      ? 'trust_passportInput'
+      : path.endsWith('/evidence')
+        ? 'trust_evidenceInput'
+        : path.endsWith('/identity-reviews')
+          ? 'trust_identityInput'
+          : path.endsWith('/issuance-requests')
+            ? 'trust_issueInput'
+            : path.endsWith('/relationships')
+              ? 'trust_relationshipInput'
+              : path.endsWith('/requests')
+                ? 'trust_requestInput'
+                : path.endsWith('/grants')
+                  ? 'trust_grantInput'
+                  : null
+    : path.endsWith('/expenses')
+      ? 'expenseSchema'
+      : path.endsWith('/obligations')
+        ? 'obligationSchema'
+        : path.endsWith('/forecasts')
+          ? 'forecastSchema'
+          : path.endsWith('/automations')
+            ? 'automationSchema'
+            : path.endsWith('/shipments')
+              ? 'shipmentSchema'
+              : path.endsWith('/protected-sales')
+                ? 'saleSchema'
+                : path.endsWith('/assistant')
+                  ? 'assistantInput'
+                  : path.endsWith('/disputes')
+                    ? 'disputeSchema'
+                    : path.endsWith('/evidence')
+                      ? 'evidenceSchema'
+                      : null;
   if (method === 'post' && schemaName)
     operation.requestBody.content['application/json'].schema = {
       $ref: '#/components/schemas/' + schemaName,
+    };
+  if (path.startsWith('/api/v1/trust/') && !path.includes('/presentations/'))
+    operation.security = [{}];
+  if (path.includes('/trust/presentations/'))
+    operation.security = [{ session: [] }];
+  if (
+    path.includes('/trust/') &&
+    path.includes('/organizations/') &&
+    method !== 'get'
+  )
+    operation.security = [{ session: [] }];
+  if (path.includes('/trust/status/'))
+    operation.responses[200].content = {
+      'application/vc+jwt': { schema: { type: 'string' } },
     };
   if (path.includes('/buyer/')) {
     operation.security = [{}];

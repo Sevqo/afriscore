@@ -1,3 +1,4 @@
+import {trustEvents} from '../stage3/contracts';
 import { stage2Events } from '../stage2/events';
 import { Router } from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
@@ -934,6 +935,7 @@ platform.delete(
 );
 const subscriptions = [
   ...stage2Events,
+  ...trustEvents,
   'invoice.created',
   'invoice.issued',
   'invoice.paid',

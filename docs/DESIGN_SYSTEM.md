@@ -18,3 +18,8 @@ Future original art: flat vector scenes, confident outlines, expressive stylized
 
 ## Stage 2 editorial and workspace UI
 See ILLUSTRATION_SYSTEM.md for ten original SVG scenes, typed route media and generator. Strong hierarchy, existing brand CTAs, whitespace and real UI evidence remain the public layout anchors. Stage 2 workspace views include source/assurance labels, chart tables, explicit empty/data-quality/error states and sandbox copy. Educational motion uses keyboard tabs and prefers-reduced-motion. Fulfillment uses order line quantity controls; raw backend IDs remain in advanced approval/link workflows and need further UX refinement. Modal focus trapping and a full assistive-technology audit remain open.
+
+## Stage 3 Passport and verification UI
+Existing typography/core brand tokens/media architecture remain. Passport adds a restrained dark identity card, precise assurance labels, responsive section navigation, minimal-claim previews, recipient/purpose controls and separate verification checks. Public /verify-credential and opted-in /passport/:id pages share existing branding. Seven original scenes extend the SVG generator: passport, credential-issuance, trust-network, privacy, verification, anchoring and credibility (17 total).
+
+No coin/token-price aesthetics or decorative financial dashboards. Mobile tabs scroll within their container and long IDs wrap. Backend-ID entry remains an advanced sandbox UX limitation; broader business discovery/issuer directory and full assistive-technology audit remain future work.

@@ -1,3 +1,4 @@
+import {processTrust} from './stage3/worker';
 // IMPORTANT: keep `./config` as the very first import. It loads a local .env
 // file as a side effect, and the DB adapter (imported below via ./db) reads
 // process.env.DATABASE_URL at import time to choose SQLite vs PostgreSQL.
@@ -35,6 +36,7 @@ async function main(): Promise<void> {
   webhookTimer.unref();
   const stage2Timer=setInterval(()=>{processStage2().catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);
   stage2Timer.unref();
+  const trustTimer=setInterval(()=>{processTrust().catch(()=>logger.error('trust_worker_failed',{code:'execution_failed'}));},15000);trustTimer.unref();
 
   const app = createApp();
   const server: Server = app.listen(config.port, () => {

@@ -1,0 +1,1775 @@
+{
+  "/report": {
+    "currency": "KES",
+    "environment": "sandbox",
+    "confirmed_inflows_minor": 120000,
+    "recorded_outflows_minor": 0,
+    "net_recorded_movement_minor": 120000,
+    "outstanding_minor": 150000,
+    "overdue_minor": 0,
+    "aging": {
+      "current": 150000,
+      "days_1_30": 0,
+      "days_31_60": 0,
+      "days_61_90": 0,
+      "days_over_90": 0
+    },
+    "invoices": [
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 120000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 120000,
+        "tax_minor": 0,
+        "total_minor": 120000,
+        "reference": "INV-B4F0F184-EE3",
+        "status": "paid",
+        "paid_minor": 120000,
+        "id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.265Z"
+      },
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 85000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 85000,
+        "tax_minor": 0,
+        "total_minor": 85000,
+        "reference": "INV-C69BDC19-616",
+        "status": "issued",
+        "paid_minor": 0,
+        "id": "f88aafc7-db7f-4733-bbad-8becd92069a5",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.304Z"
+      },
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 65000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 65000,
+        "tax_minor": 0,
+        "total_minor": 65000,
+        "reference": "INV-6F46DB23-BEA",
+        "status": "issued",
+        "paid_minor": 0,
+        "id": "d6434e08-e269-43cb-bddd-640bcd4a56ec",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.319Z"
+      }
+    ],
+    "events": [
+      {
+        "id": "7fa8006a-11db-4785-abe4-eed282dfe192",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "request_id": "dfb9447a-f74c-476a-9a2f-04b32e2c0dce",
+        "provider_ref": "sandbox_dfb9447a-f74c-476a-9a2f-04b32e2c0dce_receipt",
+        "status": "succeeded",
+        "amount_minor": 120000,
+        "currency": "KES",
+        "created_at": "2026-10-25T18:31:01.293Z"
+      }
+    ],
+    "methodology": "Confirmed provider events and merchant-recorded outflows. Not profit, custody balances or complete bank cash flow. Currency buckets never combined. Customer filter applies to receivables only."
+  },
+  "/payments": {
+    "data": [
+      {
+        "id": "dfb9447a-f74c-476a-9a2f-04b32e2c0dce",
+        "document_id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "amount_minor": 120000,
+        "currency": "KES",
+        "status": "paid",
+        "expires_at": "2026-10-26T18:31:01.285Z",
+        "created_at": "2026-10-25T18:31:01.285Z"
+      }
+    ],
+    "events": [
+      {
+        "id": "7fa8006a-11db-4785-abe4-eed282dfe192",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "request_id": "dfb9447a-f74c-476a-9a2f-04b32e2c0dce",
+        "provider_ref": "sandbox_dfb9447a-f74c-476a-9a2f-04b32e2c0dce_receipt",
+        "status": "succeeded",
+        "amount_minor": 120000,
+        "currency": "KES",
+        "created_at": "2026-10-25T18:31:01.293Z"
+      }
+    ]
+  },
+  "/reconciliation": {
+    "allocations": [
+      {
+        "id": "5a7eaad6-193d-4839-b1eb-9767a086d705",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "event_id": "7fa8006a-11db-4785-abe4-eed282dfe192",
+        "document_id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "amount_minor": 120000,
+        "created_at": "2026-10-25T18:31:01.295Z"
+      }
+    ],
+    "exceptions": []
+  },
+  "/team": {
+    "data": [
+      {
+        "id": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "email": "stage2-qa-1792953060956@example.test",
+        "role": "owner"
+      }
+    ],
+    "invitations": []
+  },
+  "/audit": {
+    "data": [
+      {
+        "id": "595a3611-dbe1-4b43-90ee-8ebfac8ebd3c",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "orders.created",
+        "resource_id": "7541e294-0545-477a-a6d3-750695eeb5c3",
+        "created_at": "2026-10-25T18:31:01.433Z"
+      },
+      {
+        "id": "6e84e8d7-f9be-462f-9b52-68d42f72df15",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "protected_sales.created",
+        "resource_id": "0dc1604a-9644-4dfd-911f-812f4b554429",
+        "created_at": "2026-10-25T18:31:01.433Z"
+      },
+      {
+        "id": "25de5600-ec14-49a5-8fad-1e4906e64932",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "customers.created",
+        "resource_id": "eafa17f5-c3d6-4c2a-aa6d-b527a5e7ba95",
+        "created_at": "2026-10-25T18:31:01.432Z"
+      },
+      {
+        "id": "9bd4ede3-b632-4a8d-91a9-6891e1567509",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "automation.succeeded",
+        "resource_id": "d0ccb45d-2a19-4ea0-b7f9-fa9d7e308d0f",
+        "created_at": "2026-10-25T18:31:01.423Z"
+      },
+      {
+        "id": "e2865dab-f814-4516-8c39-10c73f103749",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "automations.created",
+        "resource_id": "d1c3be28-5452-4901-8ebd-dbdfbb23e85a",
+        "created_at": "2026-10-25T18:31:01.405Z"
+      },
+      {
+        "id": "a7a83d80-b94b-4b8e-abd3-4f37fbe25e20",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "obligations.created",
+        "resource_id": "32827418-e9bf-41e8-99d1-3ab28169e429",
+        "created_at": "2026-10-25T18:31:01.396Z"
+      },
+      {
+        "id": "6c6fe28a-5cc9-42eb-a9a9-6c6595e999f4",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "expenses.created",
+        "resource_id": "a061b253-9308-4919-bb3c-04ba9e9aee24",
+        "created_at": "2026-10-25T18:31:01.385Z"
+      },
+      {
+        "id": "41babc9e-9ef9-441e-864b-0d5b20d5b68e",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "invoices.updated",
+        "resource_id": "d6434e08-e269-43cb-bddd-640bcd4a56ec",
+        "created_at": "2026-10-25T18:31:01.325Z"
+      },
+      {
+        "id": "07905467-3a8a-4b6c-96a1-5b06fe3973bf",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "invoices.created",
+        "resource_id": "d6434e08-e269-43cb-bddd-640bcd4a56ec",
+        "created_at": "2026-10-25T18:31:01.320Z"
+      },
+      {
+        "id": "a4dff6be-eaf5-415b-9636-505cfc0ac549",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "invoices.updated",
+        "resource_id": "f88aafc7-db7f-4733-bbad-8becd92069a5",
+        "created_at": "2026-10-25T18:31:01.313Z"
+      },
+      {
+        "id": "7e6164e7-5152-43ce-868d-934d20a49640",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "invoices.created",
+        "resource_id": "f88aafc7-db7f-4733-bbad-8becd92069a5",
+        "created_at": "2026-10-25T18:31:01.304Z"
+      },
+      {
+        "id": "3c0fc2ac-ca5d-4ea4-9f22-1c659c98723a",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "provider:sandbox",
+        "action": "payment.succeeded",
+        "resource_id": "7fa8006a-11db-4785-abe4-eed282dfe192",
+        "created_at": "2026-10-25T18:31:01.296Z"
+      },
+      {
+        "id": "4f415224-43fe-4e57-98c1-32167fc81c7e",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "payment_request.created",
+        "resource_id": "dfb9447a-f74c-476a-9a2f-04b32e2c0dce",
+        "created_at": "2026-10-25T18:31:01.286Z"
+      },
+      {
+        "id": "84c4495b-453a-4735-a1bb-8e625df0afb2",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "invoices.updated",
+        "resource_id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "created_at": "2026-10-25T18:31:01.274Z"
+      },
+      {
+        "id": "1da538cc-911b-4a18-b72f-a74833437109",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "invoices.created",
+        "resource_id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "created_at": "2026-10-25T18:31:01.265Z"
+      },
+      {
+        "id": "b6f3e6f7-aa3f-4840-a6f0-f304a4b47535",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "customers.created",
+        "resource_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "created_at": "2026-10-25T18:31:01.249Z"
+      },
+      {
+        "id": "b9ec4323-1063-407c-93c5-ef9360a112fc",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "action": "organization.created",
+        "resource_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "created_at": "2026-10-25T18:31:01.237Z"
+      }
+    ]
+  },
+  "/records/customers": {
+    "data": [
+      {
+        "name": "Protected purchase recipient",
+        "type": "individual",
+        "email": "",
+        "phone": "",
+        "notes": "Created for a sandbox protected purchase.",
+        "id": "eafa17f5-c3d6-4c2a-aa6d-b527a5e7ba95",
+        "kind": "customers",
+        "created_at": "2026-10-25T18:31:01.432Z"
+      },
+      {
+        "name": "Sample customer · QA",
+        "type": "individual",
+        "email": "",
+        "phone": "",
+        "notes": "",
+        "id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "kind": "customers",
+        "created_at": "2026-10-25T18:31:01.249Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/records/orders": {
+    "data": [
+      {
+        "customer_id": "eafa17f5-c3d6-4c2a-aa6d-b527a5e7ba95",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample delivery · Sandbox",
+            "quantity": 1,
+            "unit_price_minor": 150000
+          }
+        ],
+        "subtotal_minor": 150000,
+        "total_minor": 150000,
+        "tax_minor": 0,
+        "tax_bps": 0,
+        "discount_minor": 0,
+        "issue_date": "2026-10-25",
+        "due_date": "2026-10-25",
+        "paid_minor": 0,
+        "payment_status": "unpaid",
+        "fulfillment_status": "unfulfilled",
+        "status": "awaiting_payment",
+        "reference": "PRO-7541E294",
+        "notes": "Sandbox protected purchase; no real funds.",
+        "id": "7541e294-0545-477a-a6d3-750695eeb5c3",
+        "kind": "orders",
+        "created_at": "2026-10-25T18:31:01.433Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/records/invoices": {
+    "data": [
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 65000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 65000,
+        "tax_minor": 0,
+        "total_minor": 65000,
+        "reference": "INV-6F46DB23-BEA",
+        "status": "issued",
+        "paid_minor": 0,
+        "id": "d6434e08-e269-43cb-bddd-640bcd4a56ec",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.319Z"
+      },
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 85000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 85000,
+        "tax_minor": 0,
+        "total_minor": 85000,
+        "reference": "INV-C69BDC19-616",
+        "status": "issued",
+        "paid_minor": 0,
+        "id": "f88aafc7-db7f-4733-bbad-8becd92069a5",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.304Z"
+      },
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 120000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 120000,
+        "tax_minor": 0,
+        "total_minor": 120000,
+        "reference": "INV-B4F0F184-EE3",
+        "status": "paid",
+        "paid_minor": 120000,
+        "id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.265Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/records/transactions": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/records/integrations": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/records/applications": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/intelligence": {
+    "currency": "KES",
+    "environment": "sandbox",
+    "period": {
+      "from": "2026-07-28",
+      "to": "2026-10-25"
+    },
+    "as_of": "2026-10-25",
+    "definitions": {
+      "confirmed_inflows": "Gross provider-confirmed successful events; sandbox results are simulations. Reversals remain separately flagged pending accounting review.",
+      "recorded_outflows": "Self-reported expenses plus uncategorized merchant-imported outflows; not a verified expense ledger.",
+      "net_movement": "Recorded coverage only; not available bank balance or profit.",
+      "receivables": "Issued invoices at range end, less allocations recorded by that date."
+    },
+    "totals": {
+      "confirmed_inflows_minor": 120000,
+      "recorded_outflows_minor": 12000,
+      "net_movement_minor": 108000,
+      "outstanding_minor": 150000,
+      "overdue_minor": 0,
+      "invoiced_sales_minor": 270000
+    },
+    "quality": {
+      "history_days": 1,
+      "missing_expense_data": false,
+      "source_count": 0,
+      "last_sync": null,
+      "last_transaction_at": "2026-10-25T18:31:01.293Z",
+      "unreconciled_count": 0,
+      "unallocated_confirmations": 0,
+      "missing_due_dates": 0,
+      "limited_history": true,
+      "bank_balance_available": false,
+      "profit_available": false,
+      "source_labels": [
+        "provider_confirmed (sandbox simulation when applicable)",
+        "merchant_recorded expenses/imports",
+        "derived aggregates"
+      ]
+    },
+    "aging": {
+      "current": 150000,
+      "days_1_30": 0,
+      "days_31_60": 0,
+      "days_61_90": 0,
+      "days_over_90": 0
+    },
+    "customers": [
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "name": "Sample customer · QA",
+        "total_invoiced_minor": 270000,
+        "total_paid_minor": 120000,
+        "outstanding_minor": 150000,
+        "settled_invoice_count": 1,
+        "average_delay_days": null,
+        "median_delay_days": null,
+        "on_time_percent": null,
+        "most_recent_payment": "2026-10-25T18:31:01.295Z",
+        "open_disputes": 0,
+        "observations": [
+          {
+            "invoice_id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+            "paid_on": "2026-10-25",
+            "delay_days": 0
+          }
+        ],
+        "limited_data": true
+      },
+      {
+        "customer_id": "eafa17f5-c3d6-4c2a-aa6d-b527a5e7ba95",
+        "name": "Protected purchase recipient",
+        "total_invoiced_minor": 0,
+        "total_paid_minor": 0,
+        "outstanding_minor": 0,
+        "settled_invoice_count": 0,
+        "average_delay_days": null,
+        "median_delay_days": null,
+        "on_time_percent": null,
+        "most_recent_payment": null,
+        "open_disputes": 0,
+        "observations": [],
+        "limited_data": true
+      }
+    ],
+    "concentration": [
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "name": "Sample customer · QA",
+        "share_bps": 10000
+      },
+      {
+        "customer_id": "eafa17f5-c3d6-4c2a-aa6d-b527a5e7ba95",
+        "name": "Protected purchase recipient",
+        "share_bps": 0
+      }
+    ],
+    "invoices": [
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 120000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 120000,
+        "tax_minor": 0,
+        "total_minor": 120000,
+        "reference": "INV-B4F0F184-EE3",
+        "status": "paid",
+        "paid_minor": 120000,
+        "id": "8dba1bdf-f5ec-4141-965b-05c9e8ecddef",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.265Z",
+        "outstanding_minor": 0,
+        "overdue_days": 0
+      },
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 85000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 85000,
+        "tax_minor": 0,
+        "total_minor": 85000,
+        "reference": "INV-C69BDC19-616",
+        "status": "issued",
+        "paid_minor": 0,
+        "id": "f88aafc7-db7f-4733-bbad-8becd92069a5",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.304Z",
+        "outstanding_minor": 85000,
+        "overdue_days": 0
+      },
+      {
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "currency": "KES",
+        "items": [
+          {
+            "description": "Sample supplies",
+            "quantity": 1,
+            "unit_price_minor": 65000
+          }
+        ],
+        "discount_minor": 0,
+        "tax_bps": 0,
+        "due_date": "2026-10-30",
+        "issue_date": "2026-10-25",
+        "notes": "",
+        "terms": "",
+        "payment_instructions": "",
+        "subtotal_minor": 65000,
+        "tax_minor": 0,
+        "total_minor": 65000,
+        "reference": "INV-6F46DB23-BEA",
+        "status": "issued",
+        "paid_minor": 0,
+        "id": "d6434e08-e269-43cb-bddd-640bcd4a56ec",
+        "kind": "invoices",
+        "created_at": "2026-10-25T18:31:01.319Z",
+        "outstanding_minor": 65000,
+        "overdue_days": 0
+      }
+    ],
+    "series": [
+      {
+        "date": "2026-07-28",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-07-29",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-07-30",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-07-31",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-01",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-02",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-03",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-04",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-05",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-06",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-07",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-08",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-09",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-10",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-11",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-12",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-13",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-14",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-15",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-16",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-17",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-18",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-19",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-20",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-21",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-22",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-23",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-24",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-25",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-26",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-27",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-28",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-29",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-30",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-08-31",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-01",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-02",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-03",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-04",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-05",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-06",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-07",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-08",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-09",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-10",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-11",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-12",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-13",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-14",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-15",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-16",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-17",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-18",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-19",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-20",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-21",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-22",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-23",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-24",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-25",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-26",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-27",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-28",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-29",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-09-30",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-01",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-02",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-03",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-04",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-05",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-06",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-07",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-08",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-09",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-10",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-11",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-12",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-13",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-14",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-15",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-16",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-17",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-18",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-19",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-20",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-21",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-22",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-23",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-24",
+        "confirmed_inflows_minor": 0,
+        "recorded_outflows_minor": 0
+      },
+      {
+        "date": "2026-10-25",
+        "confirmed_inflows_minor": 120000,
+        "recorded_outflows_minor": 12000
+      }
+    ],
+    "insights": [
+      {
+        "id": "concentration",
+        "classification": "derived_metric",
+        "title": "Invoiced sales are concentrated",
+        "evidence": {
+          "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+          "name": "Sample customer · QA",
+          "share_bps": 10000
+        },
+        "period": {
+          "from": "2026-07-28",
+          "to": "2026-10-25"
+        },
+        "limitation": "Concentration is not proof of creditworthiness or fraud.",
+        "action": "Customers"
+      }
+    ],
+    "payments": {
+      "successful": 1,
+      "failed": 0,
+      "reversals": 0,
+      "reconciliation_rate": 100,
+      "confirmation_delay_ms": null,
+      "method_breakdown": [
+        {
+          "method": "sandbox",
+          "count": 1
+        }
+      ]
+    },
+    "operations": {
+      "orders_created": 1,
+      "shipments": 0,
+      "seller_reported_delivered": 0,
+      "confirmed_deliveries": 0,
+      "open_disputes": 0
+    }
+  },
+  "/expenses": {
+    "data": [
+      {
+        "description": "Sample delivery cost",
+        "amount_minor": 12000,
+        "currency": "KES",
+        "occurred_on": "2026-10-25",
+        "category": "delivery",
+        "provenance": "self_reported",
+        "assurance": "merchant_recorded",
+        "id": "a061b253-9308-4919-bb3c-04ba9e9aee24",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "kind": "expenses",
+        "version": 1,
+        "created_at": "2026-10-25T18:31:01.385Z",
+        "updated_at": "2026-10-25T18:31:01.385Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/obligations": {
+    "data": [
+      {
+        "description": "Sample monthly rent",
+        "amount_minor": 35000,
+        "currency": "KES",
+        "next_due_date": "2026-10-30",
+        "recurrence": "monthly",
+        "status": "active",
+        "provenance": "self_reported",
+        "classification": "expected_obligation",
+        "id": "32827418-e9bf-41e8-99d1-3ab28169e429",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "kind": "obligations",
+        "version": 1,
+        "created_at": "2026-10-25T18:31:01.396Z",
+        "updated_at": "2026-10-25T18:31:01.396Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/automations": {
+    "data": [
+      {
+        "name": "Daily operational review",
+        "template": "daily_summary",
+        "enabled": true,
+        "conditions": {
+          "currency": "KES",
+          "minimum_minor": 0,
+          "days_before_due": 3
+        },
+        "schedule": {
+          "frequency": "daily",
+          "hour": 0
+        },
+        "action": "in_app_notification",
+        "created_by": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "id": "d1c3be28-5452-4901-8ebd-dbdfbb23e85a",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "kind": "automations",
+        "version": 1,
+        "created_at": "2026-10-25T18:31:01.404Z",
+        "updated_at": "2026-10-25T18:31:01.404Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/automations/templates": {
+    "data": [
+      {
+        "id": "invoice_due_soon",
+        "name": "Invoice due soon",
+        "trigger": "schedule",
+        "category": "invoices"
+      },
+      {
+        "id": "invoice_overdue",
+        "name": "Overdue invoice reminder",
+        "trigger": "schedule",
+        "category": "invoices"
+      },
+      {
+        "id": "payment_confirmation",
+        "name": "Payment confirmation",
+        "trigger": "payment.succeeded",
+        "category": "payments"
+      },
+      {
+        "id": "daily_summary",
+        "name": "Daily transaction summary",
+        "trigger": "schedule",
+        "category": "payments"
+      },
+      {
+        "id": "weekly_cashflow",
+        "name": "Weekly cash-flow review",
+        "trigger": "schedule",
+        "category": "cash_flow"
+      },
+      {
+        "id": "reconciliation_exception",
+        "name": "Reconciliation exception alert",
+        "trigger": "reconciliation.exception_created",
+        "category": "reconciliation"
+      },
+      {
+        "id": "customer_follow_up",
+        "name": "Customer payment follow-up",
+        "trigger": "schedule",
+        "category": "invoices"
+      },
+      {
+        "id": "order_fulfillment",
+        "name": "Order fulfillment update",
+        "trigger": "shipment.shipped",
+        "category": "orders"
+      },
+      {
+        "id": "delivery_follow_up",
+        "name": "Delivery confirmation follow-up",
+        "trigger": "shipment.delivered",
+        "category": "deliveries"
+      },
+      {
+        "id": "payment_failed",
+        "name": "Failed payment alert",
+        "trigger": "payment.failed",
+        "category": "payments"
+      }
+    ],
+    "available_actions": [
+      "in_app_notification"
+    ],
+    "external_delivery": "not_configured"
+  },
+  "/automation-runs": {
+    "data": [
+      {
+        "id": "d0ccb45d-2a19-4ea0-b7f9-fa9d7e308d0f",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "workflow_id": "d1c3be28-5452-4901-8ebd-dbdfbb23e85a",
+        "trigger_key": "2026-10-25",
+        "status": "succeeded",
+        "attempts": 1,
+        "next_at": "2026-10-25T18:31:01.410Z",
+        "result": "{\"action\":\"in_app_notification\",\"external_messages_sent\":0}",
+        "created_at": "2026-10-25T18:31:01.410Z",
+        "updated_at": "2026-10-25T18:31:01.423Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0
+  },
+  "/notifications": {
+    "data": [
+      {
+        "id": "8e60e5a6-a0eb-4150-8ea5-75d9890025b3",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "user_id": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+        "category": "payments",
+        "title": "Daily transaction summary",
+        "body": "Recorded 2026-10-25 to 2026-10-25: confirmed collections 120000 KES minor units; recorded outflows 12000; outstanding receivables 150000. Coverage limits apply; this is not profit or a bank balance.",
+        "resource_id": "2026-10-25",
+        "dedupe_key": "automation:d0ccb45d-2a19-4ea0-b7f9-fa9d7e308d0f",
+        "read_at": null,
+        "created_at": "2026-10-25T18:31:01.422Z"
+      }
+    ],
+    "preferences": {
+      "paused": false,
+      "muted_categories": []
+    },
+    "limit": 50,
+    "offset": 0
+  },
+  "/approvals": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/shipments": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/protected-sales": {
+    "data": [
+      {
+        "title": "Sample delivery · Sandbox",
+        "description": "",
+        "amount_minor": 150000,
+        "currency": "KES",
+        "delivery_terms": "Deliver sample goods to the agreed collection location.",
+        "inspection_hours": 48,
+        "cancellation_terms": "Unpaid sales can be cancelled; disputes require review.",
+        "support_contact": "preview@example.test",
+        "buyer_access_days": 14,
+        "order_id": "7541e294-0545-477a-a6d3-750695eeb5c3",
+        "state": "awaiting_buyer_payment",
+        "provider": "sandbox_partner",
+        "payment_state": "not_initiated",
+        "arrangement_state": "unconfirmed",
+        "custody": "no_real_funds",
+        "settlement_state": "not_requested",
+        "fees_minor": 0,
+        "history": [
+          {
+            "state": "awaiting_buyer_payment",
+            "actor": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+            "source": "seller_reported",
+            "at": "2026-10-25T18:31:01.433Z"
+          }
+        ],
+        "id": "0dc1604a-9644-4dfd-911f-812f4b554429",
+        "org_id": "70503b40-4cfa-4c88-99f1-716607948948",
+        "environment": "sandbox",
+        "kind": "protected_sales",
+        "version": 1,
+        "created_at": "2026-10-25T18:31:01.433Z",
+        "updated_at": "2026-10-25T18:31:01.433Z"
+      }
+    ],
+    "limit": 50,
+    "offset": 0,
+    "production_enabled": false
+  },
+  "/disputes": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/connectors": {
+    "data": [],
+    "limit": 50,
+    "offset": 0
+  },
+  "/connectors/catalog": {
+    "data": [
+      {
+        "provider": "sandbox_accounting",
+        "category": "accounting",
+        "capabilities": [
+          "expense_normalization"
+        ],
+        "authentication": "sandbox_only",
+        "sync_frequency": "manual",
+        "provider_rate_limit": "12 syncs/hour/workspace",
+        "retry": "3 attempts, exponential backoff",
+        "events": [
+          "integration.synced",
+          "integration.sync_failed"
+        ],
+        "production_available": false
+      },
+      {
+        "provider": "sandbox_courier",
+        "category": "delivery",
+        "capabilities": [
+          "tracking_events"
+        ],
+        "authentication": "sandbox_only",
+        "sync_frequency": "manual",
+        "provider_rate_limit": "12 syncs/hour/workspace",
+        "retry": "3 attempts, exponential backoff",
+        "events": [
+          "shipment.delivered"
+        ],
+        "production_available": false
+      },
+      {
+        "provider": "sandbox_store",
+        "category": "commerce",
+        "capabilities": [
+          "order_feed"
+        ],
+        "authentication": "sandbox_only",
+        "sync_frequency": "manual",
+        "provider_rate_limit": "12 syncs/hour/workspace",
+        "retry": "3 attempts, exponential backoff",
+        "events": [
+          "integration.synced"
+        ],
+        "production_available": false
+      },
+      {
+        "provider": "csv",
+        "category": "data",
+        "capabilities": [
+          "transaction_import"
+        ],
+        "authentication": "member_authorization",
+        "sync_frequency": "manual",
+        "provider_rate_limit": "1000 rows/import",
+        "retry": "explicit user retry with stable source identifiers",
+        "events": [],
+        "production_available": true
+      },
+      {
+        "provider": "mpesa",
+        "category": "payments",
+        "capabilities": [],
+        "authentication": "merchant_provider_credentials_required",
+        "production_available": false
+      },
+      {
+        "provider": "bank",
+        "category": "banking",
+        "capabilities": [],
+        "authentication": "authorized_partner_required",
+        "production_available": false
+      },
+      {
+        "provider": "etims",
+        "category": "tax",
+        "capabilities": [],
+        "authentication": "authorized_tax_provider_required",
+        "production_available": false
+      }
+    ]
+  },
+  "/risk-signals": {
+    "signals": [],
+    "classification": "explainable_review_signals",
+    "disclaimer": "No fraud determination, business penalty, credit score or financing approval is made."
+  },
+  "/credentials": {
+    "data": []
+  },
+  "/webhooks": {
+    "data": [],
+    "deliveries": []
+  },
+  "/forecasts": {
+    "currency": "KES",
+    "environment": "sandbox",
+    "classification": "forecast_estimate",
+    "as_of": "2026-10-25",
+    "horizon": 30,
+    "scenario": "expected",
+    "starting_balance_minor": null,
+    "projected_inflows_minor": 135000,
+    "projected_outflows_minor": 35000,
+    "estimated_net_movement_minor": 100000,
+    "confidence": "limited_data",
+    "confidence_interval": null,
+    "uncertainty": "Scenario assumptions, not statistical confidence intervals or guaranteed receipts.",
+    "assumptions": {
+      "collection_bps": 9000,
+      "additional_delay_days": 0,
+      "outflow_bps": 10000,
+      "historical_window_days": 1,
+      "non_invoice_baseline_included": false,
+      "recorded_obligations_minor": 35000,
+      "no_opening_balance": true
+    },
+    "quality": {
+      "history_days": 1,
+      "missing_expense_data": false,
+      "source_count": 0,
+      "last_sync": null,
+      "last_transaction_at": "2026-10-25T18:31:01.293Z",
+      "unreconciled_count": 0,
+      "unallocated_confirmations": 0,
+      "missing_due_dates": 0,
+      "limited_history": true,
+      "bank_balance_available": false,
+      "profit_available": false,
+      "source_labels": [
+        "provider_confirmed (sandbox simulation when applicable)",
+        "merchant_recorded expenses/imports",
+        "derived aggregates"
+      ]
+    },
+    "projected_invoices": [
+      {
+        "invoice_id": "f88aafc7-db7f-4733-bbad-8becd92069a5",
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "expected_date": "2026-10-30",
+        "expected_receipt_minor": 76500,
+        "outstanding_minor": 85000,
+        "delay_observations": 1
+      },
+      {
+        "invoice_id": "d6434e08-e269-43cb-bddd-640bcd4a56ec",
+        "customer_id": "b9da5e5c-bf1a-4512-97b0-771295f085ad",
+        "expected_date": "2026-10-30",
+        "expected_receipt_minor": 58500,
+        "outstanding_minor": 65000,
+        "delay_observations": 1
+      }
+    ],
+    "series": [
+      {
+        "date": "2026-10-26",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 0
+      },
+      {
+        "date": "2026-10-27",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 0
+      },
+      {
+        "date": "2026-10-28",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 0
+      },
+      {
+        "date": "2026-10-29",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 0
+      },
+      {
+        "date": "2026-10-30",
+        "inflow_minor": 135000,
+        "outflow_minor": 35000,
+        "net_movement_minor": 100000,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-10-31",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-01",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-02",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-03",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-04",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-05",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-06",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-07",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-08",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-09",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-10",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-11",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-12",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-13",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-14",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-15",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-16",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-17",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-18",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-19",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-20",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-21",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-22",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-23",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      },
+      {
+        "date": "2026-11-24",
+        "inflow_minor": 0,
+        "outflow_minor": 0,
+        "net_movement_minor": 0,
+        "cumulative_net_movement_minor": 100000
+      }
+    ],
+    "actions": []
+  },
+  "/organization": {
+    "id": "70503b40-4cfa-4c88-99f1-716607948948",
+    "name": "Amani Supplies · Sandbox QA",
+    "business_type": "Supplier",
+    "industry": "Trade",
+    "country": "KE",
+    "location": "Nairobi",
+    "currency": "KES",
+    "email": "preview@example.test",
+    "phone": "+254700000000",
+    "features": [],
+    "verification_status": "unverified"
+  },
+  "/me": {
+    "id": "dc1f0939-ef4d-4d0b-9767-d54409cc4b8e",
+    "email": "demo@africore.demo",
+    "verified": 1
+  }
+}

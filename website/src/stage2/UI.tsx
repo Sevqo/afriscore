@@ -1,3 +1,4 @@
+import {transport} from '../demo/transport';
 import { useState, type FormEvent, type ReactNode } from 'react';
 export type API = (
   suffix: string,
@@ -198,7 +199,7 @@ export async function request(
   body?: unknown,
   environment = 'sandbox',
 ) {
-  const r = await fetch('/api/v1' + path, {
+  const r = await transport('/api/v1' + path, {
     method,
     credentials: 'same-origin',
     headers: {

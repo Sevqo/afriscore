@@ -11,3 +11,6 @@ Phase 1/2 is sandbox-focused. Financing, advanced intelligence and protected pay
 
 ## Stage 2 availability
 Intelligence, forecasts, automations and commerce review are available as local workspace capabilities, with explicit source/quality labels. Assistant generation needs separately configured and funded OpenAI access. Protected payments and expanded connectors are sandbox-only. No licensing, guaranteed protection, profit, financing approval or real balance is implied. Read IMPLEMENTATION_STATUS.md for acceptance gaps.
+
+## Stage 3 availability
+Business Passport/Trust Network is a sandbox beta integrated into Business. Credential integrity and evidence/issuer authority are separate. Browser demo offers offline synthetic exploration and a real public-key signature check; connected demo supports separate owner/issuer/recipient workflows with auto-created SQLite. No institutional network, live registry verification, production credential signing, guaranteed trust or financial eligibility is advertised.

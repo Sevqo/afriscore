@@ -1,3 +1,11 @@
+import { PassportWorkspace } from './stage3/PassportWorkspace';
+import {
+  transport,
+  isDemo,
+  startDemo,
+  DEMO_EMAIL,
+  DEMO_PASSWORD,
+} from './demo/transport';
 import { Stage2Workspace, stage2Tabs } from './stage2/Stage2Workspace';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from './App';
@@ -8,7 +16,7 @@ export async function api(
   environment = 'sandbox',
   headers: Record<string, string> = {},
 ) {
-  const r = await fetch(path, {
+  const r = await transport(path, {
     method,
     credentials: 'same-origin',
     headers: {
@@ -18,7 +26,11 @@ export async function api(
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const data = await r.json();
+  const data = await r.json().catch(() => {
+    throw new Error(
+      'The backend is unavailable here. Use Enter demo workspace to explore without a database.',
+    );
+  });
   if (!r.ok)
     throw new Error(
       data.message ||
@@ -89,6 +101,28 @@ export function AuthPage({ mode }: { mode: string }) {
             ? 'Start in sandbox. Your business remains unverified until explicit verification.'
             : 'Your connected business workspace.'}
         </p>
+        {['signin', 'signup'].includes(mode) && (
+          <section className="demo-entry">
+            <strong>Explore without setting up a database</strong>
+            <p>
+              Use sample businesses, invoices, payments and product workflows.
+              Changes are saved only in this browser.
+            </p>
+            <button
+              className="button"
+              type="button"
+              onClick={() => {
+                startDemo();
+                location.href = '/app';
+              }}
+            >
+              Enter demo workspace →
+            </button>
+            <small>
+              Or sign in with {DEMO_EMAIL} / {DEMO_PASSWORD}
+            </small>
+          </section>
+        )}
         <form onSubmit={submit}>
           {['signup', 'signin', 'recover'].includes(mode) && (
             <Field label="Email address">
@@ -276,6 +310,7 @@ export function Checkout() {
 }
 const tabs = [
   'Overview',
+  'Business Passport',
   ...stage2Tabs,
   'Payments',
   'Orders',
@@ -324,7 +359,7 @@ export function BusinessApp() {
     headers?: Record<string, string>,
   ) => api(base + suffix, method, body, environment, headers);
   async function load() {
-    if (!org || stage2Tabs.includes(tab)) {
+    if (!org || tab === 'Business Passport' || stage2Tabs.includes(tab)) {
       setError('');
       return;
     }
@@ -441,7 +476,7 @@ export function BusinessApp() {
   }
   async function exportReport() {
     try {
-      const res = await fetch(base + '/report?format=csv', {
+      const res = await transport(base + '/report?format=csv', {
         credentials: 'same-origin',
         headers: { 'X-Environment': environment },
       });
@@ -666,11 +701,13 @@ export function BusinessApp() {
               Sandbox provider available
             </p>
             <p className="muted">Live M-Pesa: disabled</p>
-            <p className="muted">Financing & protected payments: planned</p>
+            <p className="muted">
+              Protected payments: sandbox · Capital: deferred
+            </p>
           </section>
         </div>
         <section className="panel">
-          <h2>Recent verified events</h2>
+          <h2>Recent provider events</h2>
           {data.events?.length ? (
             <div className="table-scroll">
               <table>
@@ -899,6 +936,32 @@ export function BusinessApp() {
                     </button>
                   </div>
                 </form>
+              )}
+              {isDemo() && (
+                <div className="alert demo-banner" role="status">
+                  <b>Interactive demo · synthetic data</b>
+                  <p>
+                    No database or real funds. Changes stay in this browser. AI,
+                    external providers and protected settlement require backend
+                    configuration.
+                  </p>
+                  <button
+                    onClick={() => {
+                      startDemo(true);
+                      location.reload();
+                    }}
+                  >
+                    Reset demo data
+                  </button>
+                </div>
+              )}
+              {tab === 'Business Passport' && (
+                <PassportWorkspace
+                  key={org + environment}
+                  org={org}
+                  environment={environment}
+                  role={organization?.role || 'viewer'}
+                />
               )}
               {stage2Tabs.includes(tab) && (
                 <Stage2Workspace

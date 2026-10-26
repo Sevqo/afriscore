@@ -174,7 +174,7 @@ export function errorHandler(err: unknown, req: RequestWithContext, res: Respons
   const logFields = {
     request_id: req.requestId,
     method: req.method,
-    path: req.path.replace(/((?:checkout|buyer)\/)[a-f0-9]{64}/g, '$1[redacted]'),
+    path: req.path.replace(/((?:checkout|buyer|share|presentations)\/)[a-f0-9]{64}/g, '$1[redacted]'),
     status,
     error_code: code,
     error_name: candidate.name,

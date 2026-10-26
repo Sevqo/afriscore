@@ -76,7 +76,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
       request_id: context.requestId,
       method: req.method,
       // req.path excludes the query string; req.originalUrl would log it.
-      path: req.path.replace(/((?:checkout|buyer)\/)[a-f0-9]{64}/g, '$1[redacted]'),
+      path: req.path.replace(/((?:checkout|buyer|share|presentations)\/)[a-f0-9]{64}/g, '$1[redacted]'),
       status: res.statusCode,
       duration_ms: Math.round(durationMs * 1000) / 1000,
       client_id: context.client?.id,

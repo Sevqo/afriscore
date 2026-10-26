@@ -1,4 +1,13 @@
-# Implementation status — Stage 2
+# Implementation status — Stage 3 sandbox beta
+Reviewed 2026-10-26. Stage 1/2 remain intact; baseline b7879a9. New work adds database-free demo login and an isolated connected multi-account demo, plus Business Passport, credential engine, evidence network, named-recipient sharing/verification, local EVM proof infrastructure and trust operations.
+
+Current validation/acceptance gaps: [STAGE3_TEST_RESULTS.md](STAGE3_TEST_RESULTS.md). Immediate access: [DEMO_LOGIN.md](DEMO_LOGIN.md). Security/profile/runbooks: STAGE3_SECURITY_REVIEW.md, CREDENTIAL_ARCHITECTURE.md, KEY_MANAGEMENT.md, PROOF_ANCHORING.md and COMPLIANCE_GAPS_STAGE3.md.
+
+This is a sandbox implementation, not complete production acceptance of the master specification. Real signatures and local-chain transactions are implemented; no public testnet deployment, production KMS/issuer authority, government source verification, OpenID wallet conformance, independent security audit or legal certification is claimed. No cryptocurrency, custody, lending or Capital feature is introduced.
+
+---
+
+# Stage 2 implementation record (historical)
 Reviewed: 2026-10-25. Phase 1/2 foundation retained; main baseline 7786e7c includes the user's concurrent-development updates.
 
 Phases 3/4 now have an integrated local sandbox implementation. Delivered: currency/date/provenance-aware intelligence, four forecast horizons/scenarios, expense corrections/obligations, optional read-only AI explanations, ten durable in-app automation templates, preferences/notifications/assigned approvals, item shipments/encrypted evidence, opaque buyer portal, protected purchase/dispute/release/refund simulator, explicit connector imports and retries, explainable risk review, private engineering docs/aggregate operations and ten original editable SVG scenes.

@@ -307,3 +307,61 @@ pages['/products/protected-payments'] = {
   availability:
     'Sandbox only. AfriCore does not hold funds. Production protection requires an authorized partner, contracts, operational controls and regulatory review.',
 };
+
+const passportPages = [
+  [
+    'business-passport',
+    'Business Passport',
+    'Your business, represented with evidence.',
+    'Create a private business identity, inspect signed credentials and choose exactly which minimal claims to share.',
+  ],
+  [
+    'business-verification',
+    'Business Verification',
+    'Be precise about what was checked.',
+    'Separate self-reported information, manual document review and independently verified sources.',
+  ],
+  [
+    'trust-network',
+    'Trust Network',
+    'Commercial relationships, confirmed by choice.',
+    'Request counterparty confirmation and review source provenance without inventing universal trust or credit scores.',
+  ],
+  [
+    'verifiable-credentials',
+    'Verifiable Credentials',
+    'Signed claims you can inspect and export.',
+    'Verify integrity, issuer authority, expiry and current status as separate checks.',
+  ],
+  [
+    'blockchain-verification',
+    'Blockchain Verification',
+    'A shared root. Private records.',
+    'Batch randomized credential commitments on a local EVM chain while keeping personal and financial records off-chain.',
+  ],
+  [
+    'verification-api',
+    'Developer Verification APIs',
+    'Make verification a clear, bounded API.',
+    'Build recipient-bound requests, signed presentations and independently checkable credential workflows.',
+  ],
+  [
+    'passport-privacy',
+    'Privacy and Security',
+    'Share a specific proof for a specific purpose.',
+    'Named-recipient authorization, expiring one-time access and transparent access history help keep disclosures deliberate.',
+  ],
+];
+for (const [slug, category, title, description] of passportPages)
+  pages['/products/' + slug] = {
+    category: category + ' · Sandbox Beta',
+    title,
+    description,
+    points: [
+      'Inspect evidence assurance independently of signature validity.',
+      'Use minimal signed claims and purpose-specific authorization.',
+      'Explore with the database-free demo or run the local backend and EVM chain.',
+    ],
+    availability:
+      'Sandbox beta. No institutional or government partners are claimed. Production signing, public testnet deployment and OpenID wallet conformance remain gated.',
+  };

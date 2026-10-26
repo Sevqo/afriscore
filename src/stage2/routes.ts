@@ -141,17 +141,15 @@ stage2.post(
   route(async (req, res) => {
     const a = await access(req, 'finance'),
       d = obligationSchema.parse(req.body);
-    res
-      .status(201)
-      .json(
-        await atomic(a, () =>
-          create(a, 'obligations', {
-            ...d,
-            provenance: 'self_reported',
-            classification: 'expected_obligation',
-          }),
-        ),
-      );
+    res.status(201).json(
+      await atomic(a, () =>
+        create(a, 'obligations', {
+          ...d,
+          provenance: 'self_reported',
+          classification: 'expected_obligation',
+        }),
+      ),
+    );
   }),
 );
 stage2.patch(
@@ -570,6 +568,22 @@ stage2.post(
   }),
 );
 const docNames = [
+  'STAGE3_PLAN',
+  'BUSINESS_PASSPORT',
+  'TRUST_NETWORK',
+  'CREDENTIAL_ARCHITECTURE',
+  'CREDENTIAL_SCHEMAS',
+  'ISSUER_GOVERNANCE',
+  'VERIFICATION_ENGINE',
+  'PRIVACY_AND_SHARING',
+  'BLOCKCHAIN_ARCHITECTURE',
+  'SMART_CONTRACTS',
+  'KEY_MANAGEMENT',
+  'PROOF_ANCHORING',
+  'COMPLIANCE_GAPS_STAGE3',
+  'STAGE3_TEST_RESULTS',
+  'STAGE3_SECURITY_REVIEW',
+  'DEMO_LOGIN',
   'STAGE2_PLAN',
   'INTELLIGENCE',
   'FORECASTING',

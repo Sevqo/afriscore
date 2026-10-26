@@ -1,3 +1,5 @@
+import { TrustPublic } from './stage3/TrustPublic';
+import { startDemo } from './demo/transport';
 import { editorial, publicPageMedia } from './editorial';
 import { EducationalFlow } from './EducationalFlow';
 import { BuyerPortal } from './stage2/BuyerPortal';
@@ -13,6 +15,12 @@ import { BusinessApp, AuthPage, Checkout } from './BusinessApp';
 const groups: Record<string, [string, string][]> = {
   Products: [
     ['AfriCore Business', '/products/business'],
+    ['Business Passport · Beta', '/products/business-passport'],
+    ['Trust Network', '/products/trust-network'],
+    ['Verifiable Credentials', '/products/verifiable-credentials'],
+    ['Blockchain Verification', '/products/blockchain-verification'],
+    ['Business Verification', '/products/business-verification'],
+    ['Passport Privacy', '/products/passport-privacy'],
     ['AfriCore Pay', '/products/pay'],
     ['Invoicing & receivables', '/products/invoicing'],
     ['Payment reconciliation', '/products/reconciliation'],
@@ -31,6 +39,9 @@ const groups: Record<string, [string, string][]> = {
   ],
   Developers: [
     ['Developer platform', '/developers'],
+    ['Verify a credential', '/verify-credential'],
+    ['Verification APIs', '/products/verification-api'],
+    ['Interactive demo', '/demo'],
     ['API documentation', '/docs'],
     ['API sandbox', '/sandbox'],
   ],
@@ -528,9 +539,17 @@ function Docs() {
 }
 export function App() {
   const path = window.location.pathname.replace(/\/$/, '') || '/';
+  if (path === '/verify-credential') return <TrustPublic mode="verify" />;
+  if (path.startsWith('/trust/share/')) return <TrustPublic mode="share" />;
+  if (path.startsWith('/passport/')) return <TrustPublic mode="profile" />;
   if (path.startsWith('/buyer/')) return <BuyerPortal />;
   if (path.startsWith('/app')) return <BusinessApp />;
   if (path.startsWith('/checkout/')) return <Checkout />;
+  if (path === '/demo') {
+    startDemo();
+    location.replace('/app');
+    return <p>Opening demo workspace…</p>;
+  }
   if (['/signin', '/signup', '/recover', '/verify', '/reset'].includes(path))
     return <AuthPage mode={path.slice(1)} />;
   const page = pages[path];

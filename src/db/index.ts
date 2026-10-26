@@ -1,3 +1,4 @@
+import { migrateStage3 } from '../stage3/schema';
 import { migrateStage2 } from '../stage2/schema';
 import { migratePlatform } from '../platform/schema';
 import { dbExec, isPostgres, rawSqliteDb } from "./adapter";
@@ -307,6 +308,7 @@ export async function migrate(): Promise<void> {
   await dbExec(SCHEMA);
   await migratePlatform();
   await migrateStage2();
+  await migrateStage3();
 
   if (isPostgres) {
     await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS matched_invoice_id TEXT;`);

@@ -105,4 +105,12 @@ scene(
   'Two colleagues make sense of a financial report',
   `${person(202, 198, { shirt: p.blue, skin: p.light, pose: 'point' })}${person(594, 199, { shirt: p.orange, pose: 'carry', hair: 'short' })}${chart(316, 127)}${rect(285, 375, 287, 62, p.cyan, 7)}${line(311, 437, 311, 481)}${line(546, 437, 546, 481)}${document(379, 314, 91, 114)}${circle(149, 115, 26, p.cream)}${path('M145 108Q156 100 158 111Q159 118 149 122M149 131V132', 'none', 'stroke-width="3"')}`,
 );
-console.log('Created 10 original editable AfriCore editorial SVG scenes.');
+
+scene('passport','A business owner presents a private business passport',`${person(226,190,{shirt:p.orange,pose:'point'})}${rect(370,128,240,280,p.cyan,16)}${document(400,165,170,200)}${circle(441,214,22,p.skin)}${line(480,205,550,205)}${line(480,226,537,226)}${shield(590,330)}`);
+scene('credential-issuance','A reviewed issuer delivers a signed minimal credential',`${person(190,195,{shirt:p.blue,pose:'point'})}${person(600,195,{shirt:p.orange,skin:p.light,pose:'carry'})}${document(325,175,145,190)}${check(432,308)}${path('M263 240H313M480 240H530','none','stroke-dasharray="7 7"')}`);
+scene('trust-network','Commercial counterparties choose a confirmed relationship',`${person(190,205,{shirt:p.orange,pose:'point'})}${person(585,205,{shirt:p.cyan,skin:p.light,pose:'point'})}${parcel(340,295,105)}${path('M270 215Q400 95 525 215M270 365Q400 460 525 365','none','stroke-dasharray="8 8"')}${shield(400,170)}`);
+scene('privacy','A business owner chooses the records to disclose',`${person(245,195,{shirt:p.blue,pose:'desk'})}${laptop(325,305)}${document(490,133,110,135)}${shield(540,342)}${path('M430 244H470V200H490','none','stroke-dasharray="7 7"')}${rect(171,395,310,35,p.orange,4)}`);
+scene('verification','A verifier inspects a signed business credential',`${person(235,195,{shirt:p.cyan,pose:'point'})}${document(380,137,190,255)}${circle(542,330,48,p.cream)}${line(578,366,622,410)}${check(541,330)}${line(405,200,530,200)}`);
+scene('anchoring','Private credential commitments join a shared root',`${document(145,157,100,130)}${document(145,320,100,130)}${rect(365,245,105,105,p.cyan,12)}${shield(610,286)}${path('M245 220H312V280H365M245 380H312V320H365M470 296H560','none','stroke-dasharray="7 7"')}${circle(415,297,20,p.blue)}`);
+scene('credibility','A growing business maintains an evidence history',`${person(238,190,{shirt:p.orange,pose:'carry'})}${chart(369,130)}${document(425,320,85,110)}${parcel(530,345,85)}${check(574,185)}`);
+console.log('Created 17 original editable AfriCore editorial SVG scenes.');
