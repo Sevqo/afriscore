@@ -103,3 +103,13 @@ Run/deploy: DEPLOYMENT.md. Database safety: DATABASE.md. Continue: AGENTS.md and
 - Browser QA: desktop homepage rendered; 390px mobile navigation opened; measured document width stayed within viewport. Screenshot-to-transparent-SVG replacement loaded in the same FeatureSection at mobile and desktop sizes without overflow.
 - No browser-driven full account/business journey was completed; HTTP integration tests exercise the persisted workflow, auth, role/tenant/environment boundaries, callbacks, concurrent duplicates, signed delivery/retry/dead letter and exports.
 - PostgreSQL runtime and Docker image build remain unverified locally because Docker Linux engine was stopped. No production/provider/email deployment was performed.
+
+## Neon development foundation — 2026-10-27 (partial implementation)
+
+Development branch br-jolly-lake-b4ff04st now has the additive application schema through 004-account-foundation. Both pooled/direct connections require certificate-verified TLS. Cross-connection synthetic profile persistence was verified and the probe removed. Production is untouched. Existing SQLite database was backed up before work.
+
+Implemented profile/workspace metadata, Business backfill and transactional registration, membership-based resolver and persisted Business selection. Existing credentials/session implementation remains; no provider activation or production email delivery has been claimed. Login no longer promotes a public shared password; guest demo is retained.
+
+Validation: PostgreSQL 17 backend 201/201; SQLite 200/201 initially with one transient HTTP ECONNRESET, affected Orbit suite 7/7 on rerun; frontend 14/14 and build; typecheck and both API contracts (138 workspace operations). Additional account HTTP security check and chain check recorded in continuation evidence. Not a completed multi-account release: Personal/Developer shells/provisioning, account chooser, managed auth/provider transition, security/settings journeys and full requested acceptance matrix remain outstanding. See NEON_ARCHITECTURE and NEON_SETUP.
+
+Final supplementary checks: new account API/service suite 2/2 on both SQLite and PostgreSQL; isolated chain verification passed; disposable PostgreSQL cluster stopped. Neon credentials and scratch artifacts verified Git-ignored.

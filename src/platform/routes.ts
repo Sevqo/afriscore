@@ -60,6 +60,7 @@ platform.post(
         "INSERT INTO ac_memberships(org_id,user_id,role) VALUES (?,?,'owner')",
         [id, u.id],
       );
+      await dbRun("INSERT INTO ac_workspaces(id,kind,status,created_at) VALUES (?,'business','active',?)", [id, now()]);
       await audit(id, u.id, 'organization.created', id);
     });
     res.status(201).json({ id, ...p, verification_status: 'unverified' });

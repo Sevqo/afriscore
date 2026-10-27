@@ -16,8 +16,6 @@ import {
   transport,
   isDemo,
   startDemo,
-  DEMO_EMAIL,
-  DEMO_PASSWORD,
 } from './demo/transport';
 import { Stage2Workspace, stage2Tabs } from './stage2/Stage2Workspace';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
@@ -132,7 +130,7 @@ export function AuthPage({ mode }: { mode: string }) {
               Enter demo workspace <Icon name="right" />
             </button>
             <small>
-              Or sign in with {DEMO_EMAIL} / {DEMO_PASSWORD}
+              Explore synthetic records without creating an account.
             </small>
           </section>
         )}
@@ -380,6 +378,7 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
 ];
 const tabs = navigation.flatMap((group) => group.items);
 export function BusinessApp() {
+  const workspaceSwitch = useRef(0);
   const [me, setMe] = useState<any>(null),
     [orgs, setOrgs] = useState<any[]>([]),
     [org, setOrg] = useState(''),
@@ -448,9 +447,12 @@ export function BusinessApp() {
       .then(setMe)
       .catch(() => (location.href = '/signin'));
     api('/api/v1/organizations')
-      .then((r) => {
+      .then(async (r) => {
         setOrgs(r.data);
-        setOrg(r.data[0]?.id || '');
+        if (isDemo()) { setOrg(r.data[0]?.id || ''); return; }
+        const account = await api('/api/auth/account');
+        setOrg(r.data.some((o: any) => o.id === account.workspace?.id)
+          ? account.workspace.id : r.data[0]?.id || '');
       })
       .catch(() => {});
   }, []);
@@ -968,7 +970,15 @@ export function BusinessApp() {
             <select
               aria-label="Switch organization"
               value={org}
-              onChange={(e) => setOrg(e.target.value)}
+              onChange={async (e) => {
+                const version = ++workspaceSwitch.current;
+                const id = e.target.value;
+                if (!id) { setOrg(''); return; }
+                try {
+                  if (!isDemo()) await api('/api/auth/account/workspace', 'POST', {workspace_id: id});
+                  if (version === workspaceSwitch.current) setOrg(id);
+                } catch (error) { if (version === workspaceSwitch.current) setError((error as Error).message); }
+              }}
             >
               <option value="">Select workspace</option>
               {orgs.map((o) => (

@@ -1,7 +1,7 @@
-import { stage3 } from './stage3/routes';
 // First import on purpose: src/config.ts loads a local .env before ./db is
 // imported below, and the DB adapter snapshots DATABASE_URL at import time.
 import { config } from "./config";
+import { stage3 } from './stage3/routes';
 import { auth, sameOrigin } from './platform/auth';
 import { platform } from './platform/routes';
 import { stage2 } from './stage2/routes';

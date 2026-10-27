@@ -4,6 +4,7 @@ import { z, ZodError } from 'zod';
 import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { hash, now, passwordHash, passwordMatches, secret } from './crypto';
 import { permitted } from './domain';
+import { resolveWorkspace, selectWorkspace } from './accounts';
 
 export const auth = Router();
 export const fail = (status: number, message: string): never => {
@@ -187,6 +188,7 @@ auth.post(
         'INSERT INTO ac_users(id,email,password_hash,created_at) VALUES (?,?,?,?)',
         [id, data.email, await passwordHash(data.password), now()],
       );
+      await dbRun('INSERT INTO ac_profiles(user_id,updated_at) VALUES (?,?)', [id, now()]);
     });
     const verification_token = await tokenFor(id, 'verify');
     await session(res, id);
@@ -199,6 +201,20 @@ auth.post(
     });
   }),
 );
+
+auth.get('/account', route(async (req, res) => {
+  const u = await user(req);
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ user: u, ...await resolveWorkspace(u.id) });
+}));
+
+auth.post('/account/workspace', route(async (req, res) => {
+  const u = await user(req);
+  const { workspace_id } = z.object({workspace_id:z.string().uuid()}).parse(req.body);
+  if (!await selectWorkspace(u.id,workspace_id)) fail(403,'Workspace membership required');
+  res.setHeader('Cache-Control','no-store');
+  res.json(await resolveWorkspace(u.id));
+}));
 auth.post(
   '/signin',
   route(async (req, res) => {
