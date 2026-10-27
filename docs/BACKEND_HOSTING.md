@@ -7,3 +7,5 @@ Required runtime variables: NODE_ENV=production, AFRICORE_ENVIRONMENT=developmen
 Render Free sleeps after 15 minutes without inbound traffic, can restart, and has ephemeral disk. The durable PostgreSQL outbox resumes when the service wakes; jobs do not run while asleep. In-memory Orbit work is not restart durable. Do not promise unattended reminders or guaranteed delivery schedules. Existing free instance hours/build bandwidth are shared across the workspace; check the dashboard. Never upgrade or add a card without explicit approval. See https://render.com/docs/free.
 
 Always-on compute is a later separately approved cost decision. No Redis, extra database, paid background worker or persistent disk is created here. Existing unrelated Render services remain untouched.
+
+Hosted startup uses AFRICORE_MIGRATIONS_MODE=verify: require all five recorded schema versions and core tables using SELECT only. Apply reviewed migrations separately before changing this mode. This avoids repeating legacy ALTER/RLS DDL and locking existing data during each hosting restart. Local default remains migrate.

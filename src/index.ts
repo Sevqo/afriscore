@@ -6,7 +6,8 @@ import {processTrust} from './trust/worker';
 import { deliverWebhooks } from './platform/payments';
 import { processOperations } from './operations/worker';
 import type { Server } from "node:http";
-import { migrate, isPostgres, closeDb } from "./db";
+import { migrate, isPostgres, closeDb, dbAll } from "./db";
+import { prepareDatabase } from './deployment-database';
 import { createApp } from "./app";
 import { logger } from "./logging";
 import { startInlineWorkers } from "./orbit/runtime";
@@ -31,7 +32,7 @@ async function main(): Promise<void> {
 
   if (process.env.NODE_ENV === 'production' && (!process.env.AFRICORE_ENCRYPTION_KEY || process.env.AFRICORE_ENCRYPTION_KEY.length < 32)) throw new Error('AFRICORE_ENCRYPTION_KEY must be 32+ characters');
   if (process.env.NODE_ENV === 'production' && !process.env.AFRICORE_PUBLIC_ORIGIN?.startsWith('https://')) throw new Error('AFRICORE_PUBLIC_ORIGIN must be an HTTPS origin');
-  await migrate();
+  await prepareDatabase(process.env.AFRICORE_MIGRATIONS_MODE, {migrate, isPostgres, dbAll});
   const webhookTimer = setInterval(() => { deliverWebhooks().catch(error => logger.error('webhook_worker_failed', { message: String(error) })); }, 10000);
   webhookTimer.unref();
   const operationsTimer=setInterval(()=>{processOperations().catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);

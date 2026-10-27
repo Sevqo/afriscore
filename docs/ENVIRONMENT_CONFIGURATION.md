@@ -7,3 +7,5 @@ Backend secret store: DATABASE_URL, AFRICORE_ENCRYPTION_KEY, ID_HASH_SALT, LEDGE
 Backend public configuration: NODE_ENV, AFRICORE_ENVIRONMENT, NEON_AUTH_BASE_URL, AFRICORE_PUBLIC_ORIGIN, TRUST_PROXY, restrictive webhook hosts, beta feature flags. Cloudflare has only BACKEND_ORIGIN, NEON_AUTH_ORIGIN and its shared gateway secret. Frontend needs no database URL or secret build variables.
 
 Optional providers remain unconfigured unless explicitly authorized: OpenAI, payment partner, SMTP, blockchain RPC/publisher. No live payments, custody, mainnet contracts or externally recognized credentials are enabled by deployment. Local tests must explicitly clear DATABASE_URL and NEON_AUTH_BASE_URL and use disposable stores; never load the hosted branch into ordinary regression tests.
+
+Hosted startup uses AFRICORE_MIGRATIONS_MODE=verify: require all five recorded schema versions and core tables using SELECT only. Apply reviewed migrations separately before changing this mode. This avoids repeating legacy ALTER/RLS DDL and locking existing data during each hosting restart. Local default remains migrate.
