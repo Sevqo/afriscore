@@ -148,3 +148,5 @@ Cloudflare HTTPS frontend/gateway is https://africore-web.cypriankiprop41.worker
 See [APPLICATION_REFINEMENT_REPORT.md](APPLICATION_REFINEMENT_REPORT.md) for implemented changes, exact validation evidence and remaining qualification. This continuation preserves existing identities, financial provenance, development namespace and deployment boundaries.
 
 Current refinement:213backend cases(212SQLitepass+1PG-only skip;213PostgreSQLpass),23frontend checks and all required contract/type/lint/startup/local-chain gates passed. Team directory, manual invitations, obligation lifecycle, Personal activity series and scoped private cache implemented without schema changes. Hosted release verification follows in DEPLOYMENT_TEST_RESULTS.
+
+Refinement application3451fda is live on existing Cloudflare/Render, all5CIjobs green (run40574152381). Synthetic managed identity read all3hosted workspace kinds and new Personal/team payloads successfully; anonymous/direct-backend denials preserved. See DEPLOYMENT_TEST_RESULTS.
