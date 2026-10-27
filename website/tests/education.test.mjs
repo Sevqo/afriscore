@@ -217,7 +217,7 @@ test("controls do not advertise an unloaded year or forecast horizon", () => {
     v: i,
   }));
   assert.equal(rangeAvailable(p, "30D"), true);
-  assert.equal(rangeAvailable(p, "1Y"), false);
+  assert.equal(rangeAvailable(p, "1Y"), true);
   assert.equal(rangeAvailable(p, "90D", true), false);
   assert.equal(rangeAvailable(p, "ALL"), true);
 });

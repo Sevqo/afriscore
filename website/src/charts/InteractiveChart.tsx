@@ -29,6 +29,8 @@ export function InteractiveChart({
   description,
   loading = false,
   headingLevel = 2,
+  asOfDate,
+  compact = false,
 }: {
   title: string;
   points: ChartPoint[];
@@ -38,6 +40,8 @@ export function InteractiveChart({
   description: string;
   loading?: boolean;
   headingLevel?: 2 | 3;
+  asOfDate?: string;
+  compact?: boolean;
 }) {
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const id = useId(),
@@ -52,8 +56,9 @@ export function InteractiveChart({
         ),
         range,
         forecast,
+        asOfDate,
       ),
-    [points, range, forecast, series],
+    [points, range, forecast, series, asOfDate],
   );
   const visible = series.filter((s) => !hidden.includes(s.key));
   const [min, max] = chartDomain(
@@ -106,7 +111,7 @@ export function InteractiveChart({
             : selected?.date || "No recorded dates"}
         </span>
       </figcaption>
-      <div className="chart-readout" aria-live="off">
+      {(!compact||shown.length>0)&&<div className="chart-readout" aria-live="off">
         {visible.map((s) => (
           <div key={s.key}>
             <span>
@@ -125,7 +130,7 @@ export function InteractiveChart({
             </strong>
           </div>
         ))}
-      </div>
+      </div>}
       <div
         className="chart-ranges"
         role="group"
@@ -147,7 +152,7 @@ export function InteractiveChart({
               setActive(null);
             }}
           >
-            {r === "ALL" ? "All loaded" : r}
+            {r === "ALL" ? "ALL" : r}
           </button>
         ))}
       </div>
@@ -157,10 +162,9 @@ export function InteractiveChart({
         </div>
       ) : !shown.length ? (
         <div className="chart-empty">
-          <h4>No recorded activity yet</h4>
+          <h4>No financial activity for this period</h4>
           <p>
-            No artificial trend is drawn. Record or confirm activity to build
-            this view.
+            Choose another period or add a relevant record to this workspace.
           </p>
         </div>
       ) : (
@@ -316,7 +320,7 @@ export function InteractiveChart({
           </label>
         </>
       )}
-      <div
+      {(!compact||shown.length>0)&&<div
         className="chart-legend"
         role="group"
         aria-label="Visible chart series"
@@ -339,7 +343,7 @@ export function InteractiveChart({
             {s.label}
           </button>
         ))}
-      </div>
+      </div>}
       <p className="chart-description">
         {shown.length === 1
           ? "Only one recorded date is available; it does not establish a trend. "

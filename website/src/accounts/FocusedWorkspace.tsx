@@ -1,3 +1,5 @@
+import { DateRange } from '../components/DateRange';
+import { InteractiveChart } from '../charts/InteractiveChart';
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../lib/api-client";
 import { Logo } from "../components/Logo";
@@ -201,7 +203,7 @@ export function FocusedWorkspace({
         </DataTable>
       ) : (
         <p className="empty">
-          No records yet. Add your first record to get started.
+          No {tab.toLowerCase()} records yet. Add a record using the form above.
         </p>
       );
   return (
@@ -252,7 +254,7 @@ export function FocusedWorkspace({
             <h1>{w.name}</h1>
           </div>
           <div>
-            <label>
+            {!personal&&<label>
               Environment{" "}
               <select
                 value={environment}
@@ -263,12 +265,12 @@ export function FocusedWorkspace({
                   <option value="production">Personal records</option>
                 )}
               </select>
-            </label>
+            </label>}
             <a href="/app/workspaces">All workspaces</a>
           </div>
         </header>
-        <p className="alert">
-          {environment === "sandbox"
+        <p className="environment-note">
+          {personal ? "Personal records · payment simulations stay separate from manual entries." : environment === "sandbox"
             ? "Sandbox · test records only. No live funds move."
             : "Recorded personal activity. Manual entries are not provider confirmation."}
         </p>
@@ -277,28 +279,8 @@ export function FocusedWorkspace({
         {busy && <p role="status">Updating workspace…</p>}
         {personal && (
           <>
-            <div className="account-filters">
-              <Field label="Currency">
-                <Currency
-                  value={currency}
-                  onChange={(e: any) => setCurrency(e.target.value)}
-                />
-              </Field>
-              <Field label="From">
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                />
-              </Field>
-              <Field label="To">
-                <input
-                  type="date"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                />
-              </Field>
-            </div>
+            {['Overview','Cash Flow','Reports'].includes(tab)&&<DateRange from={from} to={to} onApply={(start,end)=>{setFrom(start);setTo(end);}}><Field label="Currency"><Currency value={currency} onChange={(e:any)=>setCurrency(e.target.value)}/></Field></DateRange>}
+
             {["Overview", "Cash Flow", "Reports"].includes(tab) && (
               <>
                 <div className="account-metrics">
@@ -322,6 +304,7 @@ export function FocusedWorkspace({
                     </section>
                   ))}
                 </div>
+                <section className="panel"><InteractiveChart compact title="Recorded personal activity" points={summary.series||[]} currency={currency} series={[{key:'income',label:'Recorded income',color:'#426900'},{key:'expenses',label:'Recorded expenses',color:'#595959'},{key:'net',label:'Recorded net',color:'#985b20',dashed:true}]} description="Manual income and expenses; not provider confirmation, profit or a bank balance."/>{tab==='Reports'&&<button className="secondary-button" onClick={()=>{const csv=['Date,Currency,Recorded income minor,Recorded expenses minor,Recorded net minor',...(summary.series||[]).map((p:any)=>[p.date,currency,p.income,p.expenses,p.net].join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));const a=document.createElement('a');a.href=url;a.download='africore-personal-activity.csv';a.click();URL.revokeObjectURL(url);}}>Export activity CSV</button>}</section>
                 <p>{summary.coverage}</p>
                 <div className="account-type-tabs">
                   {["Income", "Expenses", "Invoices", "Clients"].map((t) => (

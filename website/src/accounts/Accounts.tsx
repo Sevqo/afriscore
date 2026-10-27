@@ -25,6 +25,7 @@ export function AccountApp() {
       live = false;
     };
   }, []);
+  useEffect(()=>{const changed=()=>{setAccount(null);setError('Your session or workspace permissions changed. Sign in to resolve current access.');};window.addEventListener('africore:access-changed',changed);return()=>window.removeEventListener('africore:access-changed',changed);},[]);
   if (isDemo()) return <BusinessApp />;
   if (error)
     return (
@@ -75,7 +76,7 @@ export function AccountApp() {
       selected={account.workspace?.id === target.id}
     >
       {target.kind === "business" ? (
-        <BusinessApp initialOrg={target.id} />
+        <BusinessApp initialOrg={target.id} account={account} />
       ) : (
         <FocusedWorkspace
           key={target.id}

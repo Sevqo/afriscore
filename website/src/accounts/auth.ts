@@ -1,5 +1,6 @@
 import {singleFlight} from './single-flight';
 import { sessionIdentity } from './session-identity';
+import { setQueryIdentity, clearPrivateQueries } from '../lib/query-cache';
 import { isDemo, exitDemo } from "../demo/transport";
 export const managedClient=singleFlight(async () => {
     const res = await fetch("/api/auth/config", { credentials: "same-origin" });
@@ -22,9 +23,10 @@ export const managedClient=singleFlight(async () => {
 export async function identityHeaders(): Promise<Record<string, string>> {
   const client = await managedClient();
   if (!client) return {};
-  return sessionIdentity(client);
+  return sessionIdentity(client,setQueryIdentity);
 }
 export async function managedSignOut(all = false) {
+  clearPrivateQueries();
   if (isDemo()) {
     exitDemo();
     return;

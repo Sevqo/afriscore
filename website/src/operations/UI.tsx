@@ -55,7 +55,7 @@ export function MetricDefinition({
 export function Empty({ text }: { text: string }) {
   return (
     <div className="empty-state">
-      <h3>Ready when you are.</h3>
+
       <p>{text}</p>
     </div>
   );
@@ -116,6 +116,7 @@ export function Trend({
   }));
   return (
     <InteractiveChart
+      compact
       headingLevel={3}
       title={forecast ? 'Projected net movement' : 'Money in and money out'}
       points={data}

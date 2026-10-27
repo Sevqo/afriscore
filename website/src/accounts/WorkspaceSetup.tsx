@@ -171,6 +171,12 @@ export function Workspaces({ account }: { account: any }) {
       <p>
         <a href="/app/account">Account settings</a>
       </p>
+      <details className="panel"><summary>Join an invited workspace</summary>
+        <form className="account-inline-form" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{await api('/api/v1/invitations/accept','POST',{token:String(new FormData(e.currentTarget).get('token')||'')});location.href='/app/workspaces';}catch(error){setError((error as Error).message);setBusy(false);}}}>
+          <Field label="Invitation token"><input required name="token" minLength={64} maxLength={64} autoComplete="off"/></Field><button className="button" disabled={busy}>Join workspace</button>
+          <p>Use the token shared by the workspace owner and the email address they invited.</p>
+        </form>
+      </details>
     </main>
   );
 }

@@ -156,10 +156,7 @@ operations.patch(
   '/organizations/:org/obligations/:id',
   route(async (req, res) => {
     const a = await access(req, 'finance'),
-      d = z
-        .object({ status: z.enum(['active', 'paused']) })
-        .strict()
-        .parse(req.body);
+      d = obligationSchema.partial().refine(value=>Object.keys(value).length>0,'Provide an obligation change').parse(req.body);
     res.json(
       await atomic(a, async () =>
         change(a, await get(a, String(req.params.id), 'obligations'), d),

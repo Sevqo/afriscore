@@ -33,3 +33,7 @@ Permanent operational code is src/operations and website/src/operations; Passpor
 
 ## Online evaluation deployment
 Read DEPLOYMENT_ARCHITECTURE, CLOUDFLARE_DEPLOYMENT, BACKEND_HOSTING, ENVIRONMENT_CONFIGURATION and DEPLOYMENT_TEST_RESULTS. Cloudflare serves assets/gateway; existing Express runs once on Render, Neon development identities stay unchanged. No paid upgrades, prod branch changes, secret uploads to frontend, automatic identity merges or live financial activation. Stop competing local polling during hosted evaluation. Keep gateway secret independent and preserve existing crypto keys.
+
+
+## Authenticated application refinement
+Read docs/APPLICATION_REFINEMENT_REPORT.md, APPLICATION_DESIGN_SYSTEM.md, CLIENT_SIDE_CACHING.md and TEAM_MANAGEMENT.md. Keep private caches memory-only and scoped by identity, workspace, environment and query; never cache credentials/capabilities. Preserve current membership checks on every server request. Credential rate limits must not consume ordinary workspace navigation. Shared DateRange owns native form validation. The chain check owns its disposable SQLite fixture and never uses external test databases.

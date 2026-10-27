@@ -154,6 +154,8 @@ export function sameOrigin(req: Request, res: Response, next: NextFunction) {
 }
 const attempts = new Map<string, { n: number; until: number }>();
 auth.use((req, res, next) => {
+  // Credential guessing protection must not lock out ordinary signed-in navigation.
+  if(req.method!=='POST'||!['/signup','/signin','/verify','/recover','/reset'].includes(req.path)){next();return;}
   const key = req.ip || 'unknown',
     stamp = Date.now();
   for (const [k, v] of attempts) if (v.until < stamp) attempts.delete(k);
@@ -161,7 +163,8 @@ auth.use((req, res, next) => {
   bucket.n++;
   attempts.set(key, bucket);
   if (bucket.n > 40 || attempts.size > 10000) {
-    res.status(429).json({ error: 'auth_rate_limit' });
+    res.setHeader('Retry-After',String(Math.max(1,Math.ceil((bucket.until-stamp)/1000))));
+    res.status(429).json({ error: 'auth_rate_limit',message:'Too many authentication attempts. Please wait before trying again.' });
     return;
   }
   next();

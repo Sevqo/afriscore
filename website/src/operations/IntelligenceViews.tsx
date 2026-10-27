@@ -1,3 +1,4 @@
+import { DateRange } from '../components/DateRange';
 import { DataTable } from '../components/DataTable';
 import { Icon } from '../components/Icon';
 import {
@@ -21,7 +22,8 @@ export function IntelligenceView({
   currency,
   writable,
   onNavigate,
-  setData,
+  dates,
+  onDates,
 }: {
   data: any;
   secondary: any;
@@ -30,29 +32,14 @@ export function IntelligenceView({
   currency: string;
   writable: boolean;
   onNavigate: (tab: string) => void;
-  setData: (data: any) => void;
+  dates: {from:string;to:string};
+  onDates:(from:string,to:string)=>void;
 }) {
   if (!data) return null;
   return (
     <>
-      <Form
-        className="panel filter-form"
-        submit={async (d) => {
-          const params = new URLSearchParams({
-            currency,
-            ...Object.fromEntries(Object.entries(d).filter(([, v]) => v)),
-          } as Record<string, string>);
-          setData(await api('/intelligence?' + params));
-        }}
-      >
-        <Field label="From">
-          <input type="date" name="from" max={today()} />
-        </Field>
-        <Field label="To">
-          <input type="date" name="to" max={today()} />
-        </Field>
-        <button className="secondary-button">Apply dates</button>
-      </Form>
+      <DateRange from={dates.from} to={dates.to} onApply={onDates}/>
+
       <div className="metric-grid">
         {[
           [
@@ -87,13 +74,7 @@ export function IntelligenceView({
       <div className="dashboard-columns">
         <section className="panel">
           <h2>Financial activity</h2>
-          {data.series.some(
-            (p: any) => p.confirmed_inflows_minor || p.recorded_outflows_minor,
-          ) ? (
-            <Trend points={data.series} currency={currency} />
-          ) : (
-            <Empty text="No activity in this period. No artificial trend is generated." />
-          )}
+          <Trend points={data.series.filter((p:any)=>p.confirmed_inflows_minor||p.recorded_outflows_minor)} currency={currency}/>
         </section>
         <section className="panel data-quality">
           <h2>Data quality & coverage</h2>
@@ -291,7 +272,8 @@ export function IntelligenceView({
         )}
       </div>
       <section className="panel">
-        <h2>Upcoming obligations</h2>
+        <h2>Obligations</h2>
+        <p className="muted">Active items inform forecasts. Paused, completed and cancelled items remain in the history.</p>
         {secondary.obligations?.length ? (
           secondary.obligations.map((o: any) => (
             <div className="list-row" key={o.id}>
@@ -299,17 +281,8 @@ export function IntelligenceView({
                 {o.description} · {money(o.amount_minor, o.currency)} ·{' '}
                 {o.next_due_date}
               </span>
-              <button
-                onClick={() =>
-                  action(() =>
-                    api('/obligations/' + o.id, 'PATCH', {
-                      status: o.status === 'active' ? 'paused' : 'active',
-                    }),
-                  )
-                }
-              >
-                {o.status === 'active' ? 'Pause' : 'Resume'}
-              </button>
+              <small>{o.recurrence} · {o.status}</small>
+              {writable&&<div className="row-actions">{['active','paused'].includes(o.status)&&<button onClick={()=>action(()=>api('/obligations/'+o.id,'PATCH',{status:o.status==='active'?'paused':'active'}))}>{o.status==='active'?'Pause':'Resume'}</button>}<button onClick={()=>action(()=>api('/obligations/'+o.id,'PATCH',{status:'completed'}))} disabled={o.status==='completed'}>Complete</button><button onClick={()=>action(()=>api('/obligations/'+o.id,'PATCH',{status:'cancelled'}))} disabled={o.status==='cancelled'}>Cancel obligation</button><details><summary>Edit obligation</summary><Form className="account-inline-form" submit={d=>action(()=>api('/obligations/'+o.id,'PATCH',{description:d.description,amount_minor:Math.round(Number(d.amount)*factor(o.currency)),next_due_date:d.next_due_date,recurrence:d.recurrence}))}><Field label="Description"><input name="description" required defaultValue={o.description}/></Field><Field label={'Amount ('+o.currency+')'}><input name="amount" required type="number" min={1/factor(o.currency)} step={1/factor(o.currency)} defaultValue={o.amount_minor/factor(o.currency)}/></Field><Field label="Next due date"><input type="date" name="next_due_date" required defaultValue={o.next_due_date}/></Field><Field label="Recurrence"><select name="recurrence" defaultValue={o.recurrence}>{['once','weekly','monthly','quarterly','yearly'].map(r=><option key={r}>{r}</option>)}</select></Field><button className="secondary-button">Save changes</button></Form></details></div>}
             </div>
           ))
         ) : (

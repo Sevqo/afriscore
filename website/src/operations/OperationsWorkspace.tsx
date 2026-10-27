@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon';
+import { protectedQueries } from '../lib/query-cache';
 import { useEffect, useRef, useState } from 'react';
 import { createRequestGate } from '../components/requestGate';
 import { IntelligenceView, ForecastView } from './IntelligenceViews';
@@ -51,13 +52,14 @@ export function OperationsWorkspace({
     [busy, setBusy] = useState(false),
     [currency, setCurrency] = useState('KES'),
     [detail, setDetail] = useState<any>(null),
-    [query, setQuery] = useState('');
+    [query, setQuery] = useState(''),
+    [dates,setDates] = useState({from:'',to:''});
   const api: API = (suffix, method = 'GET', body) =>
       request(base + suffix, method, body, environment),
     finance = ['owner', 'admin', 'finance'].includes(role),
     operations = ['owner', 'admin', 'finance', 'operations'].includes(role),
     admin = ['owner', 'admin'].includes(role);
-  const scope = org + '\0' + environment + '\0' + section + '\0' + currency;
+  const scope = org + '\0' + environment + '\0' + section + '\0' + currency + '\0' + dates.from + '\0' + dates.to;
   const currentScope = useRef(scope),
     gate = useRef(createRequestGate());
   currentScope.current = scope;
@@ -77,11 +79,9 @@ export function OperationsWorkspace({
     setBusy(true);
     try {
       if (section === 'Intelligence') {
-        publishData(await api('/intelligence?currency=' + currency));
-        publishSecondary({
-          expenses: (await api('/expenses')).data,
-          obligations: (await api('/obligations')).data,
-        });
+        const params=new URLSearchParams({currency,...(dates.from?{from:dates.from}:{}),...(dates.to?{to:dates.to}:{})});
+        const [snapshot,expenses,obligations]=await Promise.all([api('/intelligence?'+params),api('/expenses'),api('/obligations')]);
+        publishData(snapshot);publishSecondary({expenses:expenses.data,obligations:obligations.data});
       } else if (section === 'Forecasts')
         publishData(
           await api('/forecasts', 'POST', {
@@ -91,11 +91,7 @@ export function OperationsWorkspace({
           }),
         );
       else if (section === 'Automations') {
-        publishData(await api('/automations'));
-        publishSecondary({
-          templates: (await api('/automations/templates')).data,
-          runs: (await api('/automation-runs')).data,
-        });
+        const [rules,templates,runs]=await Promise.all([api('/automations'),api('/automations/templates'),api('/automation-runs')]);publishData(rules);publishSecondary({templates:templates.data,runs:runs.data});
       } else if (section === 'Notifications')
         publishData(await api('/notifications'));
       else if (section === 'Approvals') {
@@ -138,7 +134,7 @@ export function OperationsWorkspace({
   useEffect(() => {
     load();
     return () => gate.current.invalidate();
-  }, [section, org, environment, currency]);
+  }, [section, org, environment, currency, dates.from, dates.to]);
   const action: Action = async (fn, message = 'Saved.') => {
     if (currentScope.current !== scope) return null;
     setError('');
@@ -161,7 +157,7 @@ export function OperationsWorkspace({
       <div className="operations-toolbar">
         <Provenance
           label={
-            environment === 'sandbox' ? 'sandbox_simulation' : 'recorded_data'
+            environment === 'sandbox' ? 'test_payment_data' : 'recorded_data'
           }
         />
         {['Intelligence', 'Forecasts', 'Assistant', 'Automations'].includes(
@@ -179,7 +175,7 @@ export function OperationsWorkspace({
             </select>
           </label>
         )}
-        <button className="secondary-button" onClick={load} disabled={busy}>
+        <button className="secondary-button" onClick={()=>{protectedQueries.clear();void load();}} disabled={busy}>
           Refresh
         </button>
       </div>
@@ -218,7 +214,8 @@ export function OperationsWorkspace({
           currency={currency}
           writable={finance}
           onNavigate={onNavigate}
-              setData={(result) => { if(currentScope.current === scope) setData(result); }}
+              dates={dates}
+              onDates={(from,to)=>setDates({from,to})}
         />
       )}
       {section === 'Forecasts' && (

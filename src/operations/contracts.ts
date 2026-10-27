@@ -22,7 +22,7 @@ export const obligationSchema = z
     currency: currencySchema.default('KES'),
     next_due_date: z.string().date(),
     recurrence: z.enum(['once', 'weekly', 'monthly', 'quarterly', 'yearly']),
-    status: z.enum(['active', 'paused']).default('active'),
+    status: z.enum(['active', 'paused', 'completed', 'cancelled']).default('active'),
   })
   .strict();
 export const analyticsQuery = z.object({

@@ -6,6 +6,8 @@ const root = path.resolve(import.meta.dirname, '../..'),
 fs.mkdirSync(path.join(root, '.tmp'), { recursive: true });
 const env = {
   ...process.env,
+  // This check owns its disposable SQLite fixture; never use an external DB.
+  TEST_DATABASE_URL: '',
   AFRICORE_ANCHOR_RPC: rpc,
   AFRICORE_DEPLOYMENT_FILE: '.tmp/test-chain-deployment.json',
 };
@@ -71,6 +73,9 @@ try {
   );
   env.AFRICORE_ANCHOR_ADDRESS = deployment.contract_address;
   env.AFRICORE_ANCHOR_CHAIN_ID = '31337';
+  // A prior suite may have encrypted rows with a different ephemeral test key.
+  for (const suffix of ['', '-wal', '-shm'])
+    fs.rmSync(path.join(root, 'test-stage3.db' + suffix), { force: true });
   await run(['--test', 'dist/__tests__/trust.test.js']);
   await run([
     'scripts/verify-credential.mjs',

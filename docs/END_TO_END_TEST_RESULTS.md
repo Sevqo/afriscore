@@ -46,3 +46,9 @@ Full SQLite run:208 discovered/207passed/1PostgreSQL-only skip. Local PostgreSQL
 
 ## Eight-character policy and Desktop Neon repair
 SQLite regression208discovered/207passed/1PostgreSQL-only skip; frontend build17/17; startup configuration3/3; lint and59/148-operation contracts passed. Local signup accepts8and rejects7; recovery/reset round-trip tests now use an8-character replacement password. Live provider invalid-token probe returned PASSWORD_TOO_SHORT for7and INVALID_TOKEN for8, without changing an account. Desktop paired startup now returns Neon configuration200. Browser invalid-login probe reached Neon and returned Invalid email or password. An existing synthetic managed session restored all3workspace kinds and read intelligence, automations, Passport and CSV successfully. Founder credentials/identity and production configuration were not changed.
+
+
+## Authenticated refinement — 2026-10-27
+See [APPLICATION_REFINEMENT_REPORT.md](APPLICATION_REFINEMENT_REPORT.md) for implemented changes, exact validation evidence and remaining qualification. This continuation preserves existing identities, financial provenance, development namespace and deployment boundaries.
+
+Final refinement release checks: SQLite212passed/213discovered(one PostgreSQL-only skip); PostgreSQL213/213; website production build and23/23frontend checks; startup3/3; typecheck/lint; contracts59/151; local EVM contract plus20trust checks and independent verifier passed. Browser report dates remained2026-10-01 through2026-10-27 after Apply at390px; both inputs150.6px within matching containers. All six chart periods selected successfully. Forty layout observations passed after retesting the six navigation-limited cases.

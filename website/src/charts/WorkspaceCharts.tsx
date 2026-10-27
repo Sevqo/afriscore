@@ -5,10 +5,14 @@ export function FinancialActivity({
   load,
   scope,
   currency,
+  filters = '',
+  testOnly = false,
 }: {
   load: (path: string) => Promise<any>;
   scope: string;
   currency: string;
+  filters?: string;
+  testOnly?: boolean;
 }) {
   const loader = useRef(load);
   loader.current = load;
@@ -19,8 +23,10 @@ export function FinancialActivity({
     let cancelled = false;
     setData(null);
     setError("");
+    const params=new URLSearchParams(filters);params.set('currency',currency);
+    if(!params.has('from')&&!params.has('to')){const today=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Nairobi'});params.set('to',today);params.set('from',new Date(Date.parse(today+'T00:00:00Z')-364*86400000).toISOString().slice(0,10));}
     loader
-      .current("/intelligence?currency=" + encodeURIComponent(currency))
+      .current("/intelligence?" + params)
       .then((r) => {
         if (!cancelled) setData(r);
       })
@@ -30,9 +36,10 @@ export function FinancialActivity({
     return () => {
       cancelled = true;
     };
-  }, [scope, currency, retry]);
+  }, [scope, currency, retry, filters]);
   return (
     <section className="panel activity-panel">
+      {testOnly&&<p className="environment-note">Test payment inflows · recorded expenses remain manually reported. Up to one year of loaded history.</p>}
       {error ? (
         <div role="status">
           <h2>Activity chart unavailable</h2>
@@ -46,6 +53,7 @@ export function FinancialActivity({
         </div>
       ) : (
         <InteractiveChart
+          compact
           title="Financial activity"
           points={(data?.series?.some(
             (p: any) => p.confirmed_inflows_minor || p.recorded_outflows_minor,
@@ -94,6 +102,7 @@ export function RecordAnalytics({
         </select>
       </label>
       <InteractiveChart
+        compact
         title={
           kind === "payments" ? "Payment requests created" : "Invoices created"
         }

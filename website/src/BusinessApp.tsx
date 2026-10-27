@@ -1,7 +1,8 @@
-import { MediaBlock } from './components/Media';
+import { DateRange } from './components/DateRange';
+import { TeamDirectory } from './accounts/TeamDirectory';
+import { peekQuery, cancelOtherWorkspaceReads } from './lib/query-cache';
 import {managedSignOut} from './accounts/auth';
 import { createRequestGate } from './components/requestGate';
-import { editorial } from './editorial';
 import {
   FinancialActivity,
   RecordAnalytics,
@@ -197,9 +198,11 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
   { label: 'Administration', icon: 'settings', items: ['Team', 'Settings'] },
 ];
 const tabs = navigation.flatMap((group) => group.items);
-export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
+export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:any}={}) {
   const [resolvingOrgs,setResolvingOrgs]=useState(true),[orgLoadError,setOrgLoadError]=useState('');
   const workspaceSwitch = useRef(0);
+  const [reportFilters,setReportFilters]=useState({from:'',to:'',currency:'KES'});
+
   const [me, setMe] = useState<any>(null),
     [orgs, setOrgs] = useState<any[]>([]),
     [org, setOrg] = useState(''),
@@ -208,7 +211,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
       return tabs.includes(saved) ? saved : 'Overview';
     }),
     [environment, setEnvironment] = useState('sandbox'),
-    [data, setData] = useState<any>(null),
+    [loaded, setLoaded] = useState<{scope:string;value:any}|null>(null),
     [customers, setCustomers] = useState<any[]>([]),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -222,7 +225,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
     [search, setSearch] = useState('');
   const requestGate = useRef(createRequestGate());
   const viewScope =
-    org + '\0' + environment + '\0' + tab + '\0' + offset + '\0' + search;
+    org + '\0' + environment + '\0' + tab + '\0' + offset + '\0' + search + '\0' + JSON.stringify(reportFilters);
   const currentScope = useRef(viewScope);
   currentScope.current = viewScope;
   const recordTabs = [
@@ -263,7 +266,14 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
     return () => window.removeEventListener('resize', resize);
   }, []);
   const base = '/api/v1/organizations/' + org;
+  const suffix=({Overview:'/report','Cash Flow':'/report',Reports:'/report',Payments:'/payments',Reconciliation:'/reconciliation',Team:'/team',Developers:'/records/applications',Settings:'/audit'} as Record<string,string>)[tab]||'/records/'+tab.toLowerCase();
+  const filterQuery=new URLSearchParams(Object.fromEntries(Object.entries(reportFilters).filter(([,v])=>v))).toString();
+  const resource=suffix+(recordTabs.includes(tab)?'?limit=25&offset='+offset+'&q='+encodeURIComponent(search):['Overview','Cash Flow','Reports'].includes(tab)?'?'+filterQuery:'');
+  const data=loaded?.scope===viewScope?loaded.value:peekQuery<any>(base+resource,environment,isDemo())||null;
+  const setData=(value:any)=>setLoaded({scope:viewScope,value});
+  useEffect(()=>{if(org)cancelOtherWorkspaceReads(base,environment);},[org,environment]);
   useEffect(() => {
+    if(account){setMe(account.user);const memberships=account.workspaces.filter((w:any)=>w.kind==='business');setOrgs(memberships);setOrg(initialOrg||memberships[0]?.id||'');setResolvingOrgs(false);return;}
     api('/api/auth/me')
       .then(setMe)
       .catch(() => (location.href = '/signin'));
@@ -297,32 +307,13 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
     }
     setBusy(true);
     setError('');
-    setData(null);
+    setData(peekQuery<any>(base+resource,environment,isDemo())||null);
     try {
-      const suffix =
-        (
-          {
-            Overview: '/report',
-            'Cash Flow': '/report',
-            Reports: '/report',
-            Payments: '/payments',
-            Reconciliation: '/reconciliation',
-            Team: '/team',
-            Developers: '/records/applications',
-            Settings: '/audit',
-          } as Record<string, string>
-        )[tab] || '/records/' + tab.toLowerCase();
-      const r = await call(
-        suffix +
-          (recordTabs.includes(tab)
-            ? '?limit=25&offset=' + offset + '&q=' + encodeURIComponent(search)
-            : ''),
-      );
+      const [r,related] = await Promise.all([call(resource),['Orders','Invoices'].includes(tab)?call('/records/customers?limit=100'):Promise.resolve(null)]);
       if (!current()) return;
       setData(r);
       if (['Orders', 'Invoices'].includes(tab)) {
-        const result = await call('/records/customers?limit=100');
-        if (current()) setCustomers(result.data);
+        if (current() && related) setCustomers(related.data);
       }
     } catch (e) {
       if (current()) setError((e as Error).message);
@@ -335,7 +326,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
     setNotice('');
     load();
     return () => requestGate.current.invalidate();
-  }, [org, tab, environment, offset, search]);
+  }, [org, tab, environment, offset, search, filterQuery]);
   useEffect(() => {
     setOffset(0);
     setQuery('');
@@ -427,7 +418,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
   }
   async function exportReport() {
     try {
-      const res = await apiFetch(base + '/report?format=csv', {
+      const res = await apiFetch(base + '/report?format=csv&'+filterQuery, {
         credentials: 'same-origin',
         headers: { 'X-Environment': environment },
       });
@@ -613,9 +604,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
             <article key={label} className="panel">
               <span>{label}</span>
               <strong>{money(Number(value), data.currency)}</strong>
-              <small>
-                {environment} · {data.currency}
-              </small>
+              {environment==='sandbox'&&label==='Confirmed inflows'&&<small>Test payment events</small>}
             </article>
           ))}
         </div>
@@ -623,6 +612,8 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
           load={call}
           scope={org + environment}
           currency={data.currency}
+          filters={filterQuery}
+          testOnly={environment==='sandbox'}
         />
         <div className="dashboard-columns">
           <section className="panel">
@@ -661,15 +652,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
                 </button>
               ))}
             </div>
-            <h3>Provider status</h3>
-            <p>
-              <span className="status-dot" />
-              Sandbox provider available
-            </p>
-            <p className="muted">Live M-Pesa: disabled</p>
-            <p className="muted">
-              Protected payments: sandbox · Capital: deferred
-            </p>
+            <details><summary>Payment availability</summary><p>Live payment collection is not configured. Test payment events do not move real funds.</p></details>
           </section>
         </div>
         <section className="panel">
@@ -755,6 +738,8 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
                   className={tab === t ? 'active' : ''}
                   key={t}
                   aria-current={tab === t ? 'page' : undefined}
+                  onPointerEnter={()=>{const path=({Overview:'/report',Payments:'/payments',Invoices:'/records/invoices?limit=25&offset=0&q='} as Record<string,string>)[t];if(org&&path)void call(path).catch(()=>{});}}
+                  onFocus={()=>{if(org&&t==='Payments')void call('/payments').catch(()=>{});}}
                   onClick={() => {
                     setTab(t);
                     setCreating(false);
@@ -826,8 +811,8 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
             </button>
           </div>
           <div>
-            <select
-              aria-label="Environment"
+            {(isDemo()||['Developers','Settings'].includes(tab))&&<select
+              aria-label="Data environment"
               value={environment}
               onChange={(e) => setEnvironment(e.target.value)}
             >
@@ -835,7 +820,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
               <option value="production">
                 Production (collection disabled)
               </option>
-            </select>
+            </select>}
             <span>{me?.email}</span>
           </div>
         </header>
@@ -844,12 +829,12 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
             <div>
               <span className="eyebrow">
                 {organization?.name || 'WELCOME TO AFRICORE'} ·{' '}
-                {environment.toUpperCase()}
+                {isDemo()?'DEMO':'BUSINESS'}
               </span>
-              <h1>{tab === 'Overview' ? 'Your business, in view.' : tab}</h1>
+              <h1>{tab === 'Overview' ? 'Business Overview' : tab}</h1>
               <p>
                 {tab === 'Overview'
-                  ? 'A clearer picture of what is moving — and what needs your attention.'
+                  ? 'Track payments, outstanding invoices and activity that needs attention.'
                   : (
                       {
                         Customers:
@@ -871,7 +856,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
                           'Review workspace identity and recorded changes.',
                       } as Record<string, string>
                     )[tab] ||
-                    'Review records and follow the actions available to your role.'}
+                    ({'Cash Flow':'Review recorded movement and upcoming obligations.',Reports:'Filter financial records and export matching totals.',Intelligence:'Explore trends, forecasts and risks from available records.',Forecasts:'Review projections and the assumptions behind them.',Automations:'Manage rules, approvals and workflow runs.',Notifications:'Review workspace notifications.',Approvals:'Review actions that need your approval.',Assistant:'Ask questions grounded in your authorized records.',Fulfillment:'Track orders through delivery.',Connect:'Manage supported data connections.','Business Passport':'Manage business identity and share selected credentials.'} as Record<string,string>)[tab] || 'Manage your authorized workspace records.'}
               </p>
             </div>
             {org &&
@@ -891,13 +876,10 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
                 </button>
               )}
           </div>
-          <div className="sandbox-banner">
-            {environment === 'sandbox'
-              ? 'Sandbox workspace · All payments are simulated. No real funds move.'
-              : 'Production records · Live payment initiation is disabled. Email verification is required.'}{' '}
-            <span>{organization?.role} · Business unverified</span>
-          </div>
+          {(isDemo()||['Payments','Reconciliation'].includes(tab))&&<p className="environment-note">{isDemo()?'Demo workspace · ':''}{environment==='sandbox'?'Test payment events only. No real funds move.':'Live payment collection is not configured.'}</p>}
           <ErrorBox error={error} />
+          {error&&<button className="secondary-button" onClick={load}>Retry this view</button>}
+          {busy&&data&&<p className="background-update" role="status">Refreshing records…</p>}
           {notice && (
             <div className="alert one-time" role="status">
               {notice}
@@ -1031,58 +1013,8 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
               {['Overview', 'Cash Flow', 'Reports'].includes(tab) && (
                 <>
                   {tab !== 'Overview' && (
-                    <form
-                      className="panel filter-form"
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const p = new URLSearchParams(
-                          Object.fromEntries(
-                            [...new FormData(e.currentTarget)].filter(
-                              ([, value]) => value !== '',
-                            ),
-                          ) as Record<string, string>,
-                        );
-                        try {
-                          setData(await call('/report?' + p));
-                        } catch (e) {
-                          setError((e as Error).message);
-                        }
-                      }}
-                    >
-                      <Field label="From">
-                        <input type="date" name="from" />
-                      </Field>
-                      <Field label="To">
-                        <input type="date" name="to" />
-                      </Field>
-                      <Field label="Currency">
-                        <select
-                          name="currency"
-                          value={documentCurrency}
-                          onChange={(e) => setDocumentCurrency(e.target.value)}
-                        >
-                          {[
-                            'KES',
-                            'USD',
-                            'EUR',
-                            'GBP',
-                            'UGX',
-                            'TZS',
-                            'RWF',
-                          ].map((c) => (
-                            <option key={c}>{c}</option>
-                          ))}
-                        </select>
-                      </Field>
-                      <button className="secondary-button">Apply</button>
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={exportReport}
-                      >
-                        Export CSV ↓
-                      </button>
-                    </form>
+                    <DateRange from={reportFilters.from} to={reportFilters.to} onApply={(from,to)=>{setLoaded(null);setReportFilters({from,to,currency:documentCurrency});}}><Field label="Currency"><select value={documentCurrency} onChange={e=>setDocumentCurrency(e.target.value)}>{['KES','USD','EUR','GBP','UGX','TZS','RWF'].map(c=><option key={c}>{c}</option>)}</select></Field><button type="button" className="button" onClick={exportReport}>Export CSV <Icon name="down"/></button></DateRange>
+
                   )}
                   {metricView()}
                 </>
@@ -1445,70 +1377,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
                   </section>
                 </>
               )}
-              {tab === 'Team' && (
-                <>
-                  <section className="panel">
-                    <h2>Workspace members</h2>
-                    {data?.data?.map((r: any) => (
-                      <div className="list-row" key={r.id}>
-                        <span>{r.email}</span>
-                        <span className="badge">{r.role}</span>
-                      </div>
-                    ))}
-                  </section>
-                  <form
-                    className="panel"
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      const raw = Object.fromEntries(
-                        new FormData(e.currentTarget),
-                      );
-                      const r = await action(() =>
-                        call('/invitations', 'POST', raw),
-                      );
-                      if (r)
-                        setNotice(
-                          'Invitation token (share with intended email): ' +
-                            r.token,
-                        );
-                    }}
-                  >
-                    <h2>Invite a team member</h2>
-                    <Field label="Email">
-                      <input type="email" name="email" required />
-                    </Field>
-                    <Field label="Role">
-                      <select name="role">
-                        {['admin', 'finance', 'operations', 'viewer'].map(
-                          (r) => (
-                            <option key={r}>{r}</option>
-                          ),
-                        )}
-                      </select>
-                    </Field>
-                    <button className="button">Create invitation</button>
-                  </form>
-                  <form
-                    className="panel"
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      const raw = Object.fromEntries(
-                        new FormData(e.currentTarget),
-                      );
-                      await action(() =>
-                        api('/api/v1/invitations/accept', 'POST', raw),
-                      );
-                      location.reload();
-                    }}
-                  >
-                    <h2>Accept invitation</h2>
-                    <Field label="Invitation token">
-                      <input required name="token" />
-                    </Field>
-                    <button className="secondary-button">Join workspace</button>
-                  </form>
-                </>
-              )}
+              {tab==='Team'&&<TeamDirectory key={org+environment} data={data} call={call} action={action} role={organization?.role} actor={me?.id}/> }
               {tab === 'Settings' && (
                 <>
                   <section className="panel">
@@ -1796,8 +1665,7 @@ function LineItemsInput({ currency }: { currency: string }) {
 function Empty({ text }: { text: string }) {
   return (
     <div className="empty-state">
-      <MediaBlock media={editorial.empty} />
-      <h3>A clear place to begin.</h3>
+
       <p>{text}</p>
     </div>
   );

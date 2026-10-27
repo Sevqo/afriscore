@@ -142,3 +142,9 @@ Cloudflare static assets/API gateway and single-instance Render Docker configura
 
 ## Online evaluation deployed and session-cache defect repaired
 Cloudflare HTTPS frontend/gateway is https://africore-web.cypriankiprop41.workers.dev ; single Render Free backend is https://africore-api.onrender.com using the approved existing Neon development branch. Read-only schema verification prevents replayed DDL during hosted startup. Exact origin trusted; stable readiness/auth-config succeeded. Approved synthetic installed-SDK session check returned200forPersonal/Business/Developer, intelligence/automation/Passport/CSV. Shared sessionIdentity fixes cached /token false sign-in failure. No founder password change, identity merge, production activation or paid upgrade. Frontend20/20tests and build passed. Device/mailbox/founder-entered login and CI deployment credentials remain external acceptance tasks; see DEPLOYMENT_TEST_RESULTS.
+
+
+## Authenticated refinement — 2026-10-27
+See [APPLICATION_REFINEMENT_REPORT.md](APPLICATION_REFINEMENT_REPORT.md) for implemented changes, exact validation evidence and remaining qualification. This continuation preserves existing identities, financial provenance, development namespace and deployment boundaries.
+
+Current refinement:213backend cases(212SQLitepass+1PG-only skip;213PostgreSQLpass),23frontend checks and all required contract/type/lint/startup/local-chain gates passed. Team directory, manual invitations, obligation lifecycle, Personal activity series and scoped private cache implemented without schema changes. Hosted release verification follows in DEPLOYMENT_TEST_RESULTS.

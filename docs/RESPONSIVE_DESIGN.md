@@ -7,3 +7,7 @@ The compact homepage hero overrides the earlier tall minimum with a content-driv
 Business layouts favor operational density. Tables with <=5 headings become labelled stacked records on small phones; wide ledgers scroll inside their container. Forms collapse to one column, actions wrap, source/assurance labels remain, and identifiers/CSV examples wrap. Native date/select controls are retained. Navigation/overlays account for safe-area insets and reduced motion.
 
 Required review widths: 320, 375, 390, 430, 768, 1024, 1440, 1920px. Browser viewport emulation can round 320/375 to 321/376 CSS pixels on this host; record requested and measured values in artifacts. Desktop/mobile emulation does not establish actual Safari iOS compatibility. See VISUAL_QA.md for observed checks and limits.
+
+
+## Authenticated refinement — 2026-10-27
+See [APPLICATION_REFINEMENT_REPORT.md](APPLICATION_REFINEMENT_REPORT.md) for implemented changes, exact validation evidence and remaining qualification. This continuation preserves existing identities, financial provenance, development namespace and deployment boundaries.

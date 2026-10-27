@@ -18,13 +18,14 @@ export function selectRange(
   points: ChartPoint[],
   range: ChartRange,
   forecast = false,
+  asOfDate?: string,
 ): ChartPoint[] {
   const sorted = [...points]
     .filter((p) => isIsoDate(p.date))
     .sort((a, b) => a.date.localeCompare(b.date));
   if (!sorted.length || range === "ALL") return sorted;
   if (forecast) return sorted.slice(0, Number.parseInt(range) || sorted.length);
-  const end = new Date(sorted.at(-1)!.date + "T00:00:00Z");
+  const end = new Date((asOfDate && isIsoDate(asOfDate) ? asOfDate : sorted.at(-1)!.date) + "T00:00:00Z");
   const start =
     range === "YTD"
       ? new Date(Date.UTC(end.getUTCFullYear(), 0, 1))
@@ -32,7 +33,7 @@ export function selectRange(
           end.getTime() -
             ((range === "1Y" ? 365 : Number.parseInt(range)) - 1) * 86400000,
         );
-  return sorted.filter((p) => p.date >= start.toISOString().slice(0, 10));
+  return sorted.filter((p) => p.date >= start.toISOString().slice(0, 10) && p.date <= end.toISOString().slice(0,10));
 }
 export function chartDomain(
   points: ChartPoint[],
@@ -110,6 +111,7 @@ export function rangeAvailable(
   range: ChartRange,
   forecast = false,
 ) {
+  if (!forecast) return true;
   if (range === "ALL") return true;
   const sorted = selectRange(points, "ALL");
   if (!sorted.length) return false;

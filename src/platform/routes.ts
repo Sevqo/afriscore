@@ -20,6 +20,11 @@ import {
 } from './payments';
 import { isAllowedWebhookTarget } from '../services/webhookService';
 export const platform = Router();
+async function lockTeam(a:{org:string;actor:string;role:string}){
+  await dbGet('SELECT id FROM ac_organizations WHERE id=?'+(isPostgres?' FOR UPDATE':''),[a.org]);
+  const current=await dbGet('SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',[a.org,a.actor]);
+  if(!current||!['owner','admin'].includes(current.role)||current.role!==a.role)fail(403,'Your team permissions changed; reload current access');
+}
 platform.get('/organizations/:org/request-logs',route(async(req,res)=>{
   const a=await access(req,'admin');
   res.json({data:await dbAll('SELECT id,credential_id,method,route,status_code,created_at FROM ac_api_request_logs WHERE org_id=? AND environment=? ORDER BY created_at DESC,id DESC LIMIT 100',[a.org,a.environment]),coverage:'Most recent 100 scoped credential requests; excludes bodies, keys and query strings.'});
@@ -49,13 +54,15 @@ platform.get('/organizations/:org/personal-summary',route(async(req,res)=>{
   const within=(date:string)=>(!q.from||date>=q.from)&&(!q.to||date<=q.to);
   const sum=(values:number[])=>values.reduce((total,n)=>{if(!Number.isSafeInteger(total+n))fail(409,'Recorded totals exceed the supported range');return total+n;},0);
   const incomes=await dbAll('SELECT * FROM ac_personal_income WHERE workspace_id=? AND environment=? AND currency=?',[a.org,a.environment,q.currency]);
-  const expenses=(await dbAll("SELECT data FROM ac2_objects WHERE org_id=? AND environment=? AND kind='expenses'",[a.org,a.environment])).map(r=>JSON.parse(r.data));
-  const superseded=new Set(expenses.map(r=>r.supersedes_id).filter(Boolean));
   const expenseRows=await dbAll("SELECT id,data FROM ac2_objects WHERE org_id=? AND environment=? AND kind='expenses'",[a.org,a.environment]);
+  const expenses=expenseRows.map(r=>JSON.parse(r.data));
+  const superseded=new Set(expenses.map(r=>r.supersedes_id).filter(Boolean));
   const manual=sum(incomes.filter(r=>within(r.occurred_on)).map(r=>Number(r.amount_minor)));
   const out=sum(expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)).filter(r=>r.currency===q.currency&&within(r.occurred_on)).map(r=>Number(r.amount_minor)));
+  const activity=new Map<string,{date:string;income:number;expenses:number;net:number}>();
+  for(const [rows,key] of [[incomes,'income'],[expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)),'expenses']] as const){for(const row of rows){if(row.currency!==q.currency||!within(row.occurred_on))continue;const point=activity.get(row.occurred_on)||{date:row.occurred_on,income:0,expenses:0,net:0};point[key]=sum([point[key],Number(row.amount_minor)]);point.net=point.income-point.expenses;activity.set(row.occurred_on,point);}}
   const invoices=(await dbAll("SELECT data FROM ac_records WHERE org_id=? AND environment=? AND kind='invoices'",[a.org,a.environment])).map(r=>JSON.parse(r.data));
-  res.json({currency:q.currency,environment:a.environment,from:q.from||null,to:q.to||null,manual_income_minor:manual,recorded_expenses_minor:out,recorded_net_minor:manual-out,
+  res.json({currency:q.currency,environment:a.environment,from:q.from||null,to:q.to||null,series:[...activity.values()].sort((a,b)=>a.date.localeCompare(b.date)),manual_income_minor:manual,recorded_expenses_minor:out,recorded_net_minor:manual-out,
     outstanding_invoices_minor:sum(invoices.filter(r=>r.currency===q.currency&&!['draft','voided','paid'].includes(r.status)).map(r=>Math.max(0,r.total_minor-r.paid_minor))),
     coverage:'Manually recorded income and expenses only; net is not a bank balance or profit. Outstanding invoices cover all open dates. Provider payments remain separate payment records.'});
 }));
@@ -127,11 +134,11 @@ platform.get(
     const a = await access(req);
     res.json({
       data: await dbAll(
-        'SELECT u.id,u.email,m.role FROM ac_memberships m JOIN ac_users u ON u.id=m.user_id WHERE m.org_id=?',
+        'SELECT u.id,u.email,m.role,p.display_name FROM ac_memberships m JOIN ac_users u ON u.id=m.user_id LEFT JOIN ac_profiles p ON p.user_id=u.id WHERE m.org_id=? ORDER BY u.email',
         [a.org],
       ),
       invitations: await dbAll(
-        'SELECT id,email,role,expires_at,accepted_at FROM ac_invitations WHERE org_id=?',
+        "SELECT i.id,i.email,i.role,i.expires_at,i.accepted_at,(SELECT COUNT(*) FROM ac_audit a WHERE a.resource_id=i.id AND a.org_id=i.org_id AND a.action='invitation.revoked') AS revoked FROM ac_invitations i WHERE i.org_id=? ORDER BY i.expires_at DESC",
         [a.org],
       ),
     });
@@ -153,6 +160,9 @@ platform.post(
         .parse(req.body),
       token = secret(),
       id = randomUUID();
+    await dbTransaction(async()=>{await lockTeam(a);
+    if(await dbGet('SELECT u.id FROM ac_users u JOIN ac_memberships m ON m.user_id=u.id WHERE m.org_id=? AND u.email=?',[a.org,d.email]))fail(409,'This person is already a member');
+    if(await dbGet('SELECT id FROM ac_invitations WHERE org_id=? AND email=? AND accepted_at IS NULL AND expires_at>?',[a.org,d.email,now()]))fail(409,'A pending invitation already exists; renew it instead');
     await dbRun(
       'INSERT INTO ac_invitations(id,org_id,email,role,token_hash,expires_at) VALUES (?,?,?,?,?,?)',
       [
@@ -165,6 +175,7 @@ platform.post(
       ],
     );
     await audit(a.org, a.actor, 'invitation.created', id);
+    });
     res.status(201).json({
       id,
       token,
@@ -180,7 +191,7 @@ platform.post(
       token = z.string().length(64).parse(req.body.token);
     await dbTransaction(async () => {
       const row = await dbGet(
-        'SELECT * FROM ac_invitations WHERE token_hash=? AND email=? AND accepted_at IS NULL AND expires_at>?',
+        'SELECT * FROM ac_invitations WHERE token_hash=? AND email=? AND accepted_at IS NULL AND expires_at>?'+(isPostgres?' FOR UPDATE':''),
         [hash(token), u.email, now()],
       );
       if (!row) fail(400, 'Invalid invitation');
@@ -205,6 +216,8 @@ platform.patch(
       role = z.enum(roles).parse(req.body.role);
     if (a.api || a.actor === req.params.member)
       fail(403, 'Cannot change your own role');
+    await dbTransaction(async () => {
+      await lockTeam(a);
     const target = await dbGet(
       'SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',
       [a.org, String(req.params.member)],
@@ -214,7 +227,7 @@ platform.patch(
       ((target.role === 'owner' || role === 'owner') && a.role !== 'owner')
     )
       fail(403, 'Owner permission required');
-    await dbTransaction(async () => {
+
       await dbRun(
         'UPDATE ac_memberships SET role=? WHERE org_id=? AND user_id=?',
         [role, a.org, String(req.params.member)],
@@ -229,6 +242,42 @@ platform.patch(
     res.json({ role });
   }),
 );
+platform.delete('/organizations/:org/team/:member',route(async(req,res)=>{
+  const a=await access(req,'admin');if(a.api)fail(403,'Session required');
+  await dbTransaction(async()=>{
+    await lockTeam(a);
+    const target=await dbGet('SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',[a.org,String(req.params.member)]);
+    if(!target)fail(404,'Member not found');
+    if(target.role==='owner'){
+      if(a.role!=='owner')fail(403,'Owner permission required');
+      const owners=await dbGet("SELECT COUNT(*) AS n FROM ac_memberships WHERE org_id=? AND role='owner'",[a.org]);
+      if(Number(owners.n)<=1)fail(409,'The last owner cannot be removed');
+    }
+    await dbRun('DELETE FROM ac_memberships WHERE org_id=? AND user_id=?',[a.org,String(req.params.member)]);
+    await audit(a.org,a.actor,'membership.removed',String(req.params.member));
+  });res.json({removed:true});
+}));
+platform.patch('/organizations/:org/invitations/:invitation',route(async(req,res)=>{
+  const a=await access(req,'admin');if(a.api)fail(403,'Session required');const token=secret();
+  await dbTransaction(async()=>{
+    await lockTeam(a);
+    const invitation=await dbGet('SELECT * FROM ac_invitations WHERE id=? AND org_id=?'+(isPostgres?' FOR UPDATE':''),[String(req.params.invitation),a.org]);
+    if(!invitation||invitation.accepted_at)fail(409,'Only an unaccepted invitation can be renewed');
+    if(await dbGet("SELECT id FROM ac_audit WHERE org_id=? AND resource_id=? AND action='invitation.revoked'",[a.org,invitation.id]))fail(409,'Create a new invitation after revocation');
+    await dbRun('UPDATE ac_invitations SET token_hash=?,expires_at=? WHERE id=? AND org_id=?',[hash(token),new Date(Date.now()+604800000).toISOString(),invitation.id,a.org]);
+    await audit(a.org,a.actor,'invitation.renewed',invitation.id);
+  });res.json({token,message:'Invitation renewed. Share the new token with the intended recipient; no email was sent.'});
+}));
+platform.delete('/organizations/:org/invitations/:invitation',route(async(req,res)=>{
+  const a=await access(req,'admin');if(a.api)fail(403,'Session required');
+  await dbTransaction(async()=>{
+    await lockTeam(a);
+    const invitation=await dbGet('SELECT id,accepted_at FROM ac_invitations WHERE id=? AND org_id=?'+(isPostgres?' FOR UPDATE':''),[String(req.params.invitation),a.org]);
+    if(!invitation||invitation.accepted_at)fail(409,'Only an unaccepted invitation can be revoked');
+    await dbRun('UPDATE ac_invitations SET expires_at=? WHERE id=? AND org_id=?',[now(),invitation.id,a.org]);
+    await audit(a.org,a.actor,'invitation.revoked',invitation.id);
+  });res.json({revoked:true});
+}));
 const kinds = [
   'customers',
   'orders',

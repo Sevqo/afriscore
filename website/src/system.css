@@ -1915,3 +1915,69 @@ td.numeric {
 .auth-panel form > .button { margin-top:0; }
 .auth-panel { margin-top:32px; padding:32px; }
 .password-control > label { font-weight:600; font-size:14px; }
+/* Authenticated application density. Public editorial pages are deliberately unaltered. */
+:is(.business-shell,.focused-account,.account-entry){--app-gap:12px;--app-panel:16px;font-size:14px;line-height:1.5}
+:is(.business-shell,.focused-account) :is(h1,h2,h3,h4,p){margin-block:0 8px}
+:is(.business-shell,.focused-account) h1{font-size:30px;line-height:1.2;letter-spacing:-.025em}
+:is(.business-shell,.focused-account) h2{font-size:21px;line-height:1.3}
+:is(.business-shell,.focused-account) :is(h3,h4){font-size:16px;line-height:1.35}
+:is(.business-shell,.focused-account) :is(p,label,button,.button,.secondary-button){font-size:14px}
+:is(.business-shell,.focused-account) :is(.workspace-content,.account-content){padding:24px;min-width:0;padding-bottom:max(32px,env(safe-area-inset-bottom))}
+:is(.business-shell,.focused-account) :is(.workspace-title,.account-top){gap:12px;margin-bottom:16px;padding-bottom:0}
+:is(.business-shell,.focused-account) .workspace-title p{margin:6px 0 0;max-width:65ch}
+:is(.business-shell,.focused-account) .panel{padding:var(--app-panel);margin-block:0 16px;min-width:0;border-radius:6px}
+:is(.business-shell,.focused-account) :is(.metric-grid,.account-metrics){gap:10px;margin:0 0 16px;grid-template-columns:repeat(4,minmax(0,1fr))}
+:is(.business-shell,.focused-account) :is(.metric-grid .panel,.account-metrics section){padding:14px;gap:6px;margin:0;min-height:0}
+:is(.business-shell,.focused-account) :is(.metric-grid strong,.account-metrics strong){display:block;font-size:clamp(21px,2vw,28px);margin:6px 0 0;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+:is(.business-shell,.focused-account) :is(.metric-grid span,.account-metrics span,.metric-grid small){font-size:12px;line-height:1.4}
+:is(.business-shell,.focused-account,.account-entry) :is(input,select,textarea){box-sizing:border-box;min-width:0;max-width:100%;font-size:16px;min-height:44px;padding:8px 10px}
+:is(.business-shell,.focused-account,.account-entry) input[type=date]{appearance:none;-webkit-appearance:none;display:block;width:100%;max-width:100%;min-width:0;text-align:left}
+:is(.business-shell,.focused-account) .field{min-width:0;gap:5px;margin:0}
+:is(.business-shell,.focused-account) .field>span{font-size:13px}
+:is(.business-shell,.focused-account) :is(form,.form-grid,.account-form,.account-inline-form){gap:12px}
+:is(.business-shell,.focused-account) :is(.button,.secondary-button,.quiet-button,.row-actions button,.quick-actions button){min-height:44px;padding:8px 14px;border-radius:4px;font-size:14px;line-height:1.4;white-space:normal;text-decoration:none;color:var(--text)}
+:is(.business-shell,.focused-account) .quick-actions{gap:8px}
+:is(.business-shell,.focused-account) .empty-state{padding:16px 0;min-height:0;text-align:left}
+:is(.business-shell,.focused-account) .empty-state :is(h3,h4){font-size:16px;margin:0 0 6px}
+:is(.business-shell,.focused-account) .empty-state p{font-size:14px;max-width:60ch;margin:0}
+:is(.business-shell,.focused-account) .empty-state .media-container{display:none}
+:is(.business-shell,.focused-account) :is(.chart-empty,.chart-loading){min-height:90px;align-items:flex-start;text-align:left;gap:6px;padding:12px;margin:12px 0;background:var(--surface)}
+:is(.business-shell,.focused-account) .chart-empty p{margin:0}
+:is(.business-shell,.focused-account) .chart-ranges{display:flex;flex-wrap:nowrap;gap:2px;justify-content:space-between;margin:10px 0;border-bottom:1px solid var(--line)}
+:is(.business-shell,.focused-account) .chart-ranges button{min-width:0;min-height:44px;font-size:12px;padding:8px;flex:1}
+:is(.business-shell,.focused-account) .chart-readout{gap:12px;margin:8px 0}
+:is(.business-shell,.focused-account) .chart-readout strong{font-size:23px;line-height:1.3}
+:is(.business-shell,.focused-account) :is(.chart-readout span,.chart-legend button,.chart-description,.chart-date){font-size:12px}
+:is(.business-shell,.focused-account) .chart-legend{gap:4px;flex-wrap:wrap}
+:is(.business-shell,.focused-account) .chart-legend button{border:0;padding:6px 8px;min-height:36px}
+:is(.business-shell,.focused-account) .chart-description{margin:8px 0}
+:is(.business-shell,.focused-account) .interactive-chart svg{max-height:270px;touch-action:pan-y}
+:is(.business-shell,.focused-account) .date-range{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:end;gap:12px}
+:is(.business-shell,.focused-account) .date-range-actions{display:flex;gap:8px;flex-wrap:wrap}
+:is(.business-shell,.focused-account) .date-range>.alert{grid-column:1/-1}
+:is(.business-shell,.focused-account) .sandbox-banner{padding:8px 12px;margin-bottom:12px;font-size:12px;min-height:0}
+:is(.business-shell,.focused-account) .environment-note{font-size:12px;color:var(--muted);margin:0 0 12px}
+:is(.business-shell,.focused-account) .account-record{padding:12px;margin:8px 0;gap:8px}
+:is(.business-shell,.focused-account) .dashboard-columns{gap:16px}
+@media(max-width:1100px){:is(.business-shell,.focused-account) :is(.metric-grid,.account-metrics){grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:767px){
+ :is(.business-shell,.focused-account){--app-panel:14px}
+ :is(.business-shell,.focused-account) :is(.workspace-content,.account-content){padding:16px;padding-bottom:max(24px,env(safe-area-inset-bottom))}
+ :is(.business-shell,.focused-account) h1{font-size:26px}
+ :is(.business-shell,.focused-account) h2{font-size:19px}
+ :is(.business-shell,.focused-account) .app-header{padding:8px 12px;min-height:60px;gap:8px}
+ :is(.business-shell,.focused-account) .app-header select{font-size:16px;max-width:100%;min-width:0}
+ :is(.business-shell,.focused-account) .date-range{grid-template-columns:repeat(2,minmax(0,1fr))}
+ :is(.business-shell,.focused-account) .date-range-actions{grid-column:1/-1}
+ :is(.business-shell,.focused-account) .chart-readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ :is(.business-shell,.focused-account) .chart-readout strong{font-size:22px}
+ :is(.business-shell,.focused-account) .chart-legend button{font-size:11px;min-height:44px}
+ :is(.business-shell,.focused-account) :is(.account-form,.account-inline-form){padding:14px;margin:16px 0}
+}
+@media(max-width:359px){:is(.business-shell,.focused-account) .date-range{grid-template-columns:1fr}:is(.business-shell,.focused-account) :is(.metric-grid strong,.account-metrics strong){font-size:20px}}
+:is(.business-shell,.focused-account) :is(.metric-grid,.account-metrics){grid-auto-rows:1fr}
+:is(.business-shell,.focused-account) .team-member>div{min-width:0;overflow-wrap:anywhere}
+:is(.business-shell,.focused-account) .member-initials{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;background:var(--surface-alt);border-radius:4px;font-size:12px;font-weight:700}
+:is(.business-shell,.focused-account) .team-member{justify-content:flex-start}
+:is(.business-shell,.focused-account) .team-member .row-actions{margin-left:auto}
+:is(.business-shell,.focused-account) .team-directory>section:first-child>.field{max-width:360px;margin-bottom:12px}
