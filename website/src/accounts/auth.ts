@@ -1,4 +1,5 @@
 import {singleFlight} from './single-flight';
+import { sessionIdentity } from './session-identity';
 import { isDemo, exitDemo } from "../demo/transport";
 export const managedClient=singleFlight(async () => {
     const res = await fetch("/api/auth/config", { credentials: "same-origin" });
@@ -21,16 +22,7 @@ export const managedClient=singleFlight(async () => {
 export async function identityHeaders(): Promise<Record<string, string>> {
   const client = await managedClient();
   if (!client) return {};
-  const session = await client.getSession({
-    fetchOptions: { credentials: "include" },
-  });
-  if (!session.data?.user) return {};
-  const result = await client.token({
-    fetchOptions: { credentials: "include" },
-  });
-  if (result.error || !result.data?.token)
-    throw new Error("Sign in again to refresh your session");
-  return { Authorization: "Bearer " + result.data.token };
+  return sessionIdentity(client);
 }
 export async function managedSignOut(all = false) {
   if (isDemo()) {

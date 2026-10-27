@@ -139,3 +139,6 @@ Owner-requested signup/reset minimum is now8characters. Local common-password ch
 
 ## Online evaluation infrastructure — in progress
 Cloudflare static assets/API gateway and single-instance Render Docker configuration are prepared. Existing Neon development identities/data are preserved; production stays untouched. See DEPLOYMENT_TEST_RESULTS for actual deployed status rather than inferring it from configuration files. No paid service or live financial integration is enabled.
+
+## Online evaluation deployed and session-cache defect repaired
+Cloudflare HTTPS frontend/gateway is https://africore-web.cypriankiprop41.workers.dev ; single Render Free backend is https://africore-api.onrender.com using the approved existing Neon development branch. Read-only schema verification prevents replayed DDL during hosted startup. Exact origin trusted; stable readiness/auth-config succeeded. Approved synthetic installed-SDK session check returned200forPersonal/Business/Developer, intelligence/automation/Passport/CSV. Shared sessionIdentity fixes cached /token false sign-in failure. No founder password change, identity merge, production activation or paid upgrade. Frontend20/20tests and build passed. Device/mailbox/founder-entered login and CI deployment credentials remain external acceptance tasks; see DEPLOYMENT_TEST_RESULTS.
