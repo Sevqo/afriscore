@@ -1,4 +1,4 @@
-import { capture } from '../stage2/events';
+import { capture } from '../operations/events';
 import { createHmac, randomUUID } from 'node:crypto';
 import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { hash, now, seal, unseal } from './crypto';

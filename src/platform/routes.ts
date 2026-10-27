@@ -1,5 +1,5 @@
-import { trustEvents } from '../stage3/contracts';
-import { stage2Events } from '../stage2/events';
+import { trustEvents } from '../trust/contracts';
+import { stage2Events } from '../operations/events';
 import { Router } from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -345,7 +345,7 @@ platform.post(
           )
             fail(409, 'Order already invoiced');
           const order = await record(a, parsed.order_id, 'orders');
-          const { all: stage2Objects } = await import('../stage2/store');
+          const { all: stage2Objects } = await import('../operations/store');
           if (
             (await stage2Objects(a, 'protected_sales')).some(
               (s) =>
@@ -421,7 +421,7 @@ platform.patch(
       await dbRun('UPDATE ac_organizations SET name=name WHERE id=?', [a.org]);
       const d = await record(a, String(req.params.id), kind);
       if (kind === 'orders') {
-        const { all: stage2Objects } = await import('../stage2/store');
+        const { all: stage2Objects } = await import('../operations/store');
         if (
           (await stage2Objects(a, 'protected_sales')).some(
             (s) =>
@@ -453,7 +453,7 @@ platform.patch(
             .parse(req.body),
         };
       else if (kind === 'orders' && req.body.fulfillment_status) {
-        const { all: stage2Objects } = await import('../stage2/store');
+        const { all: stage2Objects } = await import('../operations/store');
         if (
           (await stage2Objects(a, 'shipments')).some((s) => s.order_id === d.id)
         )
@@ -553,7 +553,7 @@ platform.post(
       }
       if (a.environment !== 'sandbox') await mpesaProvider.initiate({}, '');
       const doc = await record(a, d.document_id);
-      const { all: stage2Objects } = await import('../stage2/store');
+      const { all: stage2Objects } = await import('../operations/store');
       if (
         (await stage2Objects(a, 'protected_sales')).some(
           (s) =>

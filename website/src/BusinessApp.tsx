@@ -1,5 +1,5 @@
 import { MediaBlock } from './components/Media';
-import {identityHeaders,managedClient,managedSignOut} from './accounts/auth';
+import {managedSignOut} from './accounts/auth';
 import { createRequestGate } from './components/requestGate';
 import { editorial } from './editorial';
 import {
@@ -12,48 +12,15 @@ import { Overlay } from './components/Overlay';
 import { Icon, type IconName } from './components/Icon';
 import { useRef } from 'react';
 import { useFocusScope } from './components/useFocusScope';
-import { PassportWorkspace } from './stage3/PassportWorkspace';
+import { PassportWorkspace } from './trust/PassportWorkspace';
 import {
-  transport,
-  isDemo,
   startDemo,
-  exitDemo,
+  isDemo,
 } from './demo/transport';
-import { Stage2Workspace, stage2Tabs } from './stage2/Stage2Workspace';
+import { OperationsWorkspace, operationsTabs } from './operations/OperationsWorkspace';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Logo } from './App';
-export async function api(
-  path: string,
-  method = 'GET',
-  body?: unknown,
-  environment = 'sandbox',
-  headers: Record<string, string> = {},
-) {
-  const r = await transport(path, {
-    method,
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Environment': environment,
-      ...(!isDemo() && !['/api/auth/signup','/api/auth/signin','/api/auth/recover','/api/auth/reset','/api/auth/verify'].includes(path) ? await identityHeaders():{}),
-      ...headers,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await r.json().catch(() => {
-    throw new Error(
-      'The backend is unavailable here. Use Enter demo workspace to explore without a database.',
-    );
-  });
-  if (!r.ok)
-    throw new Error(
-      data.message ||
-        data.issues?.map((i: { message: string }) => i.message).join(', ') ||
-        data.error ||
-        'Request failed',
-    );
-  return data;
-}
+import { Logo } from './components/Logo';
+import { api, apiFetch } from './lib/api-client';
 function ErrorBox({ error }: { error: string }) {
   return error ? (
     <div className="alert error" role="alert">
@@ -73,182 +40,6 @@ const money = (n: number, currency = 'KES') =>
   new Intl.NumberFormat('en-KE', { style: 'currency', currency }).format(
     n / (['UGX', 'RWF'].includes(currency) ? 1 : 100),
   );
-export function AuthPage({ mode,kind }: { mode: string;kind?:string }) {
-  const requested=kind||new URLSearchParams(location.search).get('create');
-  const intent=requested&&['personal','business','developer'].includes(requested)?requested:undefined;
-  const intentQuery=intent?'?create='+encodeURIComponent(intent):'';
-  useEffect(()=>{if(mode==='signin'||mode==='signup') exitDemo();},[mode]);
-  const [error, setError] = useState(''),
-    [result, setResult] = useState<any>(null),
-    [busy, setBusy] = useState(false);
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    const d = Object.fromEntries(new FormData(e.currentTarget));
-    try {
-      const client=await managedClient();
-      let r:any;
-      if(client) {
-        const email=String(d.email||''),password=String(d.password||'');
-        const callbackURL=location.origin+'/auth/callback'+intentQuery;
-        const result=mode==='signup'?await client.signUp.email({name:String(d.name||email.split('@')[0]),email,password,callbackURL}):
-          mode==='signin'?await client.signIn.email({email,password}):
-          mode==='recover'?await client.requestPasswordReset({email,redirectTo:location.origin+'/reset'}):
-          mode==='reset'?await client.resetPassword({newPassword:password,token:String(d.token)}):
-          await client.emailOtp.verifyEmail({email,otp:String(d.token)});
-        if(result.error) throw new Error(result.error.message||'Authentication request failed');
-        r={email,managed:true,message:mode==='signup'?'Account created. Verify your email if requested, then continue.':mode==='recover'?'If the account exists, a recovery email was sent.':'Authentication updated.'};
-        if(mode==='signup' && (await client.getSession()).data?.user) {location.href='/app/workspaces?create='+encodeURIComponent(intent||'business');return;}
-        if(mode==='verify') {
-          r.verified=true;
-          if((await client.getSession()).data?.user){location.href='/app'+intentQuery;return;}
-        }
-      } else r = await api('/api/auth/' + mode, 'POST', d);
-      if(mode==='verify')r.signin_href='/login'+intentQuery;
-      setResult(r);
-      if (mode === 'signin') window.location.href = '/app'+intentQuery;
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="auth-page">
-      <Logo />
-      <div className="auth-panel">
-        <span className="eyebrow">AFRICORE {kind||'ACCOUNT'}</span>
-        <h1>
-          {
-            (
-              {
-                signin: 'Welcome back.',
-                signup: 'Build your next chapter.',
-                recover: 'Recover your account.',
-                verify: 'Verify your email.',
-                reset: 'Set a new password.',
-              } as Record<string, string>
-            )[mode]
-          }
-        </h1>
-        <p>
-          {mode === 'signup'
-            ? `Create one identity for your ${kind||'Business'} workspace. You can add other workspaces later.`
-            : 'Sign in once. Continue in your authorized workspace.'}
-        </p>
-        {['signin', 'signup'].includes(mode) && (
-          <section className="demo-entry">
-            <strong>Explore without setting up a database</strong>
-            <p>
-              Use sample businesses, invoices, payments and product workflows.
-              Changes are saved only in this browser.
-            </p>
-            <button
-              className="button"
-              type="button"
-              onClick={() => {
-                startDemo();
-                location.href = '/app';
-              }}
-            >
-              Enter demo workspace <Icon name="right" />
-            </button>
-            <small>
-              Explore synthetic records without creating an account.
-            </small>
-          </section>
-        )}
-        <form onSubmit={submit}>
-          {mode==='signup'&&<Field label="Your name"><input name="name" required maxLength={100} autoComplete="name" /></Field>}
-          {['signup', 'signin', 'recover','verify'].includes(mode) && (
-            <Field label="Email address">
-              <input required type="email" name="email" autoComplete="email" defaultValue={mode==='verify'?new URLSearchParams(location.search).get('email')||'':undefined}/>
-            </Field>
-          )}
-          {['signup', 'signin', 'reset'].includes(mode) && (
-            <Field label="Password (at least 12 characters)">
-              <input
-                required
-                type="password"
-                name="password"
-                minLength={12}
-                maxLength={200}
-                autoComplete={
-                  mode === 'signin' ? 'current-password' : 'new-password'
-                }
-              />
-            </Field>
-          )}
-          {['verify', 'reset'].includes(mode) && (
-            <Field label="One-time token">
-              <input
-                required
-                name="token"
-                defaultValue={
-                  new URLSearchParams(location.search).get('token') || ''
-                }
-              />
-            </Field>
-          )}
-          {mode==='verify'&&<button type="button" className="secondary-button" disabled={busy} onClick={async(e)=>{const email=String(new FormData(e.currentTarget.form!).get('email'));setBusy(true);setError('');try{const client=await managedClient();if(!client)throw new Error('Use the development token from registration.');const r=await client.emailOtp.sendVerificationOtp({email,type:'email-verification'});if(r.error)throw new Error(r.error.message||'Verification unavailable');setResult({message:'If eligible, a verification code was sent to your email.'});}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>Send verification code</button>}
-          <ErrorBox error={error} />
-          <button className="button" disabled={busy}>
-            {busy ? (
-              'Working…'
-            ) : (
-              <>
-                Continue <Icon name="right" />
-              </>
-            )}
-          </button>
-        </form>
-        {result && (
-          <div className="alert" role="status">
-            {mode==='signup'&&<>{!result.managed&&<a className="button" href={'/app/workspaces?create='+encodeURIComponent(intent||'business')}>Continue to workspace setup</a>}{result.managed&&<a className="button" href={'/verify?email='+encodeURIComponent(result.email)+(intent?'&create='+encodeURIComponent(intent):'')}>Verify email and continue</a>}</>}
-            {result.signin_href&&<a className="button" href={result.signin_href}>Sign in to continue</a>}
-            <p>
-              {result.verified
-                ? 'Email verified.'
-                : result.reset
-                  ? 'Password updated.'
-                  : result.message ||
-                    'Account created. Development email delivery is not configured.'}
-            </p>
-            {result.verification_token && (
-              <>
-                <p>Development verification token (shown locally):</p>
-                <code className="one-time">{result.verification_token}</code>
-                <a href={'/verify?token=' + result.verification_token+'&email='+encodeURIComponent(result.email||'')+(intent?'&create='+encodeURIComponent(intent):'')}>
-                  Verify email <Icon name="right" />
-                </a>
-              </>
-            )}
-            {result.recovery_token && (
-              <>
-                <p>Development recovery token:</p>
-                <code className="one-time">{result.recovery_token}</code>
-                <a href={'/reset?token=' + result.recovery_token}>
-                  Reset password <Icon name="right" />
-                </a>
-              </>
-            )}
-            <a href={'/app'+intentQuery}>
-              Open workspace <Icon name="right" />
-            </a>
-          </div>
-        )}
-        <div className="auth-links">
-          <a href={'/login'+intentQuery}>Sign in</a>
-          <a href="/signup">Create account</a>
-          <a href="/recover">Forgot password?</a>
-          <a href="/verify">Verify email</a>
-          <a href="/">Back to AfriCore</a>
-        </div>
-      </div>
-    </div>
-  );
-}
 export function Checkout() {
   const [data, setData] = useState<any>(null),
     [error, setError] = useState(''),
@@ -499,7 +290,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
     if (currentScope.current !== viewScope) return;
     const latest = requestGate.current.begin();
     const current = () => latest() && currentScope.current === viewScope;
-    if (!org || tab === 'Business Passport' || stage2Tabs.includes(tab)) {
+    if (!org || tab === 'Business Passport' || operationsTabs.includes(tab)) {
       setError('');
       setBusy(false);
       return;
@@ -636,7 +427,7 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
   }
   async function exportReport() {
     try {
-      const res = await transport(base + '/report?format=csv', {
+      const res = await apiFetch(base + '/report?format=csv', {
         credentials: 'same-origin',
         headers: { 'X-Environment': environment },
       });
@@ -1222,8 +1013,8 @@ export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
                   role={organization?.role || 'viewer'}
                 />
               )}
-              {stage2Tabs.includes(tab) && (
-                <Stage2Workspace
+              {operationsTabs.includes(tab) && (
+                <OperationsWorkspace
                   key={org + environment + tab}
                   section={tab}
                   org={org}

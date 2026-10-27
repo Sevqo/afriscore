@@ -186,7 +186,7 @@ test("all rendered internal educational links point at pages or supported applic
         continue;
       }
       if (
-        /^\/(api|demo|app|signin|signup|recover|reset|verify|checkout|buyer|trust)($|\/)/.test(
+        /^\/(api|demo|app|signin|signup|get-started|login|sign-up|forgot-password|recover|reset|verify|checkout|buyer|trust)($|\/)/.test(
           href,
         ) ||
         href === "/verify-credential"

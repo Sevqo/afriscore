@@ -1,5 +1,5 @@
 # Protected payments: sandbox orchestration
-Implementation: src/stage2/commerce.ts. Production creation, buyer activity and settlement return unavailable. The deterministic partner adapter is a simulator. AfriCore holds no real funds and implements no wallet, escrow account, refund rail or license. Provider confirmation states in sandbox mean simulator confirmation only.
+Implementation: src/operations/commerce.ts. Production creation, buyer activity and settlement return unavailable. The deterministic partner adapter is a simulator. AfriCore holds no real funds and implements no wallet, escrow account, refund rail or license. Provider confirmation states in sandbox mean simulator confirmation only.
 
 Create an agreement with title, amount/currency, delivery/cancellation terms, inspection hours and merchant support. An optional unpaid uninvoiced order must match the amount; otherwise a canonical sandbox order/recipient is created. Existing standard links are cancelled and further standard checkout/invoicing/order mutation is blocked while the agreement is active. The returned buyer URL is shown once: opaque token, hashed at rest, expiry 1–30 days (14 default), revocable on seller cancellation/expiry. Store it securely; there is no token recovery endpoint.
 

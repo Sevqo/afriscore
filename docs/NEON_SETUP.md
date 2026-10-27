@@ -10,7 +10,7 @@ The script refuses any environment except development and the reviewed branch br
 
 The runtime can be explicitly started with the same private env-file and a free local PORT. Never reuse a running demo port or point TEST_DATABASE_URL at production. Tests use disposable local databases; the live development connection was checked separately using synthetic rows.
 
-No paid plan, production migration or managed auth activation has occurred. Backups are ignored under .tmp/neon; preserve them until migration acceptance is complete.
+No paid plan or production migration has occurred. Development managed authentication was subsequently enabled as described below. Backups are ignored under .tmp/neon; preserve them until migration acceptance is complete.
 
 ## Development authentication
 
@@ -29,3 +29,6 @@ PowerShell launch from the repository:
     $env:PORT = '4003'
     $env:AFRICORE_PUBLIC_ORIGIN = 'http://localhost:4003'
     node --env-file=.env.neon.development dist/index.js
+
+## Paired development command
+Use npm run dev with DEV_ENV_FILE=.env.neon.development; see LOCAL_NETWORK_DEVELOPMENT. Default frontend5175/API4005, strict ports, correct provider output and readiness gating replace automatic reuse of the legacy API4000. Existing4003 preview and4173 static preview may still be older processes. Restart owned development services when changing server code. Do not point normal tests at Neon; local disposable PostgreSQL is separate.

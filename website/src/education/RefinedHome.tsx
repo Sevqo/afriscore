@@ -34,7 +34,7 @@ export function ProductComposition() {
         <span>Issued · Awaiting payment</span>
       </div>
       <figcaption>
-        Actual demo interfaces · synthetic records · no real funds
+        Example interfaces · illustrative records
       </figcaption>
     </figure>
   );
@@ -80,8 +80,8 @@ export function RefinedHome() {
             what’s paid, what’s outstanding, and what needs your attention.
           </p>
           <div className="actions">
-            <a className="button" href="/demo">
-              Explore AfriCore <Icon name="right" />
+            <a className="button" href="/get-started">
+              Get started <Icon name="right" />
             </a>
             <a className="text-link light" href="#how-it-works">
               See how it works <Icon name="down" />
@@ -205,7 +205,7 @@ export function RefinedHome() {
         </div>
         <div>
           <span className="eyebrow">Availability</span>
-          <h3>Explore safely in sandbox.</h3>
+          <h3>Know what is available.</h3>
           <p>
             Payments and protected purchase outcomes are simulated. Live
             provider collection, regulated settlement and institutional
@@ -238,13 +238,13 @@ export function RefinedHome() {
           </a>
         </article>
       </section>
-      <section className="cta-section">
+      <section className="final-cta">
         <span className="eyebrow">Start with one workflow</span>
         <h2>See your next working day.</h2>
-        <a className="button" href="/demo">
-          Open the synthetic demo <Icon name="right" />
+        <a className="button" href="/get-started">
+          Find your workspace <Icon name="right" />
         </a>
-        <p>No database setup. No real funds move.</p>
+        <p>Start with your work, your customers and a clearer view of your business.</p>
       </section>
     </>
   );

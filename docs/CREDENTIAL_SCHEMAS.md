@@ -1,7 +1,7 @@
 # Credential schemas
 Owner: AfriCore engineering. Reviewed 2026-10-26. Registry version 1.0; profile VC2-JOSE-ES256-minimal-v1.
 
-GET /api/v1/trust/schemas discovers versioned schemas; /:type returns JSON Schema. src/stage3/contracts.ts is authoritative for the supported minimal credential profile and request schemas. Credential summary claims are computed by the service, not accepted as arbitrary issuer JSON or AI conclusions.
+GET /api/v1/trust/schemas discovers versioned schemas; /:type returns JSON Schema. src/trust/contracts.ts is authoritative for the supported minimal credential profile and request schemas. Credential summary claims are computed by the service, not accepted as arbitrary issuer JSON or AI conclusions.
 
 | Type | Required source and minimal claim |
 | --- | --- |

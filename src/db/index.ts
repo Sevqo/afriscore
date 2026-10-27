@@ -1,5 +1,5 @@
-import { migrateStage3 } from '../stage3/schema';
-import { migrateStage2 } from '../stage2/schema';
+import { migrateTrust } from '../trust/schema';
+import { migrateOperations } from '../operations/schema';
 import { migratePlatform } from '../platform/schema';
 import { migrateAccounts } from '../platform/accounts-schema';
 import { migrateWorkspaceExperiences } from '../platform/workspace-schema';
@@ -309,8 +309,8 @@ const SCHEMA = `
 export async function migrate(): Promise<void> {
   await dbExec(SCHEMA);
   await migratePlatform();
-  await migrateStage2();
-  await migrateStage3();
+  await migrateOperations();
+  await migrateTrust();
   await migrateAccounts();
   await migrateWorkspaceExperiences();
 

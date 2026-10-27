@@ -80,6 +80,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:dev
 
   website:
     name: Website build
@@ -98,7 +100,7 @@ jobs:
       - run: npm run build
 
   trust-chain:
-    name: Stage 3 local EVM and independent verification
+    name: Local EVM and independent verification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

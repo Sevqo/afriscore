@@ -1,5 +1,5 @@
 # AfriCore Assistant
-Implementation: src/stage2/assistant.ts. Four fixed tools: financial_summary, receivables, forecast and reconciliation. The server performs all authorization and arithmetic before optional language generation. No SQL execution, external tools, financial actions or model-selected tenant access exist. Responses include computed evidence and actions_executed:false.
+Implementation: src/operations/assistant.ts. Four fixed tools: financial_summary, receivables, forecast and reconciliation. The server performs all authorization and arithmetic before optional language generation. No SQL execution, external tools, financial actions or model-selected tenant access exist. Responses include computed evidence and actions_executed:false.
 
 Configure server-only OPENAI_API_KEY and AFRICORE_AI_MODEL in ignored .env, or leave unconfigured. No browser key exists. Provider abstraction supports a fixture implementation for tests and OpenAI Responses for generation (store:false, bounded output, 20-second timeout). Each request requires explicit consent before sending its question and minimized evidence to the external provider. Do not paste secrets or third-party personal information in a question. Numeric/domain evidence omits customer names, contacts and freeform documents. This reduces exposure; it does not replace a lawful processing assessment.
 

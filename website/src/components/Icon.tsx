@@ -16,8 +16,12 @@ export type IconName =
   | 'settings'
   | 'network'
   | 'check'
-  | 'external';
+  | 'external'
+  | 'eye'
+  | 'eye-off';
 const paths: Record<IconName, string> = {
+  eye: 'M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
+  'eye-off': 'm3 3 18 18M9 5.5A12 12 0 0 1 12 5c7 0 10 7 10 7a18 18 0 0 1-3 4M6 6C3 8 2 12 2 12s3 7 10 7c2 0 4-.5 5-1.5M10 10a3 3 0 0 0 4 4',
   right: 'm9 5 7 7-7 7',
   left: 'm15 5-7 7 7 7',
   down: 'm5 9 7 7 7-7',

@@ -1627,10 +1627,10 @@ td code {
   .filter-form .field {
     flex: 1 1 130px;
   }
-  .stage2-toolbar {
+  .operations-toolbar {
     gap: 12px;
   }
-  .stage2-toolbar select {
+  .operations-toolbar select {
     max-width: 100%;
   }
   .passport-tabs {
@@ -1899,3 +1899,19 @@ td.numeric {
 [hidden] {
   display: none !important;
 }
+
+.password-control { display:grid; gap:10px; }
+.password-input-row { position:relative; }
+.password-input-row input { width:100%; padding-right:56px; }
+.password-toggle { position:absolute; right:4px; top:4px; bottom:4px; width:44px; display:grid; place-items:center; border:0; background:transparent; color:#171717; cursor:pointer; }
+.password-toggle:focus-visible { outline:2px solid #76b900; outline-offset:2px; }
+.password-control small { color:#565656; }
+.forgot-password { display:block; text-align:right; margin-top:12px; }
+.auth-panel form { display:grid; gap:24px; }
+.auth-links { display:block; margin-top:28px; }
+.auth-footer { border-top:1px solid #ddd; padding-top:20px; margin-top:24px; }
+
+.auth-panel .field { margin:0; }
+.auth-panel form > .button { margin-top:0; }
+.auth-panel { margin-top:32px; padding:32px; }
+.password-control > label { font-weight:600; font-size:14px; }

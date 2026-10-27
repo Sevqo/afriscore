@@ -28,7 +28,7 @@ All audit checklist items above have been implemented and checked within the cov
 - Shared system: dashboard/shared/theme.css, fonts/licenses and icon sprite; website/src/tokens.css, system.css, style.css, main.tsx.
 - Shared React components: Icon, Overlay, useFocusScope, DataTable and Media.
 - Public pages/navigation: App.tsx, navigation.ts, content.ts, TrustPublic.tsx; original hero and recolored media/editorial assets.
-- Operational surfaces: BusinessApp, Stage2Workspace, IntelligenceViews, WorkflowViews, CommerceViews, UI and PassportWorkspace.
+- Operational surfaces: BusinessApp, OperationsWorkspace, IntelligenceViews, WorkflowViews, CommerceViews, UI and PassportWorkspace.
 - Legacy console: dashboard/index.html and style.css; src/app.ts and business-decision.test.ts for narrowly scoped asset-policy regression coverage.
 - Cleanup: removed old unused hero artwork and Sora dependency; removed superseded shell styles and replaced decorative glyph arrows in markup.
 - Documentation: DESIGN_SYSTEM, TYPOGRAPHY, NAVIGATION, RESPONSIVE_DESIGN, VISUAL_QA, ILLUSTRATION_SYSTEM, IMPLEMENTATION_STATUS and AGENTS.

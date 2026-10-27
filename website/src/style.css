@@ -1069,7 +1069,7 @@ td {
   }
 }
 /* Stage 2 shares the existing operational design tokens. */
-.stage2-toolbar {
+.operations-toolbar {
   display: flex;
   align-items: center;
   gap: 20px;
@@ -1409,7 +1409,7 @@ td {
   }
 }
 @media (max-width: 560px) {
-  .stage2-toolbar {
+  .operations-toolbar {
     gap: 12px;
   }
   .connector-catalog {

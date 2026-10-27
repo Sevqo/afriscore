@@ -41,3 +41,6 @@ Education components use readable HTML workflows, labelled fictional examples, n
 See TYPOGRAPHY.md, NAVIGATION.md, RESPONSIVE_DESIGN.md and VISUAL_QA.md for implementation and validation details.
 
 Product-experience amendment: experience.css supplies the compact homepage/device composition and distinct teaching layouts using existing tokens, buttons, native controls and hairlines. Real synthetic UI captures are labelled, dimensioned WebP assets. Preserve the design language while varying explanation by product; do not restore a generic repeated section stack or decorative hero art.
+
+## Authentication and homepage repair
+The malformed homepage CTA was an unmatched cta-section class, not a missing global stylesheet; it now uses final-cta. AuthPage is separate from BusinessApp, with one shared PasswordInput, SVG visibility icons, stable autocomplete fields and grouped primary/recovery/signup/footer actions. Local dev Vite explicitly serves dashboard/shared tokens/fonts, fixing blocked shared font requests without a broad filesystem allowlist. Customer signup CTAs lead to account selection; actual teaching simulations, developer tooling and test financial actions retain explicit environment/availability labels.

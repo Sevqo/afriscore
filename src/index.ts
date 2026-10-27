@@ -1,10 +1,10 @@
-import {processTrust} from './stage3/worker';
 // IMPORTANT: keep `./config` as the very first import. It loads a local .env
 // file as a side effect, and the DB adapter (imported below via ./db) reads
 // process.env.DATABASE_URL at import time to choose SQLite vs PostgreSQL.
 import { config, validateConfig } from "./config";
+import {processTrust} from './trust/worker';
 import { deliverWebhooks } from './platform/payments';
-import { processStage2 } from './stage2/worker';
+import { processOperations } from './operations/worker';
 import type { Server } from "node:http";
 import { migrate, isPostgres, closeDb } from "./db";
 import { createApp } from "./app";
@@ -34,12 +34,12 @@ async function main(): Promise<void> {
   await migrate();
   const webhookTimer = setInterval(() => { deliverWebhooks().catch(error => logger.error('webhook_worker_failed', { message: String(error) })); }, 10000);
   webhookTimer.unref();
-  const stage2Timer=setInterval(()=>{processStage2().catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);
-  stage2Timer.unref();
+  const operationsTimer=setInterval(()=>{processOperations().catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);
+  operationsTimer.unref();
   const trustTimer=setInterval(()=>{processTrust().catch(()=>logger.error('trust_worker_failed',{code:'execution_failed'}));},15000);trustTimer.unref();
 
   const app = createApp();
-  const server: Server = app.listen(config.port, () => {
+  const server: Server = app.listen(config.port, process.env.API_BIND_HOST || "0.0.0.0", () => {
     logger.info("server_started", {
       port: config.port,
       db_engine: isPostgres ? "postgres" : "sqlite",

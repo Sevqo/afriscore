@@ -1,3 +1,4 @@
+import { newPassword } from './password-policy';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
 import { z, ZodError } from 'zod';
@@ -134,8 +135,9 @@ export function sameOrigin(req: Request, res: Response, next: NextFunction) {
       return;
     }
     const origin = req.headers.origin;
+    const developmentOrigins = process.env.NODE_ENV === 'development' ? (process.env.AFRICORE_DEV_ORIGINS || '').split(',').filter(Boolean) : [];
     if (
-      origin &&
+      origin && !developmentOrigins.includes(origin) &&
       origin !==
         (process.env.AFRICORE_PUBLIC_ORIGIN ||
           `${req.protocol}://${req.get('host')}`)
@@ -170,7 +172,7 @@ const credentials = z.object({
     .email()
     .max(254)
     .transform((v) => v.toLowerCase()),
-  password: z.string().min(12).max(200),
+  password: z.string().min(1).max(400),
 });
 async function tokenFor(userId: string, purpose: string) {
   const value = secret();
@@ -203,7 +205,7 @@ auth.post(
     // Delivery integration is intentionally gated; production cannot create stranded accounts.
     if (process.env.NODE_ENV === 'production')
       fail(503, 'Self-service registration awaits configured email delivery');
-    const data = credentials.parse(req.body),
+    const data = credentials.extend({password:newPassword}).parse(req.body),
       id = randomUUID();
     await dbTransaction(async () => {
       if (await dbGet('SELECT id FROM ac_users WHERE email=?', [data.email]))
@@ -361,7 +363,7 @@ auth.post(
     const data = z
       .object({
         token: z.string().length(64),
-        password: z.string().min(12).max(200),
+        password: newPassword,
       })
       .parse(req.body);
     await dbTransaction(async () => {

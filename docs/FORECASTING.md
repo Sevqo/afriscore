@@ -1,5 +1,5 @@
 # Cash-flow forecasting
-Implementation: src/stage2/intelligence.ts. POST organizations/:org/forecasts under /api/v1. Supports 7, 30, 60 and 90 days in one explicit currency.
+Implementation: src/operations/intelligence.ts. POST organizations/:org/forecasts under /api/v1. Supports 7, 30, 60 and 90 days in one explicit currency.
 
 Forecasts combine outstanding invoice due dates, observed payer delay when history is sufficient, recurring obligations and non-invoice historical collection/outflow baselines. Baseline extrapolation requires at least 30 days and five events; invoice receipts are excluded from the collection baseline to avoid counting them twice. Baselines use at most 90 observed days. Explicit obligation-linked expenses are excluded from the generic expense baseline. Unlinked recurring expenses may still overlap obligations; connect the obligation_id when recording them.
 

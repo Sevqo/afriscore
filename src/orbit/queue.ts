@@ -264,13 +264,11 @@ class RedisOrbitQueues implements OrbitQueues {
 
   private connection() {
     // Lazy require so memory-only runs never load these modules.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const IORedis = require("ioredis");
     return new IORedis(this.redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false });
   }
 
   private createHandle(name: OrbitQueueName): RedisQueueHandle {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { Queue, Worker } = require("bullmq");
     const connection = this.connection();
     const queue = new Queue(name, { connection });

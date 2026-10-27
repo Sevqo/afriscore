@@ -305,3 +305,5 @@
 }
 .account-nav nav{scrollbar-color:#777 #252525;scrollbar-width:thin}
 @media(max-width:767px){.account-nav{display:grid;grid-template-columns:1fr auto;gap:12px}.account-nav .logo,.account-nav>p,.account-nav nav{grid-column:1/-1}.account-nav>button{justify-self:end;padding:8px}.account-nav>a:not(.logo){font-size:13px}}
+
+.account-option > .media-container { width:100%; margin:0 0 8px; border-radius:4px; }

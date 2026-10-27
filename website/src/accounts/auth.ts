@@ -1,27 +1,23 @@
-import type { VanillaBetterAuthClient } from "@neondatabase/neon-js/auth";
+import {singleFlight} from './single-flight';
 import { isDemo, exitDemo } from "../demo/transport";
-let clientPromise: Promise<VanillaBetterAuthClient | null> | undefined;
-export function managedClient() {
-  return (clientPromise ||= (async () => {
+export const managedClient=singleFlight(async () => {
     const res = await fetch("/api/auth/config", { credentials: "same-origin" });
     if (!res.ok) throw new Error("Authentication service unavailable");
     const config = await res.json();
-    if (config.provider !== "neon") return null;
+    if (config.provider === "legacy") return null;
+    if (config.provider !== "neon" || typeof config.auth_url !== "string") throw new Error("Authentication is not configured correctly. Contact support.");
+    if (!window.isSecureContext) throw new Error("Secure sign-in requires HTTPS on this address. Use the trusted local HTTPS setup or localhost on your computer.");
     const [{ createAuthClient }, { BetterAuthVanillaAdapter }] =
       await Promise.all([
-        import("@neondatabase/neon-js/auth"),
-        import("@neondatabase/neon-js/auth/vanilla"),
+        import("@neondatabase/auth"),
+        import("@neondatabase/auth/vanilla"),
       ]);
     return createAuthClient(config.auth_url, {
       adapter: BetterAuthVanillaAdapter({
         fetchOptions: { credentials: "include" },
       }),
     });
-  })().catch((error) => {
-    clientPromise = undefined;
-    throw error;
-  }));
-}
+});
 export async function identityHeaders(): Promise<Record<string, string>> {
   const client = await managedClient();
   if (!client) return {};

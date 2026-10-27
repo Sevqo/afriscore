@@ -1,5 +1,5 @@
 # Financial intelligence
-Reviewed 2026-10-25. Implementation: src/stage2/intelligence.ts.
+Reviewed 2026-10-25. Implementation: src/operations/intelligence.ts.
 
 GET /api/v1/organizations/:org/intelligence uses the authenticated organization and X-Environment; currency defaults KES. Optional from/to are ISO dates. Integer minor units remain currency separated. Dates use Africa/Nairobi for daily reporting. API keys require read scope; write access is separately enforced.
 

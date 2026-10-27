@@ -261,10 +261,10 @@ async function account(email, name) {
       2,
     ),
   );
-  const { processTrust } = require('../dist/stage3/worker'),
-    { processStage2 } = require('../dist/stage2/worker');
+  const { processTrust } = require('../dist/trust/worker'),
+    { processOperations } = require('../dist/operations/worker');
   const timer = setInterval(() => {
-    processStage2()
+    processOperations()
       .then(() => processTrust())
       .catch(() => console.error('Demo background task needs review'));
   }, 15000);

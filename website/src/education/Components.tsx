@@ -1,6 +1,6 @@
 import { DeveloperTutorial } from "./DeveloperTutorial";
 import { ProductExperience, experienceKinds } from "./ProductExperiences";
-import { useState } from "react";
+import { InteractiveExample } from "./InteractiveExample";
 import { Icon } from "../components/Icon";
 import { MediaBlock } from "../components/Media";
 import { publicPageMedia } from "../editorial";
@@ -131,208 +131,6 @@ export function AnnotatedProductVisual({ lesson }: { lesson: string }) {
         ))}
       </div>
     </figure>
-  );
-}
-export function InteractiveExample({
-  kind = "reconciliation",
-}: {
-  kind?: string;
-}) {
-  const [amount, setAmount] = useState(1500),
-    [reference, setReference] = useState(true),
-    [day, setDay] = useState(5),
-    [claims, setClaims] = useState(["Business name", "Delivery completion"]),
-    [checks, setChecks] = useState(["Signature", "Current status"]);
-  const privacy = ["business-passport", "private-sharing"].includes(kind),
-    cash = ["cash-flow", "forecasts"].includes(kind),
-    credential = [
-      "digital-credentials",
-      "blockchain-proof",
-      "business-trust",
-    ].includes(kind);
-  return (
-    <section className="interactive-example">
-      <div>
-        <span className="eyebrow">Try an explanation</span>
-        <h2>
-          {privacy
-            ? "Choose what a recipient sees"
-            : cash
-              ? "What changes when a customer pays late?"
-              : credential
-                ? "A valid signature is only one check"
-                : "Match a payment to its invoice"}
-        </h2>
-        <p>
-          Learning simulation only. Nothing is sent to an API, no merchant
-          record changes, and no money moves.
-        </p>
-      </div>
-      <div className="example-controls">
-        {privacy ? (
-          <fieldset>
-            <legend>Illustrative claims to disclose</legend>
-            {["Business name", "Delivery completion", "Invoice totals"].map(
-              (c) => (
-                <label key={c}>
-                  <input
-                    type="checkbox"
-                    checked={claims.includes(c)}
-                    onChange={() =>
-                      setClaims(
-                        claims.includes(c)
-                          ? claims.filter((x) => x !== c)
-                          : [...claims, c],
-                      )
-                    }
-                  />
-                  {c}
-                </label>
-              ),
-            )}
-          </fieldset>
-        ) : cash ? (
-          <label>
-            Expected receipt day: {day}
-            <input
-              type="range"
-              min="1"
-              max="30"
-              value={day}
-              onChange={(e) => setDay(Number(e.target.value))}
-            />
-            <small>
-              KSh 12,000 receipt; KSh 8,000 expense due on day 10. Illustrative
-              opening cash: KSh 0.
-            </small>
-          </label>
-        ) : credential ? (
-          <fieldset>
-            <legend>Which checks have evidence?</legend>
-            {[
-              "Signature",
-              "Current status",
-              "Recognized issuer",
-              "Independent evidence",
-            ].map((c) => (
-              <label key={c}>
-                <input
-                  type="checkbox"
-                  checked={checks.includes(c)}
-                  onChange={() =>
-                    setChecks(
-                      checks.includes(c)
-                        ? checks.filter((x) => x !== c)
-                        : [...checks, c],
-                    )
-                  }
-                />
-                {c}
-              </label>
-            ))}
-          </fieldset>
-        ) : (
-          <>
-            <label>
-              Confirmed receipt amount
-              <select
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-              >
-                <option value="1500">KSh 1,500</option>
-                <option value="2500">KSh 2,500</option>
-                <option value="3000">KSh 3,000</option>
-              </select>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={reference}
-                onChange={(e) => setReference(e.target.checked)}
-              />
-              Reference matches invoice INV-104
-            </label>
-          </>
-        )}
-      </div>
-      <div className="example-result" role="status" aria-live="polite">
-        <span>
-          {privacy
-            ? "Recipient preview"
-            : cash
-              ? "Illustrative planning result"
-              : credential
-                ? "Separate verification layers"
-                : "Invoice INV-104 · KSh 2,500"}
-        </span>
-        <h3>
-          {privacy
-            ? claims.length +
-              (claims.length === 1 ? " selected claim" : " selected claims")
-            : cash
-              ? day > 10
-                ? "Receipt arrives after the expense"
-                : "Receipt arrives before the expense"
-              : credential
-                ? checks.length === 4
-                  ? "All four example checks supplied"
-                  : "Some checks remain uncertain"
-                : !reference
-                  ? "Unmatched: review required"
-                  : amount > 2500
-                    ? "Amount mismatch: review required"
-                    : amount === 2500
-                      ? "Fully paid in this example"
-                      : "Partially paid in this example"}
-        </h3>
-        {privacy ? (
-          <>
-            <ul>
-              {claims.map((c) => (
-                <li key={c}>{c}</li>
-              ))}
-            </ul>
-            <p>
-              Unselected claims stay out of this preview. Real sharing
-              additionally requires purpose, recipient authorization and expiry
-              controls.
-            </p>
-          </>
-        ) : cash ? (
-          <p>
-            {day > 10
-              ? "The day-10 expense creates an illustrative KSh 8,000 gap until the receipt arrives."
-              : "After the expense, illustrative movement is KSh 4,000."}{" "}
-            The month’s net movement is still KSh 4,000. Timing changes the
-            temporary gap; this is not your bank balance.
-          </p>
-        ) : credential ? (
-          <ul>
-            {[
-              "Signature",
-              "Current status",
-              "Recognized issuer",
-              "Independent evidence",
-            ].map((c) => (
-              <li key={c}>
-                {c}:{" "}
-                {checks.includes(c)
-                  ? "supplied in this example"
-                  : "not established"}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>
-            {!reference || amount > 2500
-              ? "No automatic allocation is made in this example. Inspect the reference and amount rather than forcing a match."
-              : "Outstanding: KSh " +
-                (2500 - amount).toLocaleString("en-KE") +
-                ". Only the confirmed allocated amount reduces what is owed."}
-          </p>
-        )}
-      </div>
-    </section>
   );
 }
 export function ProductEducation({ path }: { path: string }) {
@@ -467,11 +265,10 @@ export function ProductEducation({ path }: { path: string }) {
       <section className="product-next">
         <h2>Start with one workflow.</h2>
         <p>
-          Try the synthetic demo first. You do not need a database or a real
-          payment provider to explore it.
+          Choose your workspace and begin with one customer, invoice or record.
         </p>
         <div className="actions">
-          <a className="button" href={demoLink(path)}>
+          <a className="button" href="/get-started">
             Try this workflow
             <Icon name="right" />
           </a>
@@ -482,82 +279,6 @@ export function ProductEducation({ path }: { path: string }) {
         </div>
       </section>
     </div>
-  );
-}
-export function Ecosystem() {
-  return (
-    <section className="ecosystem">
-      <span className="eyebrow">One platform, distinct jobs</span>
-      <h2>Start with the work you need to do.</h2>
-      <div>
-        {[
-          [
-            "Run your business",
-            "Customers, orders and invoices in one shared workspace.",
-            "/products/business",
-          ],
-          [
-            "Follow the money",
-            "Request payments, match trusted events and review what is still owed.",
-            "/products/reconciliation",
-          ],
-          [
-            "Plan the next step",
-            "Understand recorded movement and compare forecast assumptions.",
-            "/products/intelligence",
-          ],
-          [
-            "Share business proof",
-            "Present particular claims while keeping unrelated information private.",
-            "/products/business-passport",
-          ],
-        ].map(([name, text, href]) => (
-          <a key={href} href={href}>
-            <h3>
-              {name}
-              <Icon name="right" />
-            </h3>
-            <p>{text}</p>
-          </a>
-        ))}
-      </div>
-      <p>
-        Current payment workflows are sandbox demonstrations. Production
-        collection and partner-dependent protection remain disabled.
-      </p>
-    </section>
-  );
-}
-export function GettingStarted() {
-  return (
-    <section className="getting-started">
-      <span className="eyebrow">Your first ten minutes</span>
-      <h2>Learn the workflow before connecting real data.</h2>
-      <ProcessTimeline
-        steps={[
-          [
-            "Open the demo",
-            "Use its fictional business, orders and payments. No database is needed.",
-          ],
-          [
-            "Inspect an invoice",
-            "Find the customer, due date, confirmed allocations and remaining balance.",
-          ],
-          [
-            "Explore a scenario",
-            "Compare payment outcomes, forecast assumptions or a minimal credential disclosure.",
-          ],
-          [
-            "Plan your setup",
-            "For a connected deployment, arrange your business details, team roles, permitted sources and required provider configuration.",
-          ],
-        ]}
-      />
-      <a className="button" href="/demo">
-        Open the demo workspace
-        <Icon name="right" />
-      </a>
-    </section>
   );
 }
 export function HeroWorkflow() {

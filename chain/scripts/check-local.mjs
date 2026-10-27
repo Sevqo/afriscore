@@ -71,7 +71,7 @@ try {
   );
   env.AFRICORE_ANCHOR_ADDRESS = deployment.contract_address;
   env.AFRICORE_ANCHOR_CHAIN_ID = '31337';
-  await run(['--test', 'dist/__tests__/stage3.test.js']);
+  await run(['--test', 'dist/__tests__/trust.test.js']);
   await run([
     'scripts/verify-credential.mjs',
     '--file',

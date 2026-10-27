@@ -13,3 +13,6 @@ Deep links are checked against the loaded authorized list before rendering. APIs
 POST /api/auth/account/workspace saves only an active current membership. New setup runs in one transaction. A validated create intent can survive an auth callback; ordinary login never asks users to choose account type again. The full Business shell receives a validated organization ID. Async data completions are guarded against stale scopes; workspace navigation uses fresh server resolution.
 
 Signup intent survives verification and a required subsequent sign-in through a validated create parameter. Explicit add-workspace intent routes an existing identity to setup; ordinary login has no such intent and resolves the authorized last workspace. Browser URL state is never a permission grant. Account defaults seed new setup forms; each existing workspace retains its own currency/timezone defaults.
+
+## Refactor boundary
+Routing remains membership-driven in accounts/Accounts.tsx. AccountChooser, WorkspaceSetup, AccountSettings, FocusedWorkspace and DeveloperPanels are separate components with shared AccountUI primitives. Signup intent remains validated against Personal/Business/Developer; it does not grant access. Existing selection and stale-response guards are preserved. Managed operations/Passport requests now use the same authenticated HTTP transport as account resolution.

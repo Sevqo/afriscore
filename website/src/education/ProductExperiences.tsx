@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { InteractiveChart, financialSeries } from "../charts/InteractiveChart";
-import { InteractiveExample } from "./Components";
+import { InteractiveExample } from "./InteractiveExample";
 import { matchingExample } from "./experienceModel";
 export const experienceKinds: Record<string, string> = {
   business: "workspace",

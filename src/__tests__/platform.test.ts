@@ -1198,3 +1198,14 @@ test('customer corrections permit clearing optional contact data and reject blan
   ]);
   assert.ok(history.length >= 2);
 });
+
+test('existing short passwords still authenticate while signup rejects the same password',async()=>{
+  const {passwordHash}=await import('../platform/crypto');
+  const address=email('existing-short');
+  const account=await request('/api/auth/signup','POST',{email:address,password:'a long unique test phrase'});
+  assert.equal(account.status,201);
+  await dbRun('UPDATE ac_users SET password_hash=? WHERE id=?',[await passwordHash('old-pass'),account.data.id]);
+  const login=await request('/api/auth/signin','POST',{email:address,password:'old-pass'});
+  assert.equal(login.status,200);assert.equal(login.data.id,account.data.id);assert.ok(login.cookie);
+  assert.equal((await request('/api/auth/signup','POST',{email:email('short-new'),password:'old-pass'})).status,400);
+});

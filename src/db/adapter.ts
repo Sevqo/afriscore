@@ -102,6 +102,7 @@ type Params = any[] | Record<string, any>;
 
 interface TxContext {
   pgClient?: PoolClient;
+  pgFailure?: () => Error | undefined;
 }
 
 const txStore = new AsyncLocalStorage<TxContext>();
@@ -131,7 +132,10 @@ function runSqlite<T>(fn: () => T): Promise<T> {
 }
 
 function pgQuery(text: string, values: any[]) {
-  const client = txStore.getStore()?.pgClient;
+  const context = txStore.getStore();
+  const failed = context?.pgFailure?.();
+  if (failed) return Promise.reject(failed);
+  const client = context?.pgClient;
   return client ? client.query(text, values) : pgPool!.query(text, values);
 }
 
@@ -163,9 +167,15 @@ export async function dbTransaction<T>(fn: () => Promise<T>): Promise<T> {
   }
 
   const client = await pgPool!.connect();
+  // Checked-out clients no longer have the pool's idle error handler. A
+  // disconnect between queries must fail this transaction, not the process.
+  let clientError: Error | undefined;
+  const onError = (error: Error) => { clientError = error; };
+  client.on('error', onError);
   try {
     await client.query("BEGIN");
-    const result = await txStore.run({ pgClient: client }, fn);
+    const result = await txStore.run({ pgClient: client, pgFailure: () => clientError }, fn);
+    if (clientError) throw clientError;
     await client.query("COMMIT");
     return result;
   } catch (err) {
@@ -176,7 +186,8 @@ export async function dbTransaction<T>(fn: () => Promise<T>): Promise<T> {
     }
     throw err;
   } finally {
-    client.release();
+    client.release(clientError);
+    client.removeListener('error', onError);
   }
 }
 

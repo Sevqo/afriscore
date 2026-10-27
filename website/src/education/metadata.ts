@@ -35,7 +35,7 @@ export function pageMetadata(path: string) {
       lesson?.definition ||
       guide?.summary ||
       pages[path]?.description ||
-      "Organize business records, follow payment evidence and understand what is still owed. Explore AfriCore in sandbox.",
+      "Organize business records, follow payment evidence and understand what is still owed. Find the workspace that fits your work.",
   };
 }
 export function usePageMetadata(path: string) {

@@ -1,12 +1,12 @@
 // First import on purpose: src/config.ts loads a local .env before ./db is
 // imported below, and the DB adapter snapshots DATABASE_URL at import time.
 import { config } from "./config";
-import { stage3 } from './stage3/routes';
+import { trust } from './trust/routes';
 import {neonAuthURL} from './platform/neon-auth';
 import {developerRequestLog} from './platform/request-logs';
 import { auth, sameOrigin } from './platform/auth';
 import { platform } from './platform/routes';
-import { stage2 } from './stage2/routes';
+import { operations } from './operations/routes';
 import express from "express";
 import path from "node:path";
 import { dbGet, isPostgres } from "./db";
@@ -78,8 +78,8 @@ export function createApp() {
   app.use(developerRequestLog);
   app.use('/api/v1',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
   app.use('/api/v1', sameOrigin, platform);
-  app.use('/api/v1', sameOrigin, stage2);
-  app.use('/api/v1',sameOrigin,stage3);
+  app.use('/api/v1', sameOrigin, operations);
+  app.use('/api/v1',sameOrigin,trust);
   app.get('/api/openapi.json', (_req,res) => res.sendFile('platform-openapi.json',{root:process.cwd()}));
 
   // Liveness: process-only, deliberately does NOT touch the database, so a

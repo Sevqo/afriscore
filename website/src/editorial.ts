@@ -163,3 +163,10 @@ Object.assign(publicPageMedia, {
   "/products/intelligence": editorial.cashflow,
   "/products/protected-payments": editorial.protection,
 });
+
+const scene = (name:string,alt:string): Media => ({kind:'image',src:'/media/editorial-v3/'+name+'.webp',alt,aspectRatio:'3 / 2',fit:'cover',animate:false});
+editorial.personal = scene('personal-planning','An independent professional organizes invoice slips at her studio desk.');
+editorial.automation = scene('automation-follow-up','A shop owner checks a scheduled follow-up beside a packed order and calendar.');
+editorial.reconciliation = scene('reconciliation-review','An accountant compares a receipt with an invoice, keeping unmatched papers separate.');
+publicPageMedia['/products/automations'] = editorial.automation;
+publicPageMedia['/products/reconciliation'] = editorial.reconciliation;

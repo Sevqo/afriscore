@@ -43,3 +43,18 @@ An African customer inspects an opened parcel with a courier and a delivery note
 Asset: website/public/media/editorial-v2/financial-review.webp
 
 An African business owner and colleague compare due invoices, an expense book and a simple chart. Natural hands and purposeful financial review, no implied bank balance.
+
+## Editorial-v3 — 2026-10-27
+Three independent built-in imagegen calls, no third-party references and no existing-asset edits. Original PNGs remain in the local Codex generated-images folder; delivery copies are WebP1200x800,quality85. Visually reviewed natural hands/props, posture, face and scene distinction. These are conceptual fictional scenes, not customer photographs or evidence of live capabilities.
+
+### personal-planning
+Asset: website/public/media/editorial-v3/personal-planning.webp.
+Prompt: Original editorial illustration for AfriCore Personal workspace. Wide3:2 composition, sophisticated hand-drawn ink contours and flat muted olive,black,warm cream,restrained orange. An East African independent professional woman seated at her home studio worktable, carefully arranging three distinct paper invoice slips beside an open laptop,pencil and simple potted plant. Side profile and calm thoughtful expression,natural adult proportions,anatomically coherent hands five fingers. A window and shelving balance negative space,no circles behind people,no floating UI,no lettering,no logos,no numeric values,no money bags. Contemporary editorial art,warm confident human story,crisp restrained texture,neutral off-white background,full scene uncropped.
+
+### automation-follow-up
+Asset: website/public/media/editorial-v3/automation-follow-up.webp.
+Prompt: Original editorial illustration for AfriCore automation education. Wide3:2,premium flat screenprint aesthetic,charcoal ink lines,muted olive green,warm off-white,restrained burnt orange. An East African shop owner stands at a stockroom workbench with parcels and a wall calendar,looking at a phone while a paper reminder strip on the bench connects visually to a checked parcel. Distinct full-body standing composition,natural adult anatomy,coherent hands and props,tidy modern small-business stockroom,generous negative space,no floating abstract circles,no readable text,no logos,no claims of funds movement. Sophisticated original editorial narrative about a scheduled follow-up rather than futuristic robots.
+
+### reconciliation-review
+Asset: website/public/media/editorial-v3/reconciliation-review.webp.
+Prompt: Original editorial illustration for AfriCore record reconciliation education. Wide3:2,polished contemporary editorial ink drawing with flat olive,cream,charcoal and small warm orange accents. Overhead three-quarter close composition of an East African male small-business accountant at a desk comparing a paper receipt in his left hand with an invoice sheet beside a laptop,a clearly separate unmatched paper set off to the right. Human concentration,credible desk arrangement,elegant clear silhouettes,anatomically correct arms and hands,no legible words or tiny pseudo-lettering,no numeric values,no money bags,no circle motif,no copied reference art. Soft paper grain and substantial quiet background.

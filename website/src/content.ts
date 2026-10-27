@@ -198,7 +198,7 @@ export const pages: Record<
     category: 'About AfriCore',
     title: 'Built around the realities of African business.',
     description:
-      'AfriCore helps owners keep customers, orders, invoices and payment evidence together, starting in Kenya. The goal is to make daily business records understandable and useful without pretending that a sandbox is a live financial partnership.',
+      'AfriCore helps owners keep customers, orders, invoices and payment evidence together, starting in Kenya. The goal is to make daily business records understandable and useful while clearly distinguishing recorded activity from services that require a provider connection.',
     points: [
       'Business tools and developer infrastructure share one foundation.',
       'Kenya first, with explicit currency and country data.',
