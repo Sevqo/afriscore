@@ -2,6 +2,7 @@ import { migrateStage3 } from '../stage3/schema';
 import { migrateStage2 } from '../stage2/schema';
 import { migratePlatform } from '../platform/schema';
 import { migrateAccounts } from '../platform/accounts-schema';
+import { migrateWorkspaceExperiences } from '../platform/workspace-schema';
 import { dbExec, isPostgres, rawSqliteDb } from "./adapter";
 
 // Table/column types here (TEXT, REAL, INTEGER) are valid in both SQLite
@@ -311,6 +312,7 @@ export async function migrate(): Promise<void> {
   await migrateStage2();
   await migrateStage3();
   await migrateAccounts();
+  await migrateWorkspaceExperiences();
 
   if (isPostgres) {
     await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS matched_invoice_id TEXT;`);

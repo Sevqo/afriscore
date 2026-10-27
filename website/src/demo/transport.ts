@@ -1,7 +1,5 @@
 import { demoTrust, seedTrust } from './trust';
 import initial from './fixture.json';
-export const DEMO_EMAIL = 'demo@africore.demo';
-export const DEMO_PASSWORD = 'AfriCoreDemo2026!';
 const KEY = 'africore.demo.v1',
   ACTIVE = 'africore.demo.active';
 export const isDemo = () =>
@@ -36,18 +34,6 @@ export async function transport(
   try {
     input = typeof options.body === 'string' ? JSON.parse(options.body) : {};
   } catch {}
-  if (
-    path === '/api/auth/signin' &&
-    input.email?.toLowerCase() === DEMO_EMAIL
-  ) {
-    if (input.password !== DEMO_PASSWORD)
-      return Response.json(
-        { message: 'Use the demo password shown below.' },
-        { status: 401 },
-      );
-    startDemo();
-    return Response.json({ demo: true });
-  }
   if (!isDemo()) return fetch(path, options);
   const method = options.method || 'GET',
     url = new URL(path, location.origin),

@@ -45,7 +45,7 @@ const operations = [
   ...source.matchAll(/platform\.(get|post|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage2.matchAll(/stage2\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage3.matchAll(/stage3\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
-  ...auth.matchAll(/auth\.(get|post)\s*\(\s*'([^']+)'/g),
+  ...auth.matchAll(/auth\.(get|post|patch)\s*\(\s*'([^']+)'/g),
 ];
 for (const op of operations) {
   const isAuth = op[0].startsWith('auth.'),
@@ -98,9 +98,9 @@ for (const op of operations) {
       429: { description: 'Rate limited' },
     },
     security:
-      path.includes('/checkout/') || isAuth
+      path.includes('/checkout/') || (isAuth && ['/config','/signup','/signin','/recover','/verify','/reset'].includes(op[2]))
         ? [{}]
-        : [{ session: [] }, { apiKey: [] }],
+        : [{ session: [] }, { managedSession: [] }, ...(!isAuth?[{ apiKey: [] }]:[])],
   };
   if (['post', 'patch'].includes(method))
     operation.requestBody = {
@@ -157,13 +157,13 @@ for (const op of operations) {
   if (path.startsWith('/api/v1/trust/') && !path.includes('/presentations/'))
     operation.security = [{}];
   if (path.includes('/trust/presentations/'))
-    operation.security = [{ session: [] }];
+    operation.security = [{ session: [] },{ managedSession: [] }];
   if (
     path.includes('/trust/') &&
     path.includes('/organizations/') &&
     method !== 'get'
   )
-    operation.security = [{ session: [] }];
+    operation.security = [{ session: [] },{ managedSession: [] }];
   if (path.includes('/trust/status/'))
     operation.responses[200].content = {
       'application/vc+jwt': { schema: { type: 'string' } },
@@ -173,7 +173,7 @@ for (const op of operations) {
     operation.description =
       'Requires an unexpired opaque buyer capability in the URL. Sandbox only. Buyer actions cannot claim live settlement.';
   }
-  if (path.includes('/internal')) operation.security = [{ session: [] }];
+  if (path.includes('/internal')) operation.security = [{ session: [] },{ managedSession: [] }];
   if (path.includes('/callbacks/'))
     operation.security = [{ sandboxSignature: [] }];
   (paths[path] ||= {})[method] = operation;
@@ -191,6 +191,7 @@ const doc = {
     schemas,
     securitySchemes: {
       session: { type: 'apiKey', in: 'cookie', name: 'ac_session' },
+      managedSession:{type:'http',scheme:'bearer',bearerFormat:'JWT',description:'Validated managed identity token. Current application membership is still required.'},
       apiKey: { type: 'http', scheme: 'bearer' },
       sandboxSignature: {
         type: 'apiKey',

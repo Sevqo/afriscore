@@ -50,3 +50,11 @@ Final local checks: 194/194 SQLite tests, 194/194 PostgreSQL 17 tests on a fresh
 ## Limits
 
 Desktop/mobile viewport emulation does not establish actual Safari iOS/Android device compatibility. Full screen-reader, axe, WCAG conformance, Lighthouse/Core Web Vitals and cross-browser qualification remain unperformed. Engineering's authenticated content was not accessed through the database-free demo; its existing gate was verified. Trust pages retain sandbox limitations, advanced backend-ID workflows and truthful issuer/evidence distinctions. No public deployment or operational partner integration is implied by this visual change.
+
+## Account experience visual review — 2026-10-27
+
+New chooser, Personal, Developer, all three onboarding forms, account settings, login and three signup pages were checked at requested 320/375/390/430/768/1024/1440 widths: 77 route/width observations, no document overflow. Host may report 321/376 CSS pixels for the two narrowest requested sizes. Existing Business overview/switching was checked at desktop width. Account page titles identify Personal/Developer rather than labelling every screen Business. The optional managed SDK loads on demand.
+
+Synthetic browser fixture: returning login resolved Personal, client creation and invoice issue persisted, income/expense entry produced the labelled 1,000/250/750/1,250 KES summary, Developer application creation worked, and all-workspace switching preserved the existing Business shell. Forms use native labels/controls and shared tokens/tables; mobile navigation scrolls horizontally. Source/empty/loading/denied states are explicit. Financial cards use a placeholder while loading rather than claiming zero before data arrives.
+
+Evidence is ignored under .tmp/neon: account-responsive.json, personal-390.png, personal-1440.png, developer-desktop.png and managed-auth-enabled.png. Browser data is a separate SQLite fixture; actual managed Neon persistence and signature/revocation checks were exercised independently over HTTP. Mailbox delivery, physical Safari/device tests, full screen-reader audit and live outbound receiver qualification remain unexecuted.

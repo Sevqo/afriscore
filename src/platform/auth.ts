@@ -4,9 +4,18 @@ import { z, ZodError } from 'zod';
 import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { hash, now, passwordHash, passwordMatches, secret } from './crypto';
 import { permitted } from './domain';
-import { resolveWorkspace, selectWorkspace } from './accounts';
+import { createWorkspace, resolveWorkspace, selectWorkspace } from './accounts';
+import {neonAuthURL,neonIdentity} from './neon-auth';
 
 export const auth = Router();
+auth.get('/config',(_req,res)=>{res.setHeader('Cache-Control','no-store');res.json({provider:neonAuthURL()?'neon':'legacy',auth_url:neonAuthURL()});});
+auth.use((req,res,next)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(neonAuthURL() && ['/signup','/signin','/verify','/recover','/reset'].includes(req.path)) {
+    res.status(409).json({message:'Use the configured managed authentication service'}); return;
+  }
+  next();
+});
 export const fail = (status: number, message: string): never => {
   throw Object.assign(new Error(message), { status });
 };
@@ -55,6 +64,11 @@ function sessionToken(req: Request) {
   ).exec(req.headers.cookie || '')?.[1];
 }
 export async function user(req: Request) {
+  if(neonAuthURL()) {
+    const bearer=req.headers.authorization?.match(/^Bearer (eyJ[A-Za-z0-9_.-]+)$/)?.[1];
+    if(!bearer) fail(401,'Managed sign in required');
+    return neonIdentity(bearer!);
+  }
   const token = sessionToken(req);
   if (!token) fail(401, 'Sign in required');
   const row = await dbGet(
@@ -78,6 +92,16 @@ export async function access(
     environment = String(req.headers['x-environment'] || 'sandbox');
   if (!['sandbox', 'production'].includes(environment))
     fail(400, 'Invalid environment');
+  const workspace = await dbGet('SELECT kind,status FROM ac_workspaces WHERE id=?',[org]);
+  if(workspace?.status && workspace.status!=='active') fail(403,'Workspace inactive');
+  const tail=req.path.split('/organizations/'+org)[1] || '';
+  if(workspace?.kind==='personal' && !/^\/(?:records\/(?:customers|invoices|transactions)(?:\/|$)|expenses(?:\/|$)|personal-(?:income|summary)(?:\/|$)|payment-requests(?:\/|$)|reports(?:\/|$))/.test(tail))
+    fail(403,'This capability requires a Business or Developer workspace');
+  if(workspace?.kind==='developer') {
+    if(environment!=='sandbox') fail(403,'Developer production access requires separate review');
+    if(!/^\/(?:records\/(?:applications|customers|orders|invoices|transactions)(?:\/|$)|credentials(?:\/|$)|webhooks(?:\/|$)|deliveries(?:\/|$)|request-logs(?:\/|$)|audit(?:\/|$)|payment-requests(?:\/|$)|reconciliation(?:\/|$)|reports(?:\/|$)|sandbox(?:\/|$))/.test(tail))
+      fail(403,'This capability requires a Business workspace');
+  }
   const key = req.headers.authorization?.match(
     /^Bearer (ac_[a-f0-9]{64})$/,
   )?.[1];
@@ -208,6 +232,45 @@ auth.get('/account', route(async (req, res) => {
   res.json({ user: u, ...await resolveWorkspace(u.id) });
 }));
 
+auth.get('/sessions',route(async(req,res)=>{
+  const u=await user(req),managed=neonAuthURL();
+  if(managed) {
+    const rows=await dbAll(`SELECT s.id,s."createdAt" AS created_at,s."updatedAt" AS updated_at,s."expiresAt" AS expires_at,s."userAgent" AS user_agent FROM neon_auth.session s JOIN ac_identity_links l ON s."userId"::text=l.subject WHERE l.user_id=? AND l.provider=? AND s."expiresAt">CURRENT_TIMESTAMP ORDER BY s."createdAt" DESC LIMIT 100`,[u.id,'neon:'+new URL(managed).origin]);
+    res.json({data:rows,provider:'neon'});
+  } else {
+    const rows=await dbAll('SELECT token_hash,expires_at FROM ac_sessions WHERE user_id=? AND expires_at>?',[u.id,now()]);
+    res.json({data:rows.map((r:any,index:number)=>({id:'session-'+index,expires_at:r.expires_at,current:r.token_hash===hash(sessionToken(req)||'')})),provider:'legacy'});
+  }
+}));
+
+auth.post('/workspaces',route(async(req,res)=>{
+  const u=await user(req);
+  const w=await createWorkspace(u.id,req.body);
+  res.status(w.existing?200:201).json({...w,account:await resolveWorkspace(u.id)});
+}));
+
+auth.patch('/account',route(async(req,res)=>{
+  const u=await user(req);
+  const d=z.object({display_name:z.string().trim().min(1).max(100),currency:z.enum(['KES','USD','EUR','GBP','UGX','TZS','RWF']),timezone:z.string().max(100).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Invalid timezone'),primary_experience:z.enum(['personal','business','developer'])}).strict().parse(req.body);
+  await dbRun(`UPDATE ac_profiles SET display_name=?,currency=?,timezone=?,primary_experience=?,updated_at=? WHERE user_id=?`,[d.display_name,d.currency,d.timezone,d.primary_experience,now(),u.id]);
+  res.json(await resolveWorkspace(u.id));
+}));
+
+auth.post('/signout-all',route(async(req,res)=>{
+  const u=await user(req);
+  await dbTransaction(async()=>{
+    await dbRun('DELETE FROM ac_sessions WHERE user_id=?',[u.id]);
+    await dbRun('INSERT INTO ac_account_details(user_id,revoked_before) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET revoked_before=excluded.revoked_before',[u.id,now()]);
+  });
+  res.json({signed_out:true});
+}));
+
+auth.post('/account/deletion-request',route(async(req,res)=>{
+  const u=await user(req);
+  await dbRun('INSERT INTO ac_account_details(user_id,deletion_requested_at) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET deletion_requested_at=excluded.deletion_requested_at',[u.id,now()]);
+  res.json({requested:true,message:'Deletion review requested. Financial and signed history is retained pending review.'});
+}));
+
 auth.post('/account/workspace', route(async (req, res) => {
   const u = await user(req);
   const { workspace_id } = z.object({workspace_id:z.string().uuid()}).parse(req.body);
@@ -234,6 +297,12 @@ auth.post(
 auth.post(
   '/signout',
   route(async (req, res) => {
+    if(neonAuthURL()) {
+      await user(req);
+      const bearer=req.headers.authorization!.slice(7);
+      await dbRun('DELETE FROM ac_revoked_access_tokens WHERE expires_at<?',[now()]);
+      await dbRun('INSERT INTO ac_revoked_access_tokens(token_hash,expires_at) VALUES (?,?) ON CONFLICT(token_hash) DO NOTHING',[hash(bearer),new Date(Date.now()+960000).toISOString()]);
+    }
     const token = sessionToken(req);
     if (token)
       await dbRun('DELETE FROM ac_sessions WHERE token_hash=?', [hash(token)]);

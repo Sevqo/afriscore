@@ -1,4 +1,5 @@
 import { RefinedHome } from './education/RefinedHome';
+import {AccountApp,AccountChooser} from './accounts/Accounts';
 import { DeveloperTutorial } from './education/DeveloperTutorial';
 import { ProductEducation } from './education/Components';
 import { Learn } from './education/Learn';
@@ -14,7 +15,7 @@ import { Icon } from './components/Icon';
 import { useFocusScope } from './components/useFocusScope';
 import { pages, media } from './content';
 import { FeatureSection } from './components/Media';
-import { BusinessApp, AuthPage, Checkout } from './BusinessApp';
+import { AuthPage, Checkout } from './BusinessApp';
 export function Logo() {
   return (
     <a href="/" className="logo" aria-label="AfriCore home">
@@ -333,7 +334,11 @@ export function App() {
   if (path.startsWith('/trust/share/')) return <TrustPublic mode="share" />;
   if (path.startsWith('/passport/')) return <TrustPublic mode="profile" />;
   if (path.startsWith('/buyer/')) return <BuyerPortal />;
-  if (path.startsWith('/app')) return <BusinessApp />;
+  if (path.startsWith('/app')||path==='/auth/callback') return <AccountApp />;
+  if(path==='/get-started'||path==='/signup') return <AccountChooser/>;
+  if(path.startsWith('/sign-up/')) return ['personal','business','developer'].includes(path.split('/')[2]) ? <AuthPage mode="signup" kind={path.split('/')[2]}/> : <AccountChooser/>;
+  if(path==='/login') return <AuthPage mode="signin"/>;
+  if(path==='/forgot-password') return <AuthPage mode="recover"/>;
   if (path.startsWith('/checkout/')) return <Checkout />;
   if (path === '/demo') {
     startDemo();

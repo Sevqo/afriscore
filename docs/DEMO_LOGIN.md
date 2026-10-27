@@ -2,7 +2,7 @@
 Owner: AfriCore engineering. Reviewed 2026-10-26. All demo accounts/data are synthetic and public.
 
 ## Browser-only demo — no database or API needed
-Open /signin and click Enter demo workspace, or visit /demo. Email: demo@africore.demo. Password: AfriCoreDemo2026! . No real server session or API credential is created. State is isolated in browser localStorage; Reset demo data restores examples, Sign out exits demo mode. Do not store real information here.
+Open /signin and click Enter demo workspace, or visit /demo. No password is required or accepted by the browser guest transport. No real server session or API credential is created. State is isolated in browser localStorage; Reset demo data restores examples, Sign out exits demo mode. Do not store real information here. For real multi-account persistence use the configured backend, now available in this development setup at http://localhost:4003/get-started, with your own verified identity.
 
 Run npm ci; npm --prefix website ci; npm run demo:web. Default demo URL: http://127.0.0.1:4173/signin . SPA fallback is needed on static hosting; website/public/_redirects supports compatible hosts. Existing source setup can also use npm --prefix website run dev (port5175) without a backend for demo mode.
 

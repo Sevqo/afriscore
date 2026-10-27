@@ -1,5 +1,10 @@
 # Implementation status — Stage 3 sandbox beta
 
+## Current multi-account status — 2026-10-27
+
+Neon development has Managed Better Auth with verification codes, persistent Personal/Business/Developer workspaces, account routing/switching, profile/security flows and scoped API request logs. Full backend regression: 204/204 on SQLite and PostgreSQL; final account refinements: 4/4 on each engine. Website build/14 checks, typecheck, both contracts and isolated chain verification passed. Exact live/browser evidence and external limits are in END_TO_END_TEST_RESULTS and AUTHENTICATION. Production was not activated; real-mailbox delivery, production SMTP/domains, external webhook receiver and physical-device qualification remain open. Historical sections below record earlier releases.
+
+
 ## Product experience and functional reliability — 2026-10-26
 
 Release verification: final SQLite **200/200**, PostgreSQL 17 **200/200**, website **14/14** content/chart/experience tests, root typecheck, both API contracts and isolated local EVM/independent credential verification passed. No configured lint script. Full module/readiness matrix: PRODUCT_FUNCTIONAL_AUDIT.md. External integrations, real model-answer evaluation, production authorization and device/load/conformance gates remain explicitly open.
@@ -113,3 +118,13 @@ Implemented profile/workspace metadata, Business backfill and transactional regi
 Validation: PostgreSQL 17 backend 201/201; SQLite 200/201 initially with one transient HTTP ECONNRESET, affected Orbit suite 7/7 on rerun; frontend 14/14 and build; typecheck and both API contracts (138 workspace operations). Additional account HTTP security check and chain check recorded in continuation evidence. Not a completed multi-account release: Personal/Developer shells/provisioning, account chooser, managed auth/provider transition, security/settings journeys and full requested acceptance matrix remain outstanding. See NEON_ARCHITECTURE and NEON_SETUP.
 
 Final supplementary checks: new account API/service suite 2/2 on both SQLite and PostgreSQL; isolated chain verification passed; disposable PostgreSQL cluster stopped. Neon credentials and scratch artifacts verified Git-ignored.
+
+## Multi-account implementation — 2026-10-27
+
+Migration 005-workspace-experiences is additive. Personal and Developer provisioning, distinct shells, account chooser, automatic login routing, multi-workspace switching, account preferences, active-session display, logout revocation and deletion-review requests are implemented. Personal uses real scoped client/invoice/expense records and a separate manual-income table. Developer uses scoped applications/keys, read-only API Explorer, synthetic sandbox, signed webhook services, recent request status metadata, usage observations and independent verification links. No company fields are required for Personal/Developer. Existing full Business capabilities and tenant/role/assurance restrictions remain.
+
+Managed Better Auth was enabled on development after the user approved both activation and the exact CREATE-on-development-neondb grant to neon_service. Production and billing are untouched. Signup requires verification codes; localhost remains allowed only for development. The official SDK is loaded on demand. Its transitive Zod was overridden to a patched version; the npm audit reported zero vulnerabilities after installation. Provider identities map transactionally by provider/subject, never silently by email. Configured managed mode rejects legacy credentials/sessions.
+
+Live managed signup/token issuance, backend identity projection, three workspace types, persisted Personal income, forged-JWT rejection and current-token logout rejection were verified on Neon development. Mailbox receipt/code completion, password recovery delivery and email-change delivery were not verified with a real recipient. Shared SMTP is for development; production needs custom sender/domain and supported cookie deployment qualification. No verification flags were changed in SQL to manufacture acceptance.
+
+Baseline final regression before supplementary log/session assertions: 204/204 SQLite and 204/204 PostgreSQL 17, frontend 14/14 and production build, contracts, typecheck and isolated chain verification passed. Supplementary/final checks are recorded in END_TO_END_TEST_RESULTS. Browser QA uses a separate clearly synthetic SQLite fixture, not proof of mailbox delivery. Real Neon persistence was tested independently through authenticated HTTP requests. See AUTHENTICATION, ACCOUNT_TYPES, WORKSPACE_ROUTING/PERMISSIONS, PERSONAL/BUSINESS/DEVELOPER_WORKSPACE and DATABASE_SCHEMA/MIGRATION for exact behavior and limits.

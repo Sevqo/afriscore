@@ -16,7 +16,7 @@ async function main() {
   const db = require('../dist/db');
   try {
     await db.migrate();
-    const row = await db.dbGet("SELECT version FROM platform_migrations WHERE version=?",['004-account-foundation']);
+    const row = await db.dbGet("SELECT version FROM platform_migrations WHERE version=?",['005-workspace-experiences']);
     if (!row) throw new Error('migration_not_recorded');
     console.log(JSON.stringify({migrated:true,environment:'development',version:row.version}));
   } finally { await db.closeDb(); }

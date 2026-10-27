@@ -34,3 +34,11 @@ GET /api/auth/account resolves only active workspaces joined to current membersh
 Both private URLs now specify sslmode=verify-full. The development migration entry point requires a direct endpoint, explicit development environment/branch ID, a private matching endpoint allowlist and verified TLS. A synthetic profile committed through the pooled connection was read through a separate direct connection and removed. This proves database persistence, not completion of managed authentication or every user journey.
 
 Still pending: managed auth activation/provider transition, real email delivery, account-type chooser, Personal/Developer shells and provisioning, settings/security journeys, broader account-type permission tests and production deployment. Existing server authentication remains operational with its production registration/recovery gate. Do not represent this foundation as the completed specification.
+
+## Managed authentication and workspace experiences
+
+The earlier pending-provider notes above are historical. Development now uses Neon Managed Better Auth; migration 005 adds owned Personal/Developer containers, stable external identity links, account details, hashed revoked access tokens, scoped API request metadata and normalized manual income. Personal/Developer creation is enabled with server-side capability allowlists. Business resource IDs and original membership roles are preserved.
+
+The exact persistent development database CREATE grant to neon_service was explicitly approved by the user after automatic review blocked the initial proposal. It allowed Neon to create its auth schemas. No existing application-table grants or production changes were made. This permission and managed-auth activation must be reviewed independently when setting up another environment.
+
+The API verifies provider JWT signatures/issuer/audience/lifetime plus current provider identity state. Workspace authorization still belongs to AfriCore. Legacy identities are preserved and collisions require explicit migration. See AUTHENTICATION for revocation boundaries and real-mailbox/device limitations. No production-readiness, live-finance or institutional-issuer claims are made.

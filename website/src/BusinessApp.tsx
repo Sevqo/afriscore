@@ -1,4 +1,5 @@
 import { MediaBlock } from './components/Media';
+import {identityHeaders,managedClient,managedSignOut} from './accounts/auth';
 import { createRequestGate } from './components/requestGate';
 import { editorial } from './editorial';
 import {
@@ -16,6 +17,7 @@ import {
   transport,
   isDemo,
   startDemo,
+  exitDemo,
 } from './demo/transport';
 import { Stage2Workspace, stage2Tabs } from './stage2/Stage2Workspace';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
@@ -33,6 +35,7 @@ export async function api(
     headers: {
       'Content-Type': 'application/json',
       'X-Environment': environment,
+      ...(!isDemo() && !['/api/auth/signup','/api/auth/signin','/api/auth/recover','/api/auth/reset','/api/auth/verify'].includes(path) ? await identityHeaders():{}),
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -70,7 +73,11 @@ const money = (n: number, currency = 'KES') =>
   new Intl.NumberFormat('en-KE', { style: 'currency', currency }).format(
     n / (['UGX', 'RWF'].includes(currency) ? 1 : 100),
   );
-export function AuthPage({ mode }: { mode: string }) {
+export function AuthPage({ mode,kind }: { mode: string;kind?:string }) {
+  const requested=kind||new URLSearchParams(location.search).get('create');
+  const intent=requested&&['personal','business','developer'].includes(requested)?requested:undefined;
+  const intentQuery=intent?'?create='+encodeURIComponent(intent):'';
+  useEffect(()=>{if(mode==='signin'||mode==='signup') exitDemo();},[mode]);
   const [error, setError] = useState(''),
     [result, setResult] = useState<any>(null),
     [busy, setBusy] = useState(false);
@@ -80,9 +87,27 @@ export function AuthPage({ mode }: { mode: string }) {
     setError('');
     const d = Object.fromEntries(new FormData(e.currentTarget));
     try {
-      const r = await api('/api/auth/' + mode, 'POST', d);
+      const client=await managedClient();
+      let r:any;
+      if(client) {
+        const email=String(d.email||''),password=String(d.password||'');
+        const callbackURL=location.origin+'/auth/callback'+intentQuery;
+        const result=mode==='signup'?await client.signUp.email({name:String(d.name||email.split('@')[0]),email,password,callbackURL}):
+          mode==='signin'?await client.signIn.email({email,password}):
+          mode==='recover'?await client.requestPasswordReset({email,redirectTo:location.origin+'/reset'}):
+          mode==='reset'?await client.resetPassword({newPassword:password,token:String(d.token)}):
+          await client.emailOtp.verifyEmail({email,otp:String(d.token)});
+        if(result.error) throw new Error(result.error.message||'Authentication request failed');
+        r={email,managed:true,message:mode==='signup'?'Account created. Verify your email if requested, then continue.':mode==='recover'?'If the account exists, a recovery email was sent.':'Authentication updated.'};
+        if(mode==='signup' && (await client.getSession()).data?.user) {location.href='/app/workspaces?create='+encodeURIComponent(intent||'business');return;}
+        if(mode==='verify') {
+          r.verified=true;
+          if((await client.getSession()).data?.user){location.href='/app'+intentQuery;return;}
+        }
+      } else r = await api('/api/auth/' + mode, 'POST', d);
+      if(mode==='verify')r.signin_href='/login'+intentQuery;
       setResult(r);
-      if (mode === 'signin') window.location.href = '/app';
+      if (mode === 'signin') window.location.href = '/app'+intentQuery;
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -93,7 +118,7 @@ export function AuthPage({ mode }: { mode: string }) {
     <div className="auth-page">
       <Logo />
       <div className="auth-panel">
-        <span className="eyebrow">AFRICORE BUSINESS</span>
+        <span className="eyebrow">AFRICORE {kind||'ACCOUNT'}</span>
         <h1>
           {
             (
@@ -109,8 +134,8 @@ export function AuthPage({ mode }: { mode: string }) {
         </h1>
         <p>
           {mode === 'signup'
-            ? 'Start in sandbox. Your business remains unverified until explicit verification.'
-            : 'Your connected business workspace.'}
+            ? `Create one identity for your ${kind||'Business'} workspace. You can add other workspaces later.`
+            : 'Sign in once. Continue in your authorized workspace.'}
         </p>
         {['signin', 'signup'].includes(mode) && (
           <section className="demo-entry">
@@ -135,9 +160,10 @@ export function AuthPage({ mode }: { mode: string }) {
           </section>
         )}
         <form onSubmit={submit}>
-          {['signup', 'signin', 'recover'].includes(mode) && (
+          {mode==='signup'&&<Field label="Your name"><input name="name" required maxLength={100} autoComplete="name" /></Field>}
+          {['signup', 'signin', 'recover','verify'].includes(mode) && (
             <Field label="Email address">
-              <input required type="email" name="email" autoComplete="email" />
+              <input required type="email" name="email" autoComplete="email" defaultValue={mode==='verify'?new URLSearchParams(location.search).get('email')||'':undefined}/>
             </Field>
           )}
           {['signup', 'signin', 'reset'].includes(mode) && (
@@ -162,10 +188,10 @@ export function AuthPage({ mode }: { mode: string }) {
                 defaultValue={
                   new URLSearchParams(location.search).get('token') || ''
                 }
-                minLength={64}
               />
             </Field>
           )}
+          {mode==='verify'&&<button type="button" className="secondary-button" disabled={busy} onClick={async(e)=>{const email=String(new FormData(e.currentTarget.form!).get('email'));setBusy(true);setError('');try{const client=await managedClient();if(!client)throw new Error('Use the development token from registration.');const r=await client.emailOtp.sendVerificationOtp({email,type:'email-verification'});if(r.error)throw new Error(r.error.message||'Verification unavailable');setResult({message:'If eligible, a verification code was sent to your email.'});}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>Send verification code</button>}
           <ErrorBox error={error} />
           <button className="button" disabled={busy}>
             {busy ? (
@@ -179,6 +205,8 @@ export function AuthPage({ mode }: { mode: string }) {
         </form>
         {result && (
           <div className="alert" role="status">
+            {mode==='signup'&&<>{!result.managed&&<a className="button" href={'/app/workspaces?create='+encodeURIComponent(intent||'business')}>Continue to workspace setup</a>}{result.managed&&<a className="button" href={'/verify?email='+encodeURIComponent(result.email)+(intent?'&create='+encodeURIComponent(intent):'')}>Verify email and continue</a>}</>}
+            {result.signin_href&&<a className="button" href={result.signin_href}>Sign in to continue</a>}
             <p>
               {result.verified
                 ? 'Email verified.'
@@ -191,7 +219,7 @@ export function AuthPage({ mode }: { mode: string }) {
               <>
                 <p>Development verification token (shown locally):</p>
                 <code className="one-time">{result.verification_token}</code>
-                <a href={'/verify?token=' + result.verification_token}>
+                <a href={'/verify?token=' + result.verification_token+'&email='+encodeURIComponent(result.email||'')+(intent?'&create='+encodeURIComponent(intent):'')}>
                   Verify email <Icon name="right" />
                 </a>
               </>
@@ -205,15 +233,16 @@ export function AuthPage({ mode }: { mode: string }) {
                 </a>
               </>
             )}
-            <a href="/app">
+            <a href={'/app'+intentQuery}>
               Open workspace <Icon name="right" />
             </a>
           </div>
         )}
         <div className="auth-links">
-          <a href="/signin">Sign in</a>
+          <a href={'/login'+intentQuery}>Sign in</a>
           <a href="/signup">Create account</a>
           <a href="/recover">Forgot password?</a>
+          <a href="/verify">Verify email</a>
           <a href="/">Back to AfriCore</a>
         </div>
       </div>
@@ -377,7 +406,8 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
   { label: 'Administration', icon: 'settings', items: ['Team', 'Settings'] },
 ];
 const tabs = navigation.flatMap((group) => group.items);
-export function BusinessApp() {
+export function BusinessApp({initialOrg}:{initialOrg?:string}={}) {
+  const [resolvingOrgs,setResolvingOrgs]=useState(true),[orgLoadError,setOrgLoadError]=useState('');
   const workspaceSwitch = useRef(0);
   const [me, setMe] = useState<any>(null),
     [orgs, setOrgs] = useState<any[]>([]),
@@ -451,10 +481,13 @@ export function BusinessApp() {
         setOrgs(r.data);
         if (isDemo()) { setOrg(r.data[0]?.id || ''); return; }
         const account = await api('/api/auth/account');
-        setOrg(r.data.some((o: any) => o.id === account.workspace?.id)
-          ? account.workspace.id : r.data[0]?.id || '');
+        const requested=initialOrg||account.workspace?.id;
+        if(initialOrg&&!r.data.some((o:any)=>o.id===initialOrg)) throw new Error('Business membership is no longer available.');
+        setOrg(r.data.some((o: any) => o.id === requested)
+          ? requested : r.data[0]?.id || '');
       })
-      .catch(() => {});
+      .catch(e=>setOrgLoadError((e as Error).message))
+      .finally(()=>setResolvingOrgs(false));
   }, []);
   const call = (
     suffix: string,
@@ -544,7 +577,8 @@ export function BusinessApp() {
       });
       const result = await api('/api/v1/organizations');
       setOrgs(result.data);
-      setOrg(r.id);
+      if(initialOrg&&!isDemo()) location.href='/app/business/'+r.id;
+      else setOrg(r.id);
       setCreating(false);
       return r;
     });
@@ -882,6 +916,8 @@ export function BusinessApp() {
       </>
     );
   }
+  if(resolvingOrgs) return <main className="account-entry" role="status">Loading your Business workspace…</main>;
+  if(orgLoadError) return <main className="account-entry"><h1>Business workspace unavailable</h1><ErrorBox error={orgLoadError}/><a href="/app/workspaces">Resolve current access</a><button className="button" onClick={()=>location.reload()}>Try again</button></main>;
   return (
     <div className="business-shell">
       {navOpen && (
@@ -941,14 +977,15 @@ export function BusinessApp() {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          {!isDemo()&&<a href="/app/workspaces">All workspaces</a>}
           <a href="/docs">
             Developer docs <Icon name="right" />
           </a>
           <button
             onClick={() =>
-              api('/api/auth/signout', 'POST', {}).then(
+              managedSignOut().then(
                 () => (location.href = '/signin'),
-              )
+              ).catch(e=>setError((e as Error).message))
             }
           >
             Sign out
@@ -976,7 +1013,10 @@ export function BusinessApp() {
                 if (!id) { setOrg(''); return; }
                 try {
                   if (!isDemo()) await api('/api/auth/account/workspace', 'POST', {workspace_id: id});
-                  if (version === workspaceSwitch.current) setOrg(id);
+                  if (version === workspaceSwitch.current) {
+                    if(initialOrg&&!isDemo()) location.href='/app/business/'+id;
+                    else setOrg(id);
+                  }
                 } catch (error) { if (version === workspaceSwitch.current) setError((error as Error).message); }
               }}
             >

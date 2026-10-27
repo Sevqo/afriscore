@@ -3,6 +3,9 @@ import { pages } from "../content";
 import { guides } from "./guides";
 import { lessons } from "./Learn";
 export function pageMetadata(path: string) {
+  if(path==='/get-started'||path==='/signup'||path.startsWith('/sign-up/')||path==='/login'||path==='/signin'||path.startsWith('/app')||path==='/auth/callback') {
+    return {title:path==='/get-started'||path==='/signup'?'Choose your AfriCore experience':path.startsWith('/sign-up/')?'Create your AfriCore '+path.split('/')[2]+' account':path==='/login'||path==='/signin'?'Sign in to AfriCore':path.startsWith('/app/personal')?'AfriCore Personal':path.startsWith('/app/developer')?'AfriCore Developer Console':'Your AfriCore workspaces',description:'One identity for your Personal, Business and Developer workspaces. Access follows your current memberships.'};
+  }
   const lesson = path.startsWith("/learn/")
       ? lessons[path.split("/")[2]]
       : undefined,

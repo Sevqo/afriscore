@@ -1,0 +1,7 @@
+# Account security tests
+
+workspace-experiences.test.ts exercises real HTTP signup, Personal onboarding without company fields, persisted client/invoice/expense/manual income, currency/date filters, relogin routing, retained Personal data after Business creation and membership revocation. It checks stranger reads, spoofed selection, preferences granting no access, strict rejection of provider-verification assertions and denial of Personal team/key access.
+
+Developer tests create an application/key without merchant setup, exercise scoped API reads, deny writes with a read key, deny cross-tenant keys, deny production/team/internal access, verify hashed key storage and immediate revocation. Invalid timezone input is rejected. Existing account tests cover idempotent backfill and account API anonymous/spoofed-workspace denial. Stage 1–3 suites retain team, environment, financial, consent, evidence and issuer controls.
+
+Managed development tests separately demonstrate real provider signup/token issuance, application projection, three persistent workspace types and Personal income retrieval from Neon. Verification requires a real mailbox; synthetic tests do not recover hashed verification codes or bypass verification by updating provider rows. Signature/claim verification uses JOSE with fixed trusted configuration. External audit, load/distributed controls, full browser/device coverage, production sender delivery and real outbound webhook qualification are not established by these tests.

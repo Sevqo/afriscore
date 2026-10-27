@@ -20,6 +20,45 @@ import {
 } from './payments';
 import { isAllowedWebhookTarget } from '../services/webhookService';
 export const platform = Router();
+platform.get('/organizations/:org/request-logs',route(async(req,res)=>{
+  const a=await access(req,'admin');
+  res.json({data:await dbAll('SELECT id,credential_id,method,route,status_code,created_at FROM ac_api_request_logs WHERE org_id=? AND environment=? ORDER BY created_at DESC,id DESC LIMIT 100',[a.org,a.environment]),coverage:'Most recent 100 scoped credential requests; excludes bodies, keys and query strings.'});
+}));
+platform.get('/organizations/:org/personal-income',route(async(req,res)=>{
+  const a=await access(req);
+  const w=await dbGet("SELECT id FROM ac_workspaces WHERE id=? AND kind='personal'",[a.org]);
+  if(!w) fail(403,'Personal workspace required');
+  res.json({data:await dbAll('SELECT * FROM ac_personal_income WHERE workspace_id=? AND environment=? ORDER BY occurred_on DESC,id DESC LIMIT 100',[a.org,a.environment]),source:'manually_recorded'});
+}));
+platform.post('/organizations/:org/personal-income',route(async(req,res)=>{
+  const a=await access(req,'finance');
+  if(a.api || !await dbGet("SELECT id FROM ac_workspaces WHERE id=? AND kind='personal'",[a.org])) fail(403,'Personal session required');
+  const d=z.object({description:z.string().trim().min(1).max(300),amount_minor:z.number().int().positive().max(100000000000),currency:currencySchema,occurred_on:z.string().date()}).strict().parse(req.body);
+  const id=randomUUID();
+  await dbTransaction(async()=>{
+    await dbRun('INSERT INTO ac_personal_income(id,workspace_id,environment,description,amount_minor,currency,occurred_on,created_at,actor) VALUES (?,?,?,?,?,?,?,?,?)',[id,a.org,a.environment,d.description,d.amount_minor,d.currency,d.occurred_on,now(),a.actor]);
+    await audit(a.org,a.actor,'personal_income.recorded',id);
+  });
+  res.status(201).json({id,...d,source:'manually_recorded',provider_verified:false});
+}));
+platform.get('/organizations/:org/personal-summary',route(async(req,res)=>{
+  const a=await access(req);
+  if(!await dbGet("SELECT id FROM ac_workspaces WHERE id=? AND kind='personal'",[a.org])) fail(403,'Personal workspace required');
+  const q=z.object({currency:currencySchema.default('KES'),from:z.string().date().optional(),to:z.string().date().optional()}).parse(req.query);
+  if(q.from&&q.to&&q.from>q.to) fail(400,'Invalid date range');
+  const within=(date:string)=>(!q.from||date>=q.from)&&(!q.to||date<=q.to);
+  const sum=(values:number[])=>values.reduce((total,n)=>{if(!Number.isSafeInteger(total+n))fail(409,'Recorded totals exceed the supported range');return total+n;},0);
+  const incomes=await dbAll('SELECT * FROM ac_personal_income WHERE workspace_id=? AND environment=? AND currency=?',[a.org,a.environment,q.currency]);
+  const expenses=(await dbAll("SELECT data FROM ac2_objects WHERE org_id=? AND environment=? AND kind='expenses'",[a.org,a.environment])).map(r=>JSON.parse(r.data));
+  const superseded=new Set(expenses.map(r=>r.supersedes_id).filter(Boolean));
+  const expenseRows=await dbAll("SELECT id,data FROM ac2_objects WHERE org_id=? AND environment=? AND kind='expenses'",[a.org,a.environment]);
+  const manual=sum(incomes.filter(r=>within(r.occurred_on)).map(r=>Number(r.amount_minor)));
+  const out=sum(expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)).filter(r=>r.currency===q.currency&&within(r.occurred_on)).map(r=>Number(r.amount_minor)));
+  const invoices=(await dbAll("SELECT data FROM ac_records WHERE org_id=? AND environment=? AND kind='invoices'",[a.org,a.environment])).map(r=>JSON.parse(r.data));
+  res.json({currency:q.currency,environment:a.environment,from:q.from||null,to:q.to||null,manual_income_minor:manual,recorded_expenses_minor:out,recorded_net_minor:manual-out,
+    outstanding_invoices_minor:sum(invoices.filter(r=>r.currency===q.currency&&!['draft','voided','paid'].includes(r.status)).map(r=>Math.max(0,r.total_minor-r.paid_minor))),
+    coverage:'Manually recorded income and expenses only; net is not a bank balance or profit. Outstanding invoices cover all open dates. Provider payments remain separate payment records.'});
+}));
 const profileSchema = z.object({
   name: z.string().trim().min(2).max(150),
   business_type: z.string().min(2).max(80),
@@ -39,7 +78,7 @@ platform.get(
     const u = await user(req);
     res.json({
       data: await dbAll(
-        'SELECT o.*,m.role FROM ac_organizations o JOIN ac_memberships m ON o.id=m.org_id WHERE m.user_id=?',
+        "SELECT o.*,m.role FROM ac_organizations o JOIN ac_memberships m ON o.id=m.org_id LEFT JOIN ac_workspaces w ON w.id=o.id WHERE m.user_id=? AND (w.kind IS NULL OR w.kind='business')",
         [u.id],
       ),
     });

@@ -1,4 +1,4 @@
-import { dbExec, dbRun, dbTransaction, isPostgres } from '../db/adapter';
+import { dbExec, dbRun, dbTransaction, isPostgres } from "../db/adapter";
 
 /** Additive account metadata. Existing organization IDs remain resource scopes. */
 export async function migrateAccounts() {
@@ -29,11 +29,15 @@ CREATE INDEX IF NOT EXISTS ac_workspaces_kind_status ON ac_workspaces(kind,statu
     await dbRun(`INSERT INTO ac_profiles(user_id,updated_at)
  SELECT id,created_at FROM ac_users WHERE 1=1 ON CONFLICT(user_id) DO NOTHING`);
     if (isPostgres) {
-      for (const table of ['ac_workspaces', 'ac_profiles']) {
-        await dbExec(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY; REVOKE ALL ON ${table} FROM PUBLIC;`);
+      for (const table of ["ac_workspaces", "ac_profiles"]) {
+        await dbExec(
+          `ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY; REVOKE ALL ON ${table} FROM PUBLIC;`,
+        );
       }
     }
-    await dbRun('INSERT INTO platform_migrations(version,applied_at) VALUES (?,?) ON CONFLICT(version) DO NOTHING',
-      ['004-account-foundation', new Date().toISOString()]);
+    await dbRun(
+      "INSERT INTO platform_migrations(version,applied_at) VALUES (?,?) ON CONFLICT(version) DO NOTHING",
+      ["004-account-foundation", new Date().toISOString()],
+    );
   });
 }
