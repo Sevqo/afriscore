@@ -16,6 +16,8 @@ export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath
   process.env.AFRISCORE_ADMIN_TOKEN = "test-only-admin-token-at-least-32-characters";
   // Orbit tests always use the in-memory queue backend, never a live Redis.
   delete process.env.REDIS_URL;
+  // Prevent config.ts from reloading a real managed provider from local .env.
+  process.env.NEON_AUTH_BASE_URL = '';
   const pgUrl = process.env.TEST_DATABASE_URL;
 
   if (pgUrl) {
@@ -23,7 +25,8 @@ export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath
     return { isPg: true, sqlitePath: "" };
   }
 
-  delete process.env.DATABASE_URL;
+  // An explicit empty value prevents .env loading from opting tests into Neon.
+  process.env.DATABASE_URL = '';
   const sqlitePath = path.join(__dirname, `../../test-${suiteName}.db`);
   process.env.DB_PATH = sqlitePath;
   return { isPg: false, sqlitePath };
