@@ -82,6 +82,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:dev
+      - run: node --test deploy/cloudflare/worker.test.mjs
 
   website:
     name: Website build

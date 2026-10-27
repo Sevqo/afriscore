@@ -1,0 +1,39 @@
+# Online evaluation only. No database, Redis, disk or paid worker is created.
+services:
+  - type: web
+    name: africore-api
+    runtime: docker
+    repo: https://github.com/Sevqo/afriscore
+    branch: main
+    plan: free
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /v1/readiness
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AFRICORE_ENVIRONMENT
+        value: development
+      - key: AFRICORE_PUBLIC_ORIGIN
+        sync: false
+      - key: NEON_AUTH_BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: AFRICORE_ENCRYPTION_KEY
+        sync: false
+      - key: ID_HASH_SALT
+        sync: false
+      - key: LEDGER_HMAC_KEY
+        sync: false
+      - key: AFRISCORE_ADMIN_TOKEN
+        generateValue: true
+      - key: AFRICORE_GATEWAY_SECRET
+        sync: false
+      - key: AFRISCORE_WEBHOOK_ALLOWED_HOSTS
+        value: disabled.invalid
+      - key: AFRICORE_TESTNET_ANCHORING
+        value: "false"
+      - key: TRUST_PROXY
+        value: "1"

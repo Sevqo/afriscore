@@ -34,6 +34,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY tsconfig.json ./
+COPY scripts/clean-build.cjs ./scripts/clean-build.cjs
 COPY src ./src
 RUN npm run build
 
@@ -42,6 +43,7 @@ WORKDIR /app/website
 COPY website/package.json website/package-lock.json ./
 RUN npm ci
 COPY website ./
+COPY dashboard/shared /app/dashboard/shared
 RUN npm run build
 
 # --- Production dependencies only ------------------------------------------

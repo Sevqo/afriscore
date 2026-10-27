@@ -40,3 +40,6 @@ website/*-qa.png
 
 # Local pointer to private development configuration (never contains credentials)
 .africore-dev.json
+.dev.vars
+.dev.vars.*
+**/.wrangler/

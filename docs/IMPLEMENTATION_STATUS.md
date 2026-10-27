@@ -136,3 +136,6 @@ Current modules use operations/trust, with external API/schema/contract compatib
 
 ## Password policy and local authentication continuation
 Owner-requested signup/reset minimum is now8characters. Local common-password checks and existing sign-in compatibility remain. Desktop startup uses the existing Neon development branch through private AppData configuration and an ignored local pointer; no credentials are copied into OneDrive/source. Development readiness timeout now accommodates hosted initialization. Earlier15-character target notes are superseded by the owner request. See AUTHENTICATION for the provider validation probe and current service repair.
+
+## Online evaluation infrastructure — in progress
+Cloudflare static assets/API gateway and single-instance Render Docker configuration are prepared. Existing Neon development identities/data are preserved; production stays untouched. See DEPLOYMENT_TEST_RESULTS for actual deployed status rather than inferring it from configuration files. No paid service or live financial integration is enabled.

@@ -1,1 +1,2 @@
-/* /index.html 200
+# SPA fallback is configured in deploy/cloudflare/wrangler.jsonc.
+# Do not add a wildcard /index.html rewrite: Workers rejects its redirect loop.

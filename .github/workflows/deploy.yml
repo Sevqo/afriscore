@@ -1,0 +1,42 @@
+name: Deploy online evaluation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: africore-evaluation-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: evaluation
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            website/package-lock.json
+            deploy/cloudflare/package-lock.json
+      - run: npm ci && npm --prefix website ci && npm --prefix deploy/cloudflare ci
+      - run: npm run typecheck && npm run lint && npm run test:dev
+      - run: npm test && npm run validate:openapi && npm run validate:platform
+      - run: npm --prefix website run build && npm --prefix deploy/cloudflare test && npm --prefix deploy/cloudflare run check
+      - name: Deploy Cloudflare frontend and gateway
+        working-directory: deploy/cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Configure a scoped evaluation Cloudflare API token.'; exit 1; }
+          npm run deploy
+      - name: Trigger existing Render backend deployment
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK" || { echo 'Configure the existing backend deploy hook.'; exit 1; }
+          curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK" > /dev/null

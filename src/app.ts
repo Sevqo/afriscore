@@ -28,6 +28,7 @@ import { ipRateLimit } from "./middleware/rateLimit";
 import { requestContext, RequestWithContext } from "./middleware/requestContext";
 import { errorEnvelope, errorHandler } from "./middleware/errorHandler";
 import { logger, requestLogger } from "./logging";
+import { requireGateway } from './middleware/gateway';
 import { metricsMiddleware, renderMetrics } from "./metrics";
 import { requireAdmin } from "./middleware/adminAuth";
 
@@ -68,6 +69,7 @@ export function createApp() {
   // Normalises every 4xx/5xx body to {error, message, request_id, ...}.
   // Must precede the rate limiter so 429s carry the same envelope.
   app.use(errorEnvelope);
+  app.use(requireGateway);
   app.use(metricsMiddleware);
   app.use(requestLogger);
   // Limit before parsing: an unauthenticated flood should be rejected without
