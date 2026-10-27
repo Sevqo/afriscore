@@ -30,7 +30,9 @@ test-*.db-wal
 website/node_modules/
 website/dist/
 reviews/
-scripts/
+scripts/*
+!scripts/clean-build.cjs
+deploy/
 openapi.json
 README.md
 SECURITY.md
