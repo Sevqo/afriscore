@@ -32,3 +32,6 @@ PowerShell launch from the repository:
 
 ## Paired development command
 Use npm run dev with DEV_ENV_FILE=.env.neon.development; see LOCAL_NETWORK_DEVELOPMENT. Default frontend5175/API4005, strict ports, correct provider output and readiness gating replace automatic reuse of the legacy API4000. Existing4003 preview and4173 static preview may still be older processes. Restart owned development services when changing server code. Do not point normal tests at Neon; local disposable PostgreSQL is separate.
+
+## Desktop configuration continuation
+A checkout may select an existing private environment outside its directory through ignored .africore-dev.json: {"envFile":"absolute path to private environment file"}. Explicit DEV_ENV_FILE takes precedence, followed by .env.neon.development, this local pointer, then .env. Never put credentials in the pointer or a synced repository. Windows private configuration can live under %LOCALAPPDATA%/AfriCore. Start the complete pair with npm run dev; a standalone Vite server cannot provide authentication. Hosted initialization is allowed120seconds by default, configurable with DEV_API_READY_TIMEOUT_MS(10000–300000). It still refuses a frontend when the API fails readiness.

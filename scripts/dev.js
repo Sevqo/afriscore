@@ -1,13 +1,13 @@
 const {spawn}=require('node:child_process');
 const fs=require('node:fs'),net=require('node:net'),os=require('node:os');
-const {developmentConfig}=require('./development-config.cjs');
+const {developmentConfig,developmentEnvironmentFile}=require('./development-config.cjs');
 const children=new Set();let stopping=false;
 function stop(code){if(stopping)return;stopping=true;process.exitCode=code;for(const child of children)child.kill();}
 function start(name,args,env){const child=spawn(process.execPath,args,{cwd:process.cwd(),env,stdio:'inherit'});children.add(child);child.once('error',()=>{console.error(name+' could not start.');stop(1);});child.once('exit',code=>{children.delete(child);if(!stopping){console.error(name+' stopped ('+code+').');stop(code||1);}});}
 function available(port,host){return new Promise((resolve,reject)=>{const server=net.createServer();server.once('error',()=>reject(new Error('Port '+port+' is occupied. Choose DEV_PORT / DEV_API_PORT explicitly; existing processes are never reused or stopped.')));server.listen(port,host,()=>server.close(resolve));});}
 async function main(){
-  const envFile=process.env.DEV_ENV_FILE||(fs.existsSync('.env.neon.development')?'.env.neon.development':'.env');
-  if(fs.existsSync(envFile))process.loadEnvFile(envFile);else if(process.env.DEV_ENV_FILE)throw new Error('DEV_ENV_FILE does not exist.');
+  const envFile=developmentEnvironmentFile(process.env,fs);
+  if(fs.existsSync(envFile))process.loadEnvFile(envFile);else if(envFile!=='.env')throw new Error('The selected private development environment file does not exist.');
   if(process.env.NODE_ENV==='production')throw new Error('Use the deployment command for production.');
   const addresses=Object.values(os.networkInterfaces()).flat().filter(a=>a&&!a.internal&&a.family==='IPv4').map(a=>a.address);
   const config=developmentConfig(process.env,addresses);
@@ -18,8 +18,8 @@ async function main(){
   console.log('Authentication: '+(env.NEON_AUTH_BASE_URL?'managed provider from private environment':'local account store')+'. API stays on loopback.');
   if(env.NEON_AUTH_BASE_URL)console.log('Phone sign-in requires trusted HTTPS and the exact origin registered in Neon. See docs/LOCAL_NETWORK_DEVELOPMENT.md.');
   start('API',['node_modules/ts-node/dist/bin.js','src/index.ts'],env);
-  let ready=false;
-  for(let attempt=0;attempt<90&&!stopping;attempt++){try{const response=await fetch('http://127.0.0.1:'+config.apiPort+'/v1/readiness',{signal:AbortSignal.timeout(1500)});if(response.ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,500));}
+  let ready=false;const deadline=Date.now()+config.readyTimeoutMs;
+  for(;Date.now()<deadline&&!stopping;){try{const response=await fetch('http://127.0.0.1:'+config.apiPort+'/v1/readiness',{signal:AbortSignal.timeout(1500)});if(response.ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,500));}
   if(!ready)throw new Error('API readiness failed. Check the selected private environment and database connection.');
   start('Website',['website/node_modules/vite/bin/vite.js','--config','website/vite.config.ts','--configLoader','runner','website'],env);
 }

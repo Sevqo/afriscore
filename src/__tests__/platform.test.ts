@@ -1081,7 +1081,7 @@ test('retailer journey allocates KSh 1500 then KSh 1000, updates order and repor
 test('recovery revokes existing sessions, consumes the token once and permits only the new password', async () => {
   const address = email('recovery-audit'),
     oldPassword = 'test-old-password-strong',
-    newPassword = 'test-new-password-strong';
+    newPassword = 'new-pass';
   const signup = await request('/api/auth/signup', 'POST', {
     email: address,
     password: oldPassword,
@@ -1199,7 +1199,7 @@ test('customer corrections permit clearing optional contact data and reject blan
   assert.ok(history.length >= 2);
 });
 
-test('existing short passwords still authenticate while signup rejects the same password',async()=>{
+test('existing eight-character passwords authenticate and new signup rejects seven characters',async()=>{
   const {passwordHash}=await import('../platform/crypto');
   const address=email('existing-short');
   const account=await request('/api/auth/signup','POST',{email:address,password:'a long unique test phrase'});
@@ -1207,5 +1207,6 @@ test('existing short passwords still authenticate while signup rejects the same 
   await dbRun('UPDATE ac_users SET password_hash=? WHERE id=?',[await passwordHash('old-pass'),account.data.id]);
   const login=await request('/api/auth/signin','POST',{email:address,password:'old-pass'});
   assert.equal(login.status,200);assert.equal(login.data.id,account.data.id);assert.ok(login.cookie);
-  assert.equal((await request('/api/auth/signup','POST',{email:email('short-new'),password:'old-pass'})).status,400);
+  assert.equal((await request('/api/auth/signup','POST',{email:email('eight-new'),password:'quietbay'})).status,201);
+  assert.equal((await request('/api/auth/signup','POST',{email:email('short-new'),password:'7-chars'})).status,400);
 });

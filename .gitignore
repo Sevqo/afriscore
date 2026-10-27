@@ -37,3 +37,6 @@ website/*-qa.png
 
 # Scratch work
 .tmp/
+
+# Local pointer to private development configuration (never contains credentials)
+.africore-dev.json
