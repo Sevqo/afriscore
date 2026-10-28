@@ -20,4 +20,4 @@ Each of the 23 guide routes has a dedicated numbered SVG workflow in `website/pu
 
 The production website build prerenders 50 routes. The content regression suite checks every guide's diagram file and inclusion in its rendered page. Local mobile browser review covered the Personal menu and Reports, workspace chooser, and Trust Network explanation and image. Saved evidence is in the ignored `.tmp/security/` directory. This is desktop browser emulation, not physical iPhone acceptance.
 
-These changes are local until the pending security release is validated and deployed. They do not change authentication providers, financial records, workspace permissions or password minimums.
+The compact interface and diagrams are deployed with security application release e8f63b1 on the existing Cloudflare/Render hosts. The public Trust Network page was checked after publication and its diagram returns HTTP 200. See security/SECURITY_TEST_RESULTS.md for exact deployment identifiers. These appearance changes do not change authentication providers, financial records, workspace permissions or password minimums.

@@ -28,4 +28,31 @@ Before this release, deployed application commit was `3451fda`, with main docume
 
 ## Final gates and hosted release
 
-Local release gates passed as recorded above. The final connection-pinning/security/gateway subset passed 17/17. Hosted application rollout and CI run identifiers will be appended after the source push; they are not yet claimed here. Never infer live protection from a source push, nor password/MFA enforcement on the vendor-managed server from a frontend package update.
+Local release gates passed as recorded above. The final connection-pinning/security/gateway subset passed 17/17. The hosted verification below records the actual deployed source and evidence. Never infer password/MFA enforcement on the vendor-managed server from a frontend package update.
+
+## Verified hosted release — 28 October 2026
+
+Application source `e8f63b16b66c418ae19121142af138ff107f295f` is pushed to both `main` and `codex/security-second-pass`. All five main CI jobs passed in [run 40676189785](https://github.com/Sevqo/afriscore/actions/runs/40676189785): SQLite, PostgreSQL, website, type/lint/startup/edge, local EVM/independent verifier.
+
+The existing Render service deployed that exact application source successfully as `dep-dbgtamrbc2fs73bjke3g`. Compatible encryption readers were checked before `AFRICORE_ENCRYPTION_WRITE_VERSION=2` was saved and activated by environment deployment `dep-dbgtd5ek1f9s7394mkug` (21 seconds, live). No keys were changed. Do not roll back to the old `3451fda` reader after this activation.
+
+Cloudflare Worker `africore-web` is published as version `34e13b31-a2dc-462d-9722-a40681d48c87`, serving the new compact interface, all 23 guide diagrams and hardened gateway policy. The existing gateway secret was retained. The deployed backend's successful startup also exercised verify-only migration 006 checks.
+
+Hosted HTTP checks:
+
+| Probe | Result |
+|---|---|
+| Direct protected Render auth configuration | 403 |
+| Direct and edge readiness | 200, only `status` in response |
+| Anonymous edge account access | 401 |
+| Edge `/api/v1/internal/trust/operations` | 404, JSON, no-store |
+| Edge `/v1/clients` | 404, JSON, no-store |
+| Edge auth configuration | 200, no-store |
+| New Trust Network diagram | 200, SVG |
+| Approved synthetic managed account / Personal / Business / Developer | All 200 |
+
+With explicit additional approval, the QA Business workspace created one private, clearly synthetic Passport (no documents or verification claims). Its hosted encrypted row starts with `v2.`, decrypts with the correct tenant/environment/type/ID context and rejects a substituted ID. API readback succeeded. Aggregate checks confirmed the original seven application users and nine workspaces remain, and the legitimate Continua organization is present. No real customer's Passport or identity was modified. This verifies new hosted writes, not bulk migration of historical ciphertext.
+
+Private local evidence: `hosted-release-result.json`, `development-migration-result.json`, encrypted backup and `render-security-live.png` under ignored `.tmp/security`. The disposable local PostgreSQL test cluster was stopped after the passing gates; its data files were retained. The ordinary HTTP localhost preview remains available.
+
+The final documentation/configuration commit records this verified state; Render remains on the tested application source above because automatic deployment is disabled. MFA, breach-screening consent, historical re-encryption, KYC lifecycle, external checkpoint custody and low-severity upstream advisories remain explicitly listed in RESIDUAL_RISKS.
