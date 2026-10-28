@@ -90,7 +90,6 @@ export function PassportWorkspace({
     [busy, setBusy] = useState(false),
     [report, setReport] = useState<any>(null),
     [selected, setSelected] = useState<string[]>([]),
-    [operations, setOperations] = useState<any>(null),
     [history, setHistory] = useState<any[]>([]),
     [file, setFile] = useState<any>(null);
   const editable = ['owner', 'admin'].includes(role),
@@ -1154,132 +1153,7 @@ export function PassportWorkspace({
           {tab === 'Trust Operations' && (
             <section className="panel">
               <h2>Restricted trust operations</h2>
-              <p>
-                Requires a verified trust-operator allowlisted account. Business
-                ownership does not grant this access.
-              </p>
-              <button
-                onClick={async () => {
-                  try {
-                    setOperations(await request('/internal/trust/operations'));
-                  } catch (e) {
-                    setError((e as Error).message);
-                  }
-                }}
-              >
-                Load authorized operations
-              </button>
-              {operations && (
-                <>
-                  <h3>Issuer reviews</h3>
-                  {operations.issuers?.map((i: any) => (
-                    <Form
-                      key={i.id}
-                      submit={(d) =>
-                        act(() =>
-                          request(
-                            '/internal/trust/issuers/' + i.id + '/review',
-                            'POST',
-                            d,
-                          ),
-                        )
-                      }
-                    >
-                      <p>
-                        {i.name} · {i.status}
-                      </p>
-                      <select name="decision">
-                        <option value="approve_sandbox">
-                          Approve sandbox only
-                        </option>
-                        <option value="suspend">Suspend</option>
-                        <option value="revoke">Revoke</option>
-                      </select>
-                      <input
-                        name="reason"
-                        minLength={10}
-                        required
-                        placeholder="Review reason"
-                      />
-                      <button>Record issuer decision</button>
-                    </Form>
-                  ))}
-                  <h3>Identity and correction reviews</h3>
-                  {operations.reviews?.map((r: any) => (
-                    <Form
-                      key={r.id}
-                      submit={(d) =>
-                        act(() =>
-                          request(
-                            '/internal/trust/' +
-                              (r.kind === 'identity_review'
-                                ? 'identity/'
-                                : 'corrections/') +
-                              r.id +
-                              (r.kind === 'identity_review'
-                                ? '/review'
-                                : '/resolve'),
-                            'POST',
-                            d,
-                          ),
-                        )
-                      }
-                    >
-                      <p>
-                        {r.kind} · {r.status} · {r.org_id}
-                      </p>
-                      <select name="decision">
-                        {(r.kind === 'identity_review'
-                          ? [
-                              'document_reviewed',
-                              'additional_information_required',
-                              'rejected',
-                              'revoked',
-                            ]
-                          : ['uphold', 'reject', 'request_information']
-                        ).map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
-                      </select>
-                      <input
-                        name="reason"
-                        minLength={10}
-                        required
-                        placeholder="Reason and verification method"
-                      />
-                      <button>Record review decision</button>
-                    </Form>
-                  ))}
-                  <h3>Anchor batches</h3>
-                  <button
-                    onClick={() =>
-                      act(() => request('/internal/trust/batches', 'POST', {}))
-                    }
-                  >
-                    Queue eligible sandbox commitments
-                  </button>
-                  <button
-                    onClick={() =>
-                      act(() =>
-                        request('/internal/trust/anchors/process', 'POST', {}),
-                      )
-                    }
-                  >
-                    Process configured local/testnet queue
-                  </button>
-                  {operations.batches?.map((b: any) => (
-                    <div className="list-row" key={b.id}>
-                      <span>
-                        {b.id} · {b.state}
-                      </span>
-                      <small>
-                        {b.data.network} · {b.data.confirmations || 0}{' '}
-                        confirmations
-                      </small>
-                    </div>
-                  ))}
-                </>
-              )}
+              <p>Issuer reviews and platform-wide trust operations require a separately authorized internal channel. They are unavailable through the public workspace. Business ownership does not grant operator access.</p>
             </section>
           )}
           {report && <VerificationReport report={report} />}

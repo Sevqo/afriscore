@@ -5,8 +5,8 @@ import { configureTestEnv, truncateAll, removeSqliteFile } from "./helpers";
 // Must run before any module that loads the DB adapter.
 const { sqlitePath } = configureTestEnv("ledger");
 
-import { migrate, dbRun } from "../db";
-import { appendEvent, getLedger, verifyChainIntegrity } from "../services/ledgerService";
+import { migrate, dbRun,dbGet } from "../db";
+import { appendEvent, getLedger, verifyChainIntegrity,ledgerCheckpoint } from "../services/ledgerService";
 
 describe("hash-chained ledger", () => {
   before(async () => {
@@ -136,5 +136,17 @@ describe("hash-chained ledger", () => {
     const entries = await getLedger("business", "biz-concurrent");
     const seqs = entries.map((e) => e.seq);
     assert.deepStrictEqual(seqs, [1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+  test('a separately retained checkpoint detects an otherwise valid snapshot rollback',async()=>{
+    const first=await appendEvent('business','biz-checkpoint','business.created',{fixture:true});
+    const old=await dbGet('SELECT * FROM ledger_heads WHERE subject_id=?',['biz-checkpoint']);
+    const second=await appendEvent('business','biz-checkpoint','score.updated',{fixture:true});
+    const checkpoint=await ledgerCheckpoint('business','biz-checkpoint');
+    await dbRun('DELETE FROM ledger WHERE id=?',[second.id]);
+    await dbRun('UPDATE ledger_heads SET entry_count=?,head_hash=?,anchor_hmac=?,updated_at=? WHERE subject_id=?',[old.entry_count,old.head_hash,old.anchor_hmac,old.updated_at,'biz-checkpoint']);
+    assert.equal((await verifyChainIntegrity('business','biz-checkpoint')).valid,true,'A complete valid snapshot needs external evidence to identify rollback');
+    assert.equal((await verifyChainIntegrity('business','biz-checkpoint',checkpoint)).valid,false);
+    await dbRun('DELETE FROM ledger WHERE id=?',[first.id]);await dbRun('DELETE FROM ledger_heads WHERE subject_id=?',['biz-checkpoint']);
+    assert.equal((await verifyChainIntegrity('business','biz-checkpoint',checkpoint)).valid,false);
   });
 });

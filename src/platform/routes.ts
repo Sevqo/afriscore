@@ -1,4 +1,5 @@
 import { trustEvents } from '../trust/contracts';
+import {reserveWorkspaceCreation} from './workspace-limits';
 import { stage2Events } from '../operations/events';
 import { Router } from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
@@ -98,6 +99,7 @@ platform.post(
       p = profileSchema.parse(req.body),
       id = randomUUID();
     await dbTransaction(async () => {
+      await reserveWorkspaceCreation(u.id);
       await dbRun(
         'INSERT INTO ac_organizations(id,name,profile,created_at) VALUES (?,?,?,?)',
         [id, p.name, JSON.stringify(p), now()],
@@ -189,6 +191,7 @@ platform.post(
   route(async (req, res) => {
     const u = await user(req),
       token = z.string().length(64).parse(req.body.token);
+    if(!u.verified)fail(403,'Verify your email before accepting an invitation');
     await dbTransaction(async () => {
       const row = await dbGet(
         'SELECT * FROM ac_invitations WHERE token_hash=? AND email=? AND accepted_at IS NULL AND expires_at>?'+(isPostgres?' FOR UPDATE':''),
@@ -311,8 +314,10 @@ platform.get(
     const params: (string | number)[] = [a.org, a.environment, kind];
     if (q) {
       // Literal substring search: SQL wildcard characters in user text stay literal.
-      predicates.push("LOWER(data || id || created_at) LIKE ? ESCAPE '\\'");
-      params.push('%' + q.toLowerCase().replace(/[\\%_]/g, '\\$&') + '%');
+      const fields:Record<string,string[]>={customers:['name','email','phone'],orders:['number','status','customer_id'],invoices:['number','status','customer_id'],transactions:['reference','description','provider','status'],applications:['name'],integrations:['name','provider','status']};
+      const expressions=['id','created_at',...(fields[kind]||[]).map(field=>isPostgres?`COALESCE(data::jsonb ->> '${field}','')`:`COALESCE(json_extract(data, '$.${field}'),'')`)];
+      predicates.push('('+expressions.map(expression=>`LOWER(${expression}) LIKE ? ESCAPE '\\'`).join(' OR ')+')');
+      params.push(...expressions.map(()=>'%'+q.toLowerCase().replace(/[\\%_]/g,'\\$&')+'%'));
     }
     if (status) {
       predicates.push(
@@ -1075,7 +1080,7 @@ platform.post(
         a.org,
         a.environment,
         d.url,
-        seal(value),
+        seal(value,JSON.stringify(['endpoint',a.org,a.environment,id])),
         JSON.stringify(d.subscriptions),
         now(),
       ],
@@ -1114,7 +1119,7 @@ platform.post(
       value = secret();
     const change = await dbRun(
       'UPDATE ac_endpoints SET secret=? WHERE id=? AND org_id=? AND environment=?',
-      [seal(value), String(req.params.id), a.org, a.environment],
+      [seal(value,JSON.stringify(['endpoint',a.org,a.environment,String(req.params.id)])), String(req.params.id), a.org, a.environment],
     );
     if (!change.changes) fail(404, 'Endpoint not found');
     await audit(a.org, a.actor, 'webhook.rotated', String(req.params.id));

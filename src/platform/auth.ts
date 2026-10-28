@@ -1,3 +1,4 @@
+import {workspaceRouteAllowed} from './workspace-capabilities';
 import { newPassword } from './password-policy';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
@@ -95,14 +96,9 @@ export async function access(
     fail(400, 'Invalid environment');
   const workspace = await dbGet('SELECT kind,status FROM ac_workspaces WHERE id=?',[org]);
   if(workspace?.status && workspace.status!=='active') fail(403,'Workspace inactive');
-  const tail=req.path.split('/organizations/'+org)[1] || '';
-  if(workspace?.kind==='personal' && !/^\/(?:records\/(?:customers|invoices|transactions)(?:\/|$)|expenses(?:\/|$)|personal-(?:income|summary)(?:\/|$)|payment-requests(?:\/|$)|reports(?:\/|$))/.test(tail))
-    fail(403,'This capability requires a Business or Developer workspace');
-  if(workspace?.kind==='developer') {
-    if(environment!=='sandbox') fail(403,'Developer production access requires separate review');
-    if(!/^\/(?:records\/(?:applications|customers|orders|invoices|transactions)(?:\/|$)|credentials(?:\/|$)|webhooks(?:\/|$)|deliveries(?:\/|$)|request-logs(?:\/|$)|audit(?:\/|$)|payment-requests(?:\/|$)|reconciliation(?:\/|$)|reports(?:\/|$)|sandbox(?:\/|$))/.test(tail))
-      fail(403,'This capability requires a Business workspace');
-  }
+  const kind=workspace?.kind||'business';
+  if(!workspaceRouteAllowed(req.method,req.route?.path,kind,String(req.params.kind||'')))fail(403,'This route is not available to this workspace type');
+  if(kind==='developer'&&environment!=='sandbox')fail(403,'Developer production access requires separate review');
   const key = req.headers.authorization?.match(
     /^Bearer (ac_[a-f0-9]{64})$/,
   )?.[1];

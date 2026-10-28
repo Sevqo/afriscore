@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {configureTestEnv} from './helpers';
 configureTestEnv('application-refinement');
-import {migrate,closeDb,dbGet} from '../db';
+import {migrate,closeDb,dbGet,dbRun} from '../db';
 import {createApp} from '../app';
 let server:ReturnType<ReturnType<typeof createApp>['listen']>,base:string;
 before(async()=>{await migrate();server=createApp().listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));base='http://127.0.0.1:'+(server.address() as {port:number}).port;});
@@ -38,6 +38,15 @@ test('personal dated activity agrees with persisted source totals and obligation
  assert.equal((await req(business+'/obligations/'+obligation.data.id,'PATCH',{description:'Office rent',amount_minor:6000,next_due_date:'2026-11-02',status:'completed'},owner.cookie)).status,200);
  const rows=await req(business+'/obligations','GET',undefined,owner.cookie);assert.equal(rows.data.data[0].status,'completed');assert.equal(rows.data.data[0].amount_minor,6000);
 });
+test('unverified invitation ownership is denied without consuming the invitation',async()=>{
+ const owner=await identity(),member=await identity(),org=await workspace(owner.cookie);
+ const invite=await req(org+'/invitations','POST',{email:member.email,role:'viewer'},owner.cookie);assert.equal(invite.status,201);
+ await dbRun('UPDATE ac_users SET verified=0 WHERE email=?',[member.email]);
+ assert.equal((await req('/api/v1/invitations/accept','POST',{token:invite.data.token},member.cookie)).status,403);
+ await dbRun('UPDATE ac_users SET verified=1 WHERE email=?',[member.email]);
+ assert.equal((await req('/api/v1/invitations/accept','POST',{token:invite.data.token},member.cookie)).status,200);
+});
+
 test('normal signed-in navigation cannot exhaust the credential-attempt bucket, while guessing remains limited',async()=>{
  const owner=await identity();
  for(let i=0;i<45;i++)assert.equal((await req('/api/auth/account','GET',undefined,owner.cookie)).status,200);

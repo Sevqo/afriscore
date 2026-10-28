@@ -29,18 +29,24 @@ export async function handle(request, env, upstreamFetch = fetch) {
   if (url.protocol !== 'https:') { url.protocol = 'https:'; return Response.redirect(url.href, 308); }
   const api = /^\/(?:api|v1)(?:\/|$)/.test(url.pathname);
   if (api) {
+    // Deny encoded separators, dot segments, repeated slashes and unknown API
+    // roots before forwarding. Legacy/admin routes require a separate channel.
+    const path=url.pathname;
+    const publicRoot=/^\/api\/(?:auth(?:\/|$)|openapi\.json$|v1\/(?:organizations(?:\/|$)|workspaces(?:\/|$)|invitations\/accept$|checkout\/|callbacks\/|buyer\/|trust\/|\.well-known\/))/.test(path);
+    if (/%|\\|\/\//.test(path)||(!publicRoot&&!['/v1/health','/v1/readiness'].includes(path)))return secured(Response.json({error:'not_found'},{status:404}),{privateResponse:true});
+    if (path.split('/').some(part=>part.toLowerCase()==='internal'))return secured(Response.json({error:'not_found'},{status:404}),{privateResponse:true});
     if (!env.BACKEND_ORIGIN || !env.AFRICORE_GATEWAY_SECRET || env.AFRICORE_GATEWAY_SECRET.length < 32) return unavailable();
     try {
       const upstream = origin(env.BACKEND_ORIGIN);
       upstream.pathname = url.pathname; upstream.search = url.search;
       const headers = new Headers(request.headers);
-      for (const name of ['host', 'x-africore-gateway-secret', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-for', 'forwarded', 'x-real-ip']) headers.delete(name);
+      for (const name of ['host', 'x-africore-gateway-secret', 'x-africore-client-ip', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-for', 'forwarded', 'x-real-ip']) headers.delete(name);
       headers.set('x-africore-gateway-secret', env.AFRICORE_GATEWAY_SECRET);
       headers.set('x-forwarded-proto', 'https');
       headers.set('x-forwarded-host', url.host);
       // One canonical client address, never a caller-supplied proxy chain.
       const client = request.headers.get('CF-Connecting-IP');
-      if (client) headers.set('x-forwarded-for', client);
+      if (client) {headers.set('x-forwarded-for', client);headers.set('x-africore-client-ip',client);}
       const response = await upstreamFetch(new Request(upstream, { method: request.method, headers,
         body: ['GET','HEAD'].includes(request.method) ? undefined : request.body,
         redirect: 'manual', signal: AbortSignal.timeout(90000), duplex: 'half' }), { cf: { cacheTtl: 0, cacheEverything: false } });

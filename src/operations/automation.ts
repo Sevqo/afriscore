@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { dbAll, dbGet, dbRun } from '../db';
 import { Access, audit, fail } from '../platform/auth';
 import { permitted } from '../platform/domain';
-import { now } from '../platform/crypto';
+import { now,hash } from '../platform/crypto';
 import { all, atomic, change, create, day, get, legacy } from './store';
 import { emit } from './events';
 
@@ -327,6 +327,17 @@ export async function runAutomations(a: Access, at = new Date()) {
     return { queued, processed: runs.length };
   });
 }
+async function approvalResourceHash(a:Access,id:string){
+ const object=await dbGet('SELECT id,kind,data,version,updated_at FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[id,a.org,a.environment])||await dbGet('SELECT id,kind,data,updated_at FROM ac_records WHERE id=? AND org_id=? AND environment=?',[id,a.org,a.environment]);
+ if(!object)fail(404,'Approval resource not found');
+ return hash(JSON.stringify([a.org,a.environment,object.id,object.kind,object.data,object.version??null,object.updated_at]));
+}
+async function approvalBinding(a:Access,approval:any,parameters?:unknown){
+ const binding=await dbGet('SELECT * FROM ac_approval_bindings WHERE approval_id=? AND org_id=? AND environment=?',[approval.id,a.org,a.environment]);
+ if(!binding||binding.consumed_at||binding.resource_hash!==await approvalResourceHash(a,approval.resource_id))fail(409,'Approval is stale or already consumed; request a new review');
+ if(parameters!==undefined&&binding.parameters!==JSON.stringify(parameters))fail(409,'Execution parameters differ from the reviewed decision');
+ return binding;
+}
 export async function requestApproval(a: Access, input: unknown) {
   if (a.api) fail(403, 'A human member must request approval');
   const d = z
@@ -341,10 +352,12 @@ export async function requestApproval(a: Access, input: unknown) {
         'manual_reconciliation',
       ]),
       resource_id: z.string().uuid(),
+      parameters:z.object({decision:z.enum(['release','refund']).optional()}).strict().default({}),
     })
     .strict()
     .parse(input);
   if (d.approver === a.actor) fail(400, 'Choose a different approver');
+  if(d.action==='dispute_resolution'&&!d.parameters.decision)fail(400,'Choose the exact dispute outcome before requesting review');
   const m = await dbGet(
     'SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',
     [a.org, d.approver],
@@ -368,6 +381,9 @@ export async function requestApproval(a: Access, input: unknown) {
     if (!object) fail(404, 'Resource not found');
   }
   const id = randomUUID();
+  const resourceHash=await approvalResourceHash(a,d.resource_id);
+  const resourceRow=await dbGet('SELECT kind,data FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment])||await dbGet('SELECT kind,data FROM ac_records WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment]);
+  const source=JSON.parse(resourceRow.data),summary=Object.fromEntries(['amount_minor','currency','buyer_name','recipient_org','state','status','description'].filter(key=>source[key]!==undefined).map(key=>[key,source[key]]));
   await dbRun(
     'INSERT INTO ac2_approvals(id,org_id,environment,requester,approver,action,resource_id,status,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
     [
@@ -383,6 +399,7 @@ export async function requestApproval(a: Access, input: unknown) {
       now(),
     ],
   );
+  await dbRun('INSERT INTO ac_approval_bindings(approval_id,org_id,environment,resource_hash,parameters,review_summary) VALUES (?,?,?,?,?,?)',[id,a.org,a.environment,resourceHash,JSON.stringify(d.parameters),JSON.stringify(summary)]);
   await audit(a.org, a.actor, 'approval.requested', id);
   await emit(a, 'approval.requested', { id, resource_id: d.resource_id });
   await notify(a, {
@@ -412,8 +429,11 @@ export async function decideApproval(a: Access, id: string, input: unknown) {
     if (!approval) fail(404, 'Approval not found');
     if (approval.approver !== a.actor || approval.requester === a.actor)
       fail(403, 'Assigned non-requesting approver required');
+    const currentRole=await dbGet('SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',[a.org,a.actor]);
+    if(!currentRole||!['owner','admin'].includes(currentRole.role))fail(403,'Approver authority revoked');
     if (approval.status !== 'pending' || approval.expires_at < now())
       fail(409, 'Approval is closed or expired');
+    if(d.decision==='approved')await approvalBinding(a,approval);
     await dbRun(
       'UPDATE ac2_approvals SET status=?,reason=?,decided_at=? WHERE id=?',
       [d.decision, d.reason, now(), id],
@@ -428,6 +448,7 @@ export async function requireApproval(
   id: string | undefined,
   action: string,
   resource: string,
+  parameters:unknown={},
 ) {
   if (!id) fail(409, 'An approved request is required');
   const approval = await dbGet(
@@ -445,5 +466,9 @@ export async function requireApproval(
   );
   if (!approver || !['owner', 'admin'].includes(approver.role))
     fail(403, 'Approver authority revoked');
+  await approvalBinding(a,approval,parameters);
+  const consumed=await dbRun('UPDATE ac_approval_bindings SET consumed_at=? WHERE approval_id=? AND consumed_at IS NULL',[now(),approval.id]);
+  if(!consumed.changes)fail(409,'Approval already consumed');
+  await audit(a.org,a.actor,'approval.consumed',approval.id);
   return approval;
 }

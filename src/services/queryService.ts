@@ -1,3 +1,5 @@
+import {dbAll} from '../db';
+import {singleCurrency} from './currency-integrity';
 import { getBusiness } from "./businessService";
 import { computeFinancialProfile } from "./analyticsService";
 import {
@@ -58,12 +60,10 @@ const INTENTS: IntentDef[] = [
 ];
 
 function matchIntent(question: string): IntentDef | null {
-  const q = question.toLowerCase();
-  for (const def of INTENTS) {
-    const allGroupsMatch = def.keywords.every((group) => group.some((kw) => q.includes(kw)));
-    if (allGroupsMatch) return def;
-  }
-  return null;
+  const tokens=new Set(question.toLowerCase().replace(/_/g,' ').match(/[a-z0-9]+/g)||[]);
+  const variants:Record<string,string[]>={transaction:['transaction','transactions'],invoice:['invoice','invoices'],invoices:['invoice','invoices'],customer:['customer','customers'],client:['client','clients'],concentrat:['concentration','concentrated'],depend:['depend','dependent','dependency'],anomal:['anomaly','anomalies','anomalous']};
+  const matches=INTENTS.filter(def=>def.keywords.every(group=>group.some(kw=>(variants[kw]||[kw]).some(word=>tokens.has(word)))));
+  return matches.length===1?matches[0]:null;
 }
 
 /** Resolves the intent (and the consent scope it requires) without touching
@@ -79,6 +79,9 @@ export async function answerQuestion(businessId: string, question: string): Prom
 
   const resolved = matchIntent(question);
   const intent = resolved?.intent ?? null;
+  const sourceTable=['overdue_invoices','customer_concentration'].includes(intent||'')?'invoices':'transactions';
+  const sourceRows=intent&&intent!=='trust_score'?await dbAll<{currency:string}>('SELECT DISTINCT currency FROM '+sourceTable+' WHERE business_id=?',[businessId]):[];
+  const currency=singleCurrency(sourceRows);
 
   switch (intent) {
     case "overdue_invoices": {
@@ -86,13 +89,13 @@ export async function answerQuestion(businessId: string, question: string): Prom
       const answer =
         data.length === 0
           ? "No overdue invoices."
-          : `${data.length} overdue invoice(s), totaling ${data.reduce((s, i) => s + i.amount, 0).toFixed(2)} KES. Most overdue: ${data[0].customer_reference} at ${data[0].days_overdue} days.`;
+          : `${data.length} overdue invoice(s), totaling ${data.reduce((s, i) => s + i.amount, 0).toFixed(2)} ${currency}. Most overdue: ${data[0].customer_reference} at ${data[0].days_overdue} days.`;
       return { question, matched_intent: intent, answer, data };
     }
 
     case "cash_flow_forecast": {
       const data = await getCashFlowForecast(businessId);
-      const answer = `Based on ${data.based_on_days} day(s) of history (${data.confidence} confidence), projected net cash flow over the next 30 days is ${data.forecast_next_30d.toFixed(2)} KES.`;
+      const answer = `Based on ${data.based_on_days} day(s) of history (${data.confidence} confidence), projected net cash flow over the next 30 days is ${data.forecast_next_30d.toFixed(2)} ${currency}.`;
       return { question, matched_intent: intent, answer, data };
     }
 
@@ -101,7 +104,7 @@ export async function answerQuestion(businessId: string, question: string): Prom
       const answer =
         data.length === 0
           ? "No statistically unusual transactions found."
-          : `${data.length} transaction(s) more than 2 standard deviations from the business's typical size — largest deviation: ${data[0].amount} KES.`;
+          : `${data.length} transaction(s) more than 2 standard deviations from the business's typical size — largest deviation: ${data[0].amount} ${currency}.`;
       return { question, matched_intent: intent, answer, data };
     }
 
@@ -110,13 +113,13 @@ export async function answerQuestion(businessId: string, question: string): Prom
       const answer =
         data.length === 0
           ? "No paid invoices yet to measure customer concentration."
-          : `Top customer is ${data[0].customer_reference}, accounting for ${data[0].share_of_total_pct}% of realized revenue.`;
+          : `Top customer is ${data[0].customer_reference}, accounting for ${data[0].share_of_total_pct}% of covered collected invoices.`;
       return { question, matched_intent: intent, answer, data };
     }
 
     case "financial_profile": {
       const data = await computeFinancialProfile(businessId);
-      const answer = `Total revenue: ${data.total_revenue} KES. Total expenses: ${data.total_expenses} KES. Net cash flow: ${data.net_cash_flow} KES.`;
+      const answer = `Recorded credit inflows: ${data.total_revenue} ${currency}. Recorded debits: ${data.total_expenses} ${currency}. Net cash flow: ${data.net_cash_flow} ${currency}.`;
       return { question, matched_intent: intent, answer, data };
     }
 

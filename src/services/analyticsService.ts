@@ -1,4 +1,5 @@
 import { dbAll } from "../db";
+import {singleCurrency} from './currency-integrity';
 import { Transaction } from "./transactionService";
 
 export interface FinancialProfile {
@@ -24,6 +25,7 @@ export interface FinancialProfile {
  */
 export async function computeFinancialProfile(businessId: string): Promise<FinancialProfile> {
   const txns = await dbAll<Transaction>(`SELECT * FROM transactions WHERE business_id = ?`, [businessId]);
+  const currency=singleCurrency(txns);
 
   const now = Date.now();
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
@@ -53,7 +55,7 @@ export async function computeFinancialProfile(businessId: string): Promise<Finan
 
   return {
     business_id: businessId,
-    currency: "KES",
+    currency,
     total_revenue: Math.round(revenue * 100) / 100,
     total_expenses: Math.round(expenses * 100) / 100,
     net_cash_flow: Math.round((revenue - expenses) * 100) / 100,

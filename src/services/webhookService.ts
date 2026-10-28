@@ -1,9 +1,10 @@
 import crypto from "crypto";
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
-import { lookup } from "node:dns/promises";
-import { dbAll, dbGet, dbRun } from "../db";
+import { dbAll, dbGet, dbRun, dbTransaction } from "../db";
 import { hasActiveConsentScope, ConsentScope } from "./consentService";
+import {seal,unseal} from '../platform/crypto';
+import {pinnedWebhookFetch,resolveWebhookAddress} from './webhook-http';
 
 export interface WebhookSubject {
   type: "business" | "person";
@@ -146,7 +147,7 @@ export async function isDeliverableWebhookTarget(raw: string): Promise<{ allowed
   }
 
   try {
-    const records = await lookup(hostname, { all: true });
+    const records = [await resolveWebhookAddress(hostname)];
     if (records.length === 0) return { allowed: false, reason: "dns_resolution_failed" };
     if (records.some((record) => isPrivateAddress(record.address))) {
       return { allowed: false, reason: "private_address_resolution" };
@@ -180,7 +181,7 @@ export async function isDeliverableWebhookTarget(raw: string): Promise<{ allowed
   await dbRun(
     `INSERT INTO webhook_subscriptions (id, client_id, client_name, event_pattern, target_url, environment, status, created_at, secret)
      VALUES (@id, @client_id, @client_name, @event_pattern, @target_url, @environment, @status, @created_at, @secret)`,
-    sub
+    {...sub,secret:seal(sub.secret,JSON.stringify(['legacy-webhook',sub.id,sub.environment]))}
   );
   return sub;
 }
@@ -206,7 +207,7 @@ export async function rotateSubscriptionSecret(
   if (sub.length === 0) return undefined;
 
   const secret = `whsec_${crypto.randomBytes(24).toString("hex")}`;
-  await dbRun(`UPDATE webhook_subscriptions SET secret = ? WHERE id = ? AND client_id = ?`, [secret, subscriptionId, clientId]);
+  await dbRun(`UPDATE webhook_subscriptions SET secret = ? WHERE id = ? AND client_id = ?`, [seal(secret,JSON.stringify(['legacy-webhook',subscriptionId,sub[0].environment])), subscriptionId, clientId]);
   return { id: subscriptionId, secret };
 }
 
@@ -238,7 +239,7 @@ export async function testWebhookDelivery(targetUrl: string): Promise<{ delivere
   try {
     const target = await isDeliverableWebhookTarget(targetUrl);
     if (!target.allowed) return { delivered: false, error: target.reason ?? "target_not_allowed", signature, timestamp };
-    const res = await fetch(targetUrl, {
+    const res = await pinnedWebhookFetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -256,79 +257,46 @@ export async function testWebhookDelivery(targetUrl: string): Promise<{ delivere
 }
 
 /**
- * Records the event (always, for audit/debugging) and delivers it only to
+ * Records the event and queues durable jobs only for
  * subscriptions that are (a) in the same environment (live/sandbox),
  * (b) pattern-matched and (c) backed by an active consent grant from the
  * event's subject to that subscriber's client, covering the scope for that
  * event type.
  *
- * Delivery failures never throw — webhook delivery must not break the
- * operation that triggered the event.
+ * No network delivery occurs here. Persistence failure rolls back an enclosing
+ * financial transaction so committed changes cannot silently lose their event.
  */
-export async function emitEvent(eventType: string, payload: object, subject: WebhookSubject): Promise<void> {
-  const id = randomUUID();
-  const createdAt = new Date().toISOString();
-  const payloadStr = JSON.stringify(payload);
-  const environment: WebhookEnvironment = subject.is_sandbox ? "sandbox" : "live";
-  const requiredScope = EVENT_SCOPES[eventType];
-
-  await dbRun(
-    `INSERT INTO webhook_events (id, event_type, subject_type, subject_id, is_sandbox, payload, created_at, delivery_attempts, last_delivery_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL)`,
-    [id, eventType, subject.type, subject.id, subject.is_sandbox ? 1 : 0, payloadStr, createdAt]
-  );
-
-  // Unknown event types are audited but never delivered.
-  if (!requiredScope) return;
-
-  const candidates = (
-    await dbAll<WebhookSubscription>(
-      `SELECT * FROM webhook_subscriptions WHERE status = 'active' AND environment = ?`,
-      [environment]
-    )
-  ).filter((s) => s.client_id && matchesPattern(eventType, s.event_pattern));
-
-  const body = JSON.stringify({ event: eventType, data: payload, id });
-  let attempted = 0;
-  let delivered = 0;
-
-  for (const sub of candidates) {
-    // Consent is checked per subscriber at delivery time, so revoking a grant
-    // stops future deliveries immediately.
-    const consented = await hasActiveConsentScope(subject.type, subject.id, sub.client_name, requiredScope);
-    if (!consented) continue;
-
-    attempted++;
-    const timestamp = Math.floor(Date.now() / 1000);
-    const signature = sign(sub.secret, timestamp, body);
-
-    try {
-      const target = await isDeliverableWebhookTarget(sub.target_url);
-      if (!target.allowed) throw new Error(target.reason ?? "target_not_allowed");
-      const response = await fetch(sub.target_url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-africore-signature": signature,
-          "x-africore-timestamp": String(timestamp),
-        },
-        body,
-        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
-        redirect: "error",
-      });
-      if (!response.ok) throw new Error(`delivery_http_${response.status}`);
-      delivered++;
-    } catch {
-      /* delivery is best-effort; failure is recorded below */
-    }
+export async function emitEvent(eventType:string,payload:object,subject:WebhookSubject):Promise<void>{
+ await dbTransaction(async()=>{
+  const id=randomUUID(),at=new Date().toISOString(),environment=subject.is_sandbox?'sandbox':'live';
+  await dbRun('INSERT INTO webhook_events(id,event_type,subject_type,subject_id,is_sandbox,payload,created_at,delivery_attempts,last_delivery_status) VALUES (?,?,?,?,?,?,?,0,NULL)',[id,eventType,subject.type,subject.id,subject.is_sandbox?1:0,JSON.stringify(payload),at]);
+  const scope=EVENT_SCOPES[eventType];if(!scope)return;
+  const candidates=await dbAll<WebhookSubscription>("SELECT * FROM webhook_subscriptions WHERE status='active' AND environment=?",[environment]);
+  for(const sub of candidates){if(!sub.client_id||!matchesPattern(eventType,sub.event_pattern)||!await hasActiveConsentScope(subject.type,subject.id,sub.client_name,scope))continue;
+   await dbRun('INSERT INTO ac_legacy_deliveries(id,event_id,subscription_id,next_at,created_at) VALUES (?,?,?,?,?) ON CONFLICT(event_id,subscription_id) DO NOTHING',[randomUUID(),id,sub.id,at,at]);
   }
-
-  if (attempted > 0) {
-    await dbRun(
-      `UPDATE webhook_events SET delivery_attempts = delivery_attempts + ?, last_delivery_status = ? WHERE id = ?`,
-      [attempted, delivered === attempted ? "delivered" : "failed", id]
-    );
+ });
+}
+let legacyDelivering=false;
+export async function deliverLegacyWebhooks(transport:typeof fetch=pinnedWebhookFetch,validate=isDeliverableWebhookTarget){
+ if(legacyDelivering)return {processed:0};legacyDelivering=true;
+ try{
+  const jobs=await dbAll("SELECT d.*,e.event_type,e.subject_type,e.subject_id,e.is_sandbox,e.payload,s.client_id,s.client_name,s.status AS subscription_status,s.target_url,s.secret,s.environment FROM ac_legacy_deliveries d JOIN webhook_events e ON e.id=d.event_id JOIN webhook_subscriptions s ON s.id=d.subscription_id WHERE d.status='pending' AND d.next_at<=? ORDER BY d.created_at,d.id LIMIT 25",[new Date().toISOString()]);
+  for(const job of jobs){let error:string|null=null,cancelled=false;
+   const scope=EVENT_SCOPES[job.event_type];
+   if(!scope||!job.client_id||job.subscription_status!=='active'||!await hasActiveConsentScope(job.subject_type,job.subject_id,job.client_name,scope)){error='consent_or_subscription_revoked';cancelled=true;}
+   else try{
+    if(!(await validate(job.target_url)).allowed)throw Error('target_denied');
+    const body=JSON.stringify({event:job.event_type,data:JSON.parse(job.payload),id:job.event_id}),timestamp=Math.floor(Date.now()/1000);
+    const secret=job.secret.startsWith('whsec_')?job.secret:unseal(job.secret,JSON.stringify(['legacy-webhook',job.subscription_id,job.environment]));
+    const response=await transport(job.target_url,{method:'POST',redirect:'error',signal:AbortSignal.timeout(5000),headers:{'Content-Type':'application/json','x-africore-signature':sign(secret,timestamp,body),'x-africore-timestamp':String(timestamp),'AfriCore-Delivery':job.id},body});await response.body?.cancel();if(!response.ok)throw Error('http_'+response.status);
+   }catch(e){error=/^(http_\d{3}|target_denied)$/.test((e as Error).message)?(e as Error).message:'delivery_failed';}
+   const attempts=Number(job.attempts)+1,status=cancelled?'cancelled':!error?'delivered':attempts>=5?'dead':'pending';
+   await dbRun('UPDATE ac_legacy_deliveries SET attempts=?,status=?,last_error=?,next_at=? WHERE id=?',[attempts,status,error,new Date(Date.now()+Math.min(3600000,1000*2**attempts)).toISOString(),job.id]);
+   await dbRun('UPDATE webhook_events SET delivery_attempts=delivery_attempts+1,last_delivery_status=? WHERE id=?',[status,job.event_id]);
   }
+  return {processed:jobs.length};
+ }finally{legacyDelivering=false;}
 }
 
 export async function listEvents(eventType?: string, limit = 50, offset = 0) {

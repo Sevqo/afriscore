@@ -73,7 +73,7 @@ export async function makeBatch(a: Access) {
         'sandbox',
         tree.root,
         'queued',
-        seal(JSON.stringify(data)),
+        seal(JSON.stringify(data),JSON.stringify(['anchor-batch',id])),
         now(),
         now(),
         now(),
@@ -83,7 +83,7 @@ export async function makeBatch(a: Access) {
       const c = candidates.find((c) => c.commitment === value[1])!;
       await dbRun(
         'INSERT INTO ac3_batch_items(credential_id,batch_id,proof_sealed) VALUES (?,?,?)',
-        [c.id, id, seal(JSON.stringify(tree.getProof(index)))],
+        [c.id, id, seal(JSON.stringify(tree.getProof(index)),JSON.stringify(['batch-proof',c.id,id]))],
       );
     }
     await audit(a.org, a.actor, 'proof.batch_queued', id);
@@ -160,7 +160,7 @@ export async function runAnchorQueue() {
       for (const row of rows) {
         const attempts = row.attempts + 1,
           data = {
-            ...JSON.parse(unseal(row.data)),
+            ...JSON.parse(unseal(row.data,JSON.stringify(['anchor-batch',row.batch_id||row.id]))),
             error: 'anchor_rpc_unavailable',
           };
         await dbRun(
@@ -168,7 +168,7 @@ export async function runAnchorQueue() {
           [
             attempts >= 5 ? 'failed' : 'retrying',
             attempts,
-            seal(JSON.stringify(data)),
+            seal(JSON.stringify(data),JSON.stringify(['anchor-batch',row.id])),
             new Date(
               Date.now() + Math.min(60000, 1000 * 2 ** attempts),
             ).toISOString(),
@@ -186,7 +186,7 @@ export async function runAnchorQueue() {
       [now()],
     );
     for (const batch of batches) {
-      let data = JSON.parse(unseal(batch.data));
+      let data = JSON.parse(unseal(batch.data,JSON.stringify(['anchor-batch',batch.id])));
       try {
         const recorded = await contract.batches(data.batch_ref);
         if (recorded.root !== '0x' + '0'.repeat(64)) {
@@ -226,7 +226,7 @@ export async function runAnchorQueue() {
             'UPDATE ac3_batches SET state=?,data=?,next_at=?,updated_at=? WHERE id=?',
             [
               state,
-              seal(JSON.stringify(data)),
+              seal(JSON.stringify(data),JSON.stringify(['anchor-batch',batch.id])),
               new Date(Date.now() + 15000).toISOString(),
               now(),
               batch.id,
@@ -266,7 +266,7 @@ export async function runAnchorQueue() {
           };
           await dbRun(
             "UPDATE ac3_batches SET state='reorged',data=?,next_at=?,updated_at=? WHERE id=?",
-            [seal(JSON.stringify(data)), now(), now(), batch.id],
+            [seal(JSON.stringify(data),JSON.stringify(['anchor-batch',batch.id])), now(), now(), batch.id],
           );
           continue;
         }
@@ -314,7 +314,7 @@ export async function runAnchorQueue() {
         await dbRun(
           "UPDATE ac3_batches SET state='submitted',data=?,next_at=?,updated_at=? WHERE id=?",
           [
-            seal(JSON.stringify(data)),
+            seal(JSON.stringify(data),JSON.stringify(['anchor-batch',batch.id])),
             new Date(Date.now() + 1000).toISOString(),
             now(),
             batch.id,
@@ -340,7 +340,7 @@ export async function runAnchorQueue() {
           [
             attempts >= 5 ? 'failed' : 'retrying',
             attempts,
-            seal(JSON.stringify(data)),
+            seal(JSON.stringify(data),JSON.stringify(['anchor-batch',batch.id])),
             new Date(
               Date.now() + Math.min(60000, 1000 * 2 ** attempts),
             ).toISOString(),
@@ -362,14 +362,14 @@ export async function proofFor(a: Access, credentialId: string) {
     [credentialId, a.org, a.environment],
   );
   if (!row) return { status: 'not_batched' };
-  const data = JSON.parse(unseal(row.data));
+  const data = JSON.parse(unseal(row.data,JSON.stringify(['anchor-batch',row.batch_id||row.id])));
   return {
     version: 'africore-merkle-v1',
     status: row.state,
     credential_id: row.id,
     commitment: row.commitment,
-    salt: unseal(row.salt_sealed),
-    proof: JSON.parse(unseal(row.proof_sealed)),
+    salt: unseal(row.salt_sealed,JSON.stringify(['credential-salt',a.org,a.environment,row.id])),
+    proof: JSON.parse(unseal(row.proof_sealed,JSON.stringify(['batch-proof',row.id,row.batch_id]))),
     root: row.root,
     batch_id: row.batch_id,
     batch_ref: data.batch_ref,

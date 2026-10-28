@@ -298,12 +298,13 @@ export function ApprovalView({
       <Form
         submit={(d) =>
           action(
-            () => api('/approvals', 'POST', d),
+            () => api('/approvals', 'POST', {action:d.action,approver:d.approver,resource_id:d.resource_id,parameters:d.action==='dispute_resolution'?{decision:d.dispute_decision}:{}}),
             'Approval requested; the assigned person must decide separately.',
           )
         }
       >
         <h2>Request a second-person review</h2>
+        <Field label="Dispute outcome (for dispute resolution only)"><select name="dispute_decision"><option value="refund">Refund</option><option value="release">Release</option></select></Field>
         <div className="form-grid">
           <Field label="Action">
             <select name="action">
@@ -349,6 +350,10 @@ export function ApprovalView({
                 <b>{a.action}</b>
                 <p>{a.resource_id}</p>
                 <code>Approval: {a.id}</code>
+                {a.review_summary&&<p>Reviewed details: {a.review_summary}</p>}
+                {a.parameters&&<p>Exact decision: {a.parameters}</p>}
+                {!a.resource_hash&&<p>This older request needs a new review before execution.</p>}
+                {a.consumed_at&&<small>Already used · a new action requires a new approval.</small>}
                 <p>
                   {a.status} · Expires{' '}
                   {new Date(a.expires_at).toLocaleString('en-KE', {

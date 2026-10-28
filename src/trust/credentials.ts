@@ -34,7 +34,7 @@ export async function newKey(owner: string, environment: string) {
       environment,
       'active',
       JSON.stringify({ ...publicJwk, kid: id, alg: 'ES256', use: 'sig' }),
-      seal(JSON.stringify(privateJwk)),
+      seal(JSON.stringify(privateJwk),JSON.stringify(['signing-key',owner,environment,id])),
       now(),
     ],
   );
@@ -52,7 +52,7 @@ export async function signed(
   );
   if (!key) fail(503, 'No active signing key');
   const privateKey = await importJWK(
-    JSON.parse(unseal(key.private_sealed)),
+    JSON.parse(unseal(key.private_sealed,JSON.stringify(['signing-key',key.owner_id,key.environment,key.id]))),
     'ES256',
   );
   return new CompactSign(Buffer.from(JSON.stringify(payload)))
@@ -546,8 +546,8 @@ export async function issue(a: Access, requestId: string) {
         request.type,
         'active',
         index,
-        seal(token),
-        seal(salt),
+        seal(token,JSON.stringify(['credential-token',holder.org,a.environment,id])),
+        seal(salt,JSON.stringify(['credential-salt',holder.org,a.environment,id])),
         commitment,
         hash(request.id),
         until,
@@ -571,7 +571,7 @@ export async function credential(a: Access, id: string) {
     [id, a.org, a.environment],
   );
   if (!r) fail(404, 'Credential not found');
-  const token = unseal(r.token_sealed),
+  const token = unseal(r.token_sealed,JSON.stringify(['credential-token',r.org_id,r.environment,r.id])),
     payload = JSON.parse(
       Buffer.from(token.split('.')[1], 'base64url').toString(),
     );
@@ -586,7 +586,7 @@ export async function credential(a: Access, id: string) {
     credential: payload,
     token,
     commitment: r.commitment,
-    salt: unseal(r.salt_sealed),
+    salt: unseal(r.salt_sealed,JSON.stringify(['credential-salt',r.org_id,r.environment,r.id])),
     media_type: 'application/vc+jwt',
   };
 }
@@ -744,10 +744,10 @@ export async function verifyCredential(token: string, externalJwk?: any) {
     report.issuer_authority = i.authority;
     report.issuer_status = i.status;
     const stored = await dbGet(
-      'SELECT status,status_index,token_sealed FROM ac3_credentials WHERE id=? AND issuer_id=?',
+      'SELECT * FROM ac3_credentials WHERE id=? AND issuer_id=?',
       [String(vc.id).replace('urn:uuid:', ''), key.owner_id],
     );
-    if (stored && unseal(stored.token_sealed) === token)
+    if (stored && unseal(stored.token_sealed,JSON.stringify(['credential-token',stored.org_id,stored.environment,stored.id])) === token)
       report.status = stored.status;
     else report.status = 'unknown';
     report.status_checked_at = now();

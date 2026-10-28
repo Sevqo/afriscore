@@ -1,4 +1,5 @@
 import { dbAll, dbGet, dbRun, dbTransaction } from "../db";
+import {singleCurrency} from './currency-integrity';
 import { getBusiness } from "./businessService";
 import { appendEvent } from "./ledgerService";
 import { emitEvent } from "./webhookService";
@@ -13,7 +14,7 @@ import {
   refreshInvoiceStatus,
 } from "./invoiceService";
 import { Transaction } from "./transactionService";
-import { counterpartyMatches, paymentMethodForProvider, reconcileBusiness } from "./reconciliationService";
+import { counterpartyMatches, paymentMethodForProvider, reconcileBusiness, lockReceivables } from "./reconciliationService";
 
 /**
  * Receivables: recorded payments, automatic matching, DSO and the unmatched
@@ -105,6 +106,7 @@ export async function recordPayment(businessId: string, invoiceId: string, input
   if (!business) throw new Error("business_not_found");
 
   const result = await dbTransaction(async () => {
+    await lockReceivables(businessId);
     const invoice = await getInvoice(invoiceId);
     if (!invoice || invoice.business_id !== businessId) throw new ReceivablesError("invoice_not_found", "Invoice not found.");
     if (invoice.status === "draft") {
@@ -136,6 +138,7 @@ export async function recordPayment(businessId: string, invoiceId: string, input
     }
 
     let transactionId: string | null = null;
+    let paidAt=input.paid_at;
     if (input.transaction_id) {
       const txn = await dbGet<Transaction>(`SELECT * FROM transactions WHERE id = ? AND business_id = ?`, [
         input.transaction_id,
@@ -145,6 +148,8 @@ export async function recordPayment(businessId: string, invoiceId: string, input
       if (txn.type !== "credit" || txn.status !== "completed") {
         throw new ReceivablesError("invalid_payment", "Only completed incoming transactions can settle an invoice.");
       }
+      if(txn.currency!==invoice.currency||Math.abs(txn.amount-input.amount)>0.005)throw new ReceivablesError('invalid_payment','Linked receipt amount and currency must match authoritative transaction evidence.');
+      paidAt=txn.occurred_at;
       const claim = await dbRun(
         `UPDATE transactions SET matched_invoice_id = ? WHERE id = ? AND matched_invoice_id IS NULL`,
         [invoiceId, input.transaction_id]
@@ -162,7 +167,7 @@ export async function recordPayment(businessId: string, invoiceId: string, input
       amount: input.amount,
       method: input.method,
       reference: input.reference ?? null,
-      paid_at: input.paid_at,
+      paid_at: paidAt,
     });
 
     const updated = (await refreshInvoiceStatus(invoiceId))!;
@@ -177,28 +182,29 @@ export async function recordPayment(businessId: string, invoiceId: string, input
       paid_amount: updated.paid_amount,
     });
 
-    return { invoice: updated, payment, fully_paid: updated.status === "paid" };
-  });
-
   const subject = { type: "business" as const, id: businessId, is_sandbox: business.is_sandbox };
   await emitEvent(
     "invoice.payment_recorded",
-    { invoice_id: invoiceId, payment_id: result.payment.id, amount: result.payment.amount, fully_paid: result.fully_paid },
+    { invoice_id: invoiceId, payment_id: payment.id, amount: payment.amount, fully_paid: updated.status==='paid' },
     subject
   );
-  if (result.fully_paid) {
+  if (updated.status==='paid') {
     await emitEvent(
       "invoice.paid",
       {
         invoice_id: invoiceId,
         business_id: businessId,
-        transaction_ids: result.payment.transaction_id ? [result.payment.transaction_id] : [],
-        paid_amount: result.invoice.paid_amount,
+        transaction_ids: payment.transaction_id ? [payment.transaction_id] : [],
+        paid_amount: updated.paid_amount,
         match_type: "manual",
       },
       subject
     );
   }
+
+    return { invoice: updated, payment, fully_paid: updated.status === "paid" };
+  });
+
 
   return result;
 }
@@ -226,11 +232,12 @@ export async function autoMatchPayments(businessId: string): Promise<AutoMatchRe
   await markOverdueInvoices(businessId);
   const fullSettlement = await reconcileBusiness(businessId);
 
-  const partialEvents: Array<{ invoice_id: string; payment_id: string; amount: number }> = [];
+
   let paymentsRecorded = 0;
   let partiallyPaid = 0;
 
   await dbTransaction(async () => {
+    await lockReceivables(businessId);
     const openInvoices = await listOpenInvoicesForBusiness(businessId);
     for (const invoice of openInvoices) {
       const outstanding = openBalance(invoice);
@@ -238,10 +245,10 @@ export async function autoMatchPayments(businessId: string): Promise<AutoMatchRe
 
       const candidates = await dbAll<Transaction>(
         `SELECT * FROM transactions
-         WHERE business_id = ? AND type = 'credit' AND status = 'completed' AND matched_invoice_id IS NULL
+         WHERE business_id = ? AND currency = ? AND type = 'credit' AND status = 'completed' AND matched_invoice_id IS NULL
            AND amount < ?
          ORDER BY occurred_at ASC`,
-        [businessId, outstanding]
+        [businessId, invoice.currency, outstanding]
       );
 
       const expected = (invoice.expected_counterparty ?? invoice.customer_reference ?? "").trim();
@@ -261,6 +268,7 @@ export async function autoMatchPayments(businessId: string): Promise<AutoMatchRe
         amount: candidate.amount,
         method: paymentMethodForProvider(candidate.source_provider),
         reference: candidate.external_id,
+        paid_at: candidate.occurred_at,
       });
       paymentsRecorded++;
       await refreshInvoiceStatus(invoice.id);
@@ -272,15 +280,11 @@ export async function autoMatchPayments(businessId: string): Promise<AutoMatchRe
         method: payment.method,
         partial: true,
       });
-      partialEvents.push({ invoice_id: invoice.id, payment_id: payment.id, amount: payment.amount });
+      await emitEvent('invoice.payment_recorded',{invoice_id:invoice.id,payment_id:payment.id,amount:payment.amount,fully_paid:false},{type:'business',id:businessId,is_sandbox:business.is_sandbox});
       partiallyPaid++;
     }
   });
 
-  const subject = { type: "business" as const, id: businessId, is_sandbox: business.is_sandbox };
-  for (const event of partialEvents) {
-    await emitEvent("invoice.payment_recorded", { invoice_id: event.invoice_id, payment_id: event.payment_id, amount: event.amount, fully_paid: false }, subject);
-  }
 
   const openAfter = await listOpenInvoicesForBusiness(businessId);
   void openAfter;
@@ -333,18 +337,21 @@ export async function getReceivablesSummary(
 
   await markOverdueInvoices(businessId);
 
-  const windowDays = Math.max(30, Math.floor(options.windowDays ?? DEFAULT_DSO_WINDOW_DAYS));
+  const requestedWindow=options.windowDays ?? DEFAULT_DSO_WINDOW_DAYS;
+  const windowDays = Number.isFinite(requestedWindow) ? Math.min(3650,Math.max(30, Math.floor(requestedWindow))) : DEFAULT_DSO_WINDOW_DAYS;
   const now = options.now ?? new Date();
   const fromMs = now.getTime() - windowDays * DAY_MS;
 
   const invoices = await dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ?`, [businessId]);
-  const issued = invoices.filter((invoice) => invoice.status !== "draft");
+  singleCurrency(invoices);
+  const issued = invoices.filter((invoice) => invoice.status !== "draft" && Date.parse(invoice.issue_date)<=now.getTime());
   const open = issued.filter(isOpenInvoice);
   const openValue = round2(open.reduce((sum, invoice) => sum + openBalance(invoice), 0));
   const overdueCount = open.filter((invoice) => invoice.status === "overdue").length;
 
   const payments = await dbAll<InvoicePayment>(`SELECT * FROM invoice_payments WHERE business_id = ?`, [businessId]);
-  const invoiceIdsWithPayments = new Set(payments.map((payment) => payment.invoice_id));
+  // A manual receipt is not independently matched transaction evidence.
+  const invoiceIdsWithPayments = new Set(payments.filter(payment => payment.transaction_id && Date.parse(payment.paid_at)<=now.getTime()).map((payment) => payment.invoice_id));
   const matchedPaymentRatio =
     open.length > 0
       ? round2(open.filter((invoice) => invoiceIdsWithPayments.has(invoice.id)).length / open.length)
@@ -355,7 +362,7 @@ export async function getReceivablesSummary(
   const dsoDays = creditSales > 0 ? round1((openValue / creditSales) * windowDays) : null;
 
   const paidInWindow = issued.filter(
-    (invoice) => invoice.status === "paid" && invoice.paid_at && new Date(invoice.paid_at).getTime() >= fromMs
+    (invoice) => invoice.status === "paid" && invoice.paid_at && new Date(invoice.paid_at).getTime() >= fromMs && Date.parse(invoice.paid_at)<=now.getTime()
   );
   const averageDaysToPay =
     paidInWindow.length > 0

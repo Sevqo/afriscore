@@ -2,10 +2,10 @@ import { assistantInput } from './contracts';
 export { assistantInput } from './contracts';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { dbGet, dbRun } from '../db';
+import { dbGet, dbRun, dbTransaction, isPostgres } from '../db';
 import { Access, audit, fail } from '../platform/auth';
 import { now } from '../platform/crypto';
-import { day, atomic } from './store';
+export const aiQuotaDay=(date=new Date())=>date.toISOString().slice(0,10);
 import { financialSnapshot, forecast, forecastSchema } from './intelligence';
 
 export interface ExplanationProvider {
@@ -173,12 +173,23 @@ export async function askAssistant(
       message:
         'Review the minimized evidence, then explicitly allow sending your question and this evidence to the configured AI provider.',
     };
+  if(process.env.AFRICORE_AI_DISABLED==='true')fail(503,'AI explanations are temporarily disabled');
+  if(a.api)fail(403,'External AI explanations require a verified human session');
+  const identity=await dbGet('SELECT verified FROM ac_users WHERE id=?',[a.actor]);
+  if(!identity?.verified)fail(403,'Verify your email before using AI explanations');
+  // Fixed conservative reservation: USD1 per attempted request, never refunded
+  // on timeout/missing usage. Supported text-only models stay below this bound
+  // with <=8KB evidence/question and <=700 output tokens; no tools enabled.
+  if(provider===openAIProvider&&!/^(gpt-4\.1-mini|gpt-4o-mini|gpt-5-mini)(-\d{4}-\d{2}-\d{2})?$/.test(model))fail(503,'AI model requires an approved cost policy');
+  if(Buffer.byteLength(JSON.stringify({question:d.question,evidence}),'utf8')>8000)fail(413,'AI evidence exceeds the bounded request size');
   const id = randomUUID(),
     started = Date.now();
-  await atomic(a, async () => {
+  await dbTransaction(async () => {
+    // One durable global reservation lock across tenants and API instances.
+    if(isPostgres)await dbGet('SELECT pg_advisory_xact_lock(71402819)');
     const usage = await dbGet(
       'SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE org_id=? AND created_at>=?',
-      [a.org, day() + 'T00:00:00'],
+      [a.org, aiQuotaDay() + 'T00:00:00'],
     );
     const configuredLimit = Number(
         process.env.AFRICORE_AI_DAILY_REQUEST_LIMIT || 50,
@@ -188,6 +199,15 @@ export async function askAssistant(
         : 50;
     if (Number(usage.total) >= limit)
       fail(429, 'Daily AI request limit reached');
+    const bounded=(name:string,fallback:number)=>{const n=Number(process.env[name]??fallback);if(!Number.isFinite(n)||n<0||n>100000)fail(503,'Invalid AI limit configuration');return Math.floor(n);};
+    const since=aiQuotaDay()+'T00:00:00',month=aiQuotaDay().slice(0,7)+'-01T00:00:00';
+    const userUsage=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE actor=? AND created_at>=?',[a.actor,since]);
+    const daily=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE created_at>=?',[since]);
+    const monthly=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE created_at>=?',[month]);
+    const pending=await dbGet("SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE status='pending' AND created_at>=?",[new Date(Date.now()-60000).toISOString()]);
+    if(Number(userUsage.total)>=bounded('AFRICORE_AI_USER_DAILY_LIMIT',20))fail(429,'Identity AI quota reached');
+    if(Number(daily.total)>=bounded('AFRICORE_AI_DAILY_BUDGET_USD',5)||Number(monthly.total)>=bounded('AFRICORE_AI_MONTHLY_BUDGET_USD',25))fail(429,'Platform AI budget reached');
+    if(Number(pending.total)>=bounded('AFRICORE_AI_CONCURRENCY_LIMIT',2))fail(429,'AI concurrency limit reached');
     await dbRun(
       'INSERT INTO ac2_ai_usage(id,org_id,environment,actor,provider,model,status,duration_ms,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
       [

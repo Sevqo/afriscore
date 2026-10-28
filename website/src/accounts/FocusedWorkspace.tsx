@@ -7,6 +7,8 @@ import { DataTable } from "../components/DataTable";
 import { managedSignOut } from "./auth";
 import { money, amount, today, Field, Alert, Currency } from "./AccountUI";
 import { DeveloperPanels } from "./DeveloperPanels";
+import {Overlay} from '../components/Overlay';
+import {Icon} from '../components/Icon';
 export function FocusedWorkspace({
   workspace: w,
   account,
@@ -15,6 +17,7 @@ export function FocusedWorkspace({
   account: any;
 }) {
   const personal = w.kind === "personal";
+  const [navigationOpen,setNavigationOpen]=useState(false);
   const items = personal
     ? [
         "Overview",
@@ -206,6 +209,13 @@ export function FocusedWorkspace({
           No {tab.toLowerCase()} records yet. Add a record using the form above.
         </p>
       );
+  const navigation=<>
+        <Logo />
+        <p>{personal ? "PERSONAL WORKSPACE" : "DEVELOPER CONSOLE"}</p>
+        <nav aria-label={personal?'Personal navigation':'Developer navigation'}>{items.map(t=><a key={t} href={t==='Settings'?'/app/account':t==='Learn'?'/learn':'#'+encodeURIComponent(t)} aria-current={tab===t?'page':undefined} onClick={()=>{setTab(t);setNavigationOpen(false);}}>{t}</a>)}</nav>
+        <a href="/app/workspaces">Switch or add workspace</a>
+        <button onClick={async()=>{try{await managedSignOut();location.href='/login';}catch(e){setError((e as Error).message);}}}>Sign out</button>
+      </>;
   return (
     <div className="focused-account">
       <aside className="account-nav">
@@ -246,6 +256,8 @@ export function FocusedWorkspace({
         </button>
       </aside>
       <main className="account-content">
+        <div className="focused-mobile-header"><button className="quiet-button" aria-label={'Open '+(personal?'Personal':'Developer')+' navigation'} aria-expanded={navigationOpen} onClick={()=>setNavigationOpen(true)}><Icon name="menu"/></button><span>{w.name}</span><a href="/app/workspaces">Workspaces</a></div>
+        {navigationOpen&&<Overlay onClose={()=>setNavigationOpen(false)}><aside role="dialog" aria-modal="true" aria-label="Workspace navigation" className="account-nav focused-drawer"><button onClick={()=>setNavigationOpen(false)}>Close menu <Icon name="close"/></button>{navigation}</aside></Overlay>}
         <header className="account-top">
           <div>
             <span className="eyebrow">

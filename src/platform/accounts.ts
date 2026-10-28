@@ -2,6 +2,7 @@ import { dbAll, dbGet, dbRun, dbTransaction } from "../db/adapter";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { currencySchema } from "./domain";
+import {reserveWorkspaceCreation} from './workspace-limits';
 
 export const workspaceInput = z
   .object({
@@ -63,6 +64,7 @@ export async function createWorkspace(userId: string, input: unknown) {
     }
     const id = randomUUID(),
       stamp = new Date().toISOString();
+    await reserveWorkspaceCreation(userId);
     const profile =
       d.kind === "business"
         ? {

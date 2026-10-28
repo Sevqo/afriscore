@@ -23,7 +23,7 @@ export function sandbox(a: Access) {
 }
 export function decode(r: any) {
   return {
-    ...JSON.parse(unseal(r.data)),
+    ...JSON.parse(unseal(r.data,JSON.stringify(['trust-object',r.org_id,r.environment,r.kind,r.id]))),
     id: r.id,
     org_id: r.org_id,
     environment: r.environment,
@@ -62,7 +62,7 @@ export async function put(
   const at = now();
   await dbRun(
     'INSERT INTO ac3_objects(id,org_id,environment,kind,peer_org,data,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',
-    [id, a.org, a.environment, kind, peer, seal(JSON.stringify(data)), at, at],
+    [id, a.org, a.environment, kind, peer, seal(JSON.stringify(data),JSON.stringify(['trust-object',a.org,a.environment,kind,id])), at, at],
   );
   await audit(a.org, a.actor, 'trust.' + kind + '.created', id);
   return {
@@ -81,7 +81,7 @@ export async function change(a: Access, object: any, patch: any) {
   const r = await dbRun(
     'UPDATE ac3_objects SET data=?,updated_at=? WHERE id=? AND org_id=? AND environment=?',
     [
-      seal(JSON.stringify(data)),
+      seal(JSON.stringify(data),JSON.stringify(['trust-object',object.org_id,a.environment,object.kind,object.id])),
       now(),
       object.id,
       object.org_id,

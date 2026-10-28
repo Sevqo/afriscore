@@ -79,7 +79,7 @@ figure {
   background: var(--accent);
   font-size: 24px;
   clip-path: polygon(50% 0, 100% 100%, 70% 100%, 50% 56%, 30% 100%, 0 100%);
-  margin-right: 9px;
+  margin-right: 6.75px;
 }
 .logo-period {
   color: var(--accent);
@@ -87,7 +87,7 @@ figure {
 .actions {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 21px;
   flex-wrap: wrap;
 }
 .eyebrow {
@@ -100,7 +100,7 @@ figure {
   display: inline-block;
   background: var(--accent);
   border-radius: 50%;
-  margin-right: 7px;
+  margin-right: 5.25px;
 }
 .media-container {
   position: relative;
@@ -137,15 +137,15 @@ figure {
   display: grid;
   place-items: center;
   height: 100%;
-  padding: 30px;
+  padding: 22.5px;
   color: var(--muted);
   background: var(--surface);
 }
 .mission {
-  padding: 110px 8%;
+  padding: 82.5px 8%;
   display: grid;
   grid-template-columns: 1.25fr 1fr;
-  gap: 25px 8%;
+  gap: 18.75px 8%;
 }
 .mission .eyebrow {
   grid-column: 1/-1;
@@ -164,16 +164,16 @@ figure {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 25px;
+  gap: 18.75px;
 }
 .feature {
   margin: 0 6%;
-  padding: 55px 0 85px;
+  padding: 41.25px 0 63.75px;
   display: grid;
   align-items: center;
 }
 .feature .section-copy p {
-  margin: 25px 0;
+  margin: 18.75px 0;
 }
 .feature.reverse .section-copy {
   order: 2;
@@ -182,7 +182,7 @@ figure {
   order: 1;
 }
 .product-strip {
-  margin: 0 6% 60px;
+  margin: 0 6% 45px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--line);
@@ -203,14 +203,14 @@ figure {
   color: var(--muted);
 }
 .product-strip h3 {
-  margin: 27px 0 18px;
+  margin: 20.25px 0 13.5px;
 }
 .product-strip p {
   max-width: 300px;
-  margin-bottom: 27px;
+  margin-bottom: 20.25px;
 }
 .developer-feature {
-  padding: 90px 6%;
+  padding: 67.5px 6%;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8%;
@@ -218,7 +218,7 @@ figure {
 }
 .developer-feature p {
   color: var(--line);
-  margin: 25px 0 32px;
+  margin: 18.75px 0 24px;
   max-width: 470px;
 }
 .code-window {
@@ -226,9 +226,9 @@ figure {
 }
 .code-window > div {
   display: flex;
-  gap: 7px;
+  gap: 5.25px;
   align-items: center;
-  padding: 18px;
+  padding: 13.5px;
   border-bottom: 1px solid var(--text);
 }
 .code-window i {
@@ -239,7 +239,7 @@ figure {
 }
 .code-window > div span {
   font-size: 14px;
-  margin-left: 18px;
+  margin-left: 13.5px;
   color: var(--muted);
 }
 .code-window pre {
@@ -248,30 +248,30 @@ figure {
     monospace;
   color: var(--line);
   overflow-x: auto;
-  padding: 22px;
+  padding: 16.5px;
   margin: 0;
 }
 .code-note {
   display: block;
-  padding: 16px 22px;
+  padding: 12px 16.5px;
   font-size: 12px;
   border-top: 1px solid var(--text);
 }
 .integration-section {
   text-align: center;
-  padding: 100px 6%;
+  padding: 75px 6%;
   background: #f3f6f2;
 }
 .integration-section > p {
   max-width: 650px;
-  margin: 27px auto;
+  margin: 20.25px auto;
 }
 .connector-row {
   display: flex;
   justify-content: center;
-  gap: 14px;
+  gap: 10.5px;
   flex-wrap: wrap;
-  margin: 40px 0;
+  margin: 30px 0;
 }
 .connector-row > span {
   text-align: left;
@@ -280,7 +280,7 @@ figure {
 }
 .connector-row small {
   display: block;
-  margin-top: 10px;
+  margin-top: 7.5px;
   font-weight: 400;
 }
 .connector-row .future-connector {
@@ -288,21 +288,21 @@ figure {
   border-style: dashed;
 }
 .solutions-section {
-  padding: 85px 0 65px;
+  padding: 63.75px 0 48.75px;
 }
 .trust-band {
-  padding: 85px 10%;
+  padding: 63.75px 10%;
   text-align: center;
 }
 .trust-band p {
   max-width: 630px;
-  margin: 25px auto;
+  margin: 18.75px auto;
 }
 .how-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10%;
-  padding: 100px 6%;
+  padding: 75px 6%;
 }
 .how-section ol {
   list-style: none;
@@ -311,8 +311,8 @@ figure {
 }
 .how-section li {
   display: flex;
-  gap: 25px;
-  padding: 26px 0;
+  gap: 18.75px;
+  padding: 19.5px 0;
   border-bottom: 1px solid var(--line);
 }
 .how-section li:first-child {
@@ -321,31 +321,31 @@ figure {
 .how-section li > b {
   font-size: 14px;
   color: var(--accent);
-  padding-top: 6px;
+  padding-top: 4.5px;
 }
 .how-section h3 {
-  font-size: 23px;
+  font-size: 18.4px;
 }
 .how-section p {
   font-size: 14px;
-  margin-top: 12px;
+  margin-top: 9px;
 }
 .future-section {
-  padding: 75px 6%;
+  padding: 56.25px 6%;
   background: #f5f6f3;
 }
 .future-section > div {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 40px;
-  margin-top: 40px;
+  gap: 30px;
+  margin-top: 30px;
 }
 .future-section h3 {
-  font-size: 23px;
+  font-size: 18.4px;
 }
 .future-section p {
   font-size: 14px;
-  margin: 15px 0;
+  margin: 11.25px 0;
 }
 .badge {
   display: inline-block;
@@ -353,25 +353,25 @@ figure {
   background: #e9f0eb;
   color: var(--text);
   border: 1px solid var(--surface-alt);
-  padding: 5px 8px;
+  padding: 3.75px 6px;
   text-transform: capitalize;
   white-space: nowrap;
 }
 .final-cta {
-  padding: 100px 6%;
+  padding: 75px 6%;
   text-align: center;
 }
 .final-cta h2 {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 .final-cta p {
   font-size: 14px;
-  margin-top: 20px;
+  margin-top: 15px;
 }
 .footer-top {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 50px;
+  margin-bottom: 37.5px;
 }
 .footer-top p {
   font-size: 14px;
@@ -384,22 +384,22 @@ figure {
 .footer-links h3 {
   letter-spacing: 0;
   color: white;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 .footer-links a {
   display: block;
   color: var(--muted);
-  padding: 6px 0;
+  padding: 4.5px 0;
 }
 .footer-links a:hover {
   color: white;
 }
 .footer-bottom {
   border-top: 1px solid #ffffff20;
-  padding-top: 25px;
-  margin-top: 50px;
+  padding-top: 18.75px;
+  margin-top: 37.5px;
   display: flex;
-  gap: 24px;
+  gap: 18px;
   color: var(--muted);
   flex-wrap: wrap;
 }
@@ -408,41 +408,41 @@ figure {
 }
 .page-hero > p {
   color: var(--line);
-  margin: 27px 0 30px;
+  margin: 20.25px 0 22.5px;
 }
 .page-hero .availability {
   border-top: 1px solid #ffffff25;
-  padding-top: 22px;
-  margin-top: 35px;
+  padding-top: 16.5px;
+  margin-top: 26.25px;
 }
 .feature-points {
-  padding-left: 20px;
+  padding-left: 15px;
   color: var(--muted);
   line-height: 1.8;
 }
 .feature-points li {
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .docs-page {
-  padding: 80px 8%;
+  padding: 60px 8%;
 }
 .docs-page > p {
   max-width: 700px;
-  margin: 30px 0;
+  margin: 22.5px 0;
 }
 .docs-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 25px;
-  margin-top: 50px;
+  gap: 18.75px;
+  margin-top: 37.5px;
 }
 .docs-grid article {
   border-top: 1px solid var(--line);
-  padding: 28px 0;
+  padding: 21px 0;
 }
 .docs-grid h2 {
-  font-size: 25px;
-  margin-bottom: 18px;
+  font-size: 20px;
+  margin-bottom: 13.5px;
 }
 .docs-grid p {
   font-size: 15px;
@@ -457,37 +457,37 @@ code {
   top: -100px;
   z-index: 100;
   background: white;
-  padding: 15px;
+  padding: 11.25px;
 }
 .skip-link:focus {
   top: 10px;
 }
 /* Operational application */
 .auth-page {
-  padding: 30px 6% 70px;
+  padding: 22.5px 6% 52.5px;
 }
 .checkout-page {
-  padding: 30px 6% 70px;
+  padding: 22.5px 6% 52.5px;
 }
 .auth-panel {
   max-width: 510px;
-  margin: 50px auto 0;
-  padding: 45px;
+  margin: 37.5px auto 0;
+  padding: 33.75px;
   border: 1px solid var(--line);
 }
 .checkout-card {
   max-width: 510px;
-  margin: 50px auto 0;
-  padding: 45px;
+  margin: 37.5px auto 0;
+  padding: 33.75px;
   border: 1px solid var(--line);
 }
 .auth-panel > p {
-  margin: 20px 0 28px;
+  margin: 15px 0 21px;
 }
 .field {
   display: flex;
   flex-direction: column;
-  margin: 17px 0;
+  margin: 12.75px 0;
   font-weight: 600;
   min-width: 0;
 }
@@ -512,22 +512,22 @@ textarea {
 }
 .auth-panel form > .button {
   width: 100%;
-  margin-top: 10px;
+  margin-top: 7.5px;
 }
 .auth-links {
   display: flex;
-  gap: 15px;
+  gap: 11.25px;
   flex-wrap: wrap;
   font-size: 14px;
-  margin-top: 30px;
+  margin-top: 22.5px;
 }
 .auth-links a {
   text-decoration: underline;
 }
 .alert {
   border: 1px solid var(--line);
-  padding: 18px;
-  margin: 22px 0;
+  padding: 13.5px;
+  margin: 16.5px 0;
   font-size: 13px;
   line-height: 1.7;
   overflow-wrap: anywhere;
@@ -542,36 +542,36 @@ textarea {
 .checkout-total {
   font-size: 42px;
   font-weight: 650;
-  margin: 32px 0;
+  margin: 24px 0;
 }
 .checkout-card ul {
   padding: 0;
   list-style: none;
-  margin-bottom: 25px;
+  margin-bottom: 18.75px;
 }
 .checkout-card li {
   display: flex;
   justify-content: space-between;
   border-top: 1px solid var(--line);
-  padding: 15px 0;
+  padding: 11.25px 0;
 }
 .checkout-card > small {
   display: block;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.7;
-  margin-top: 25px;
+  margin-top: 18.75px;
 }
 .row-actions button {
   background: white;
   border: 1px solid var(--line);
-  padding: 10px 15px;
+  padding: 7.5px 11.25px;
   font-weight: 600;
 }
 .list-row button {
   background: white;
   border: 1px solid var(--line);
-  padding: 10px 15px;
+  padding: 7.5px 11.25px;
   font-weight: 600;
 }
 .row-actions button:hover {
@@ -580,35 +580,35 @@ textarea {
 .quiet-button {
   background: transparent;
   border: 0;
-  padding: 8px;
+  padding: 6px;
   white-space: nowrap;
 }
 .sandbox-banner {
-  padding: 14px 16px;
+  padding: 10.5px 12px;
   border-radius: var(--radius);
   display: flex;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 25px;
+  gap: 15px;
+  margin-bottom: 18.75px;
 }
 .sandbox-banner span {
   font-size: 12px;
 }
 .panel {
-  margin-bottom: 22px;
+  margin-bottom: 16.5px;
   min-width: 0;
 }
 .panel h2 {
   letter-spacing: -0.025em;
-  margin-bottom: 18px;
+  margin-bottom: 13.5px;
 }
 .panel > form {
-  margin-top: 15px;
+  margin-top: 11.25px;
 }
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  margin: 24px 0;
+  margin: 18px 0;
 }
 .metric-grid .panel {
   margin: 0;
@@ -625,13 +625,13 @@ textarea {
 .dashboard-columns {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
-  gap: 22px;
+  gap: 16.5px;
 }
 .aging-row {
   display: flex;
-  gap: 15px;
+  gap: 11.25px;
   align-items: center;
-  margin: 22px 0;
+  margin: 16.5px 0;
   font-size: 12px;
 }
 .aging-row > span {
@@ -651,24 +651,24 @@ textarea {
 }
 .muted {
   color: var(--muted);
-  margin-top: 15px;
+  margin-top: 11.25px;
 }
 .quick-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 25px;
+  gap: 7.5px;
+  margin-bottom: 18.75px;
 }
 .quick-actions button {
   border: 1px solid var(--line);
   text-align: left;
-  padding: 15px;
+  padding: 11.25px;
 }
 .methodology {
   font-size: 12px;
   color: var(--muted);
   max-width: 900px;
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .empty-state {
   text-align: center;
@@ -678,7 +678,7 @@ textarea {
   font-size: 40px;
 }
 .empty-state h3 {
-  margin: 15px 0;
+  margin: 11.25px 0;
 }
 .empty-state p {
   max-width: 470px;
@@ -705,7 +705,7 @@ td {
 .record-id {
   display: block;
   color: var(--muted);
-  margin-top: 7px;
+  margin-top: 5.25px;
 }
 .record-panel {
   padding: 0;
@@ -713,9 +713,9 @@ td {
 }
 .table-toolbar {
   display: flex;
-  gap: 15px;
+  gap: 11.25px;
   align-items: center;
-  margin: 24px 0 15px;
+  margin: 18px 0 11.25px;
 }
 .table-toolbar input {
   max-width: 360px;
@@ -724,7 +724,7 @@ td {
   display: flex;
 }
 .row-actions button {
-  padding: 6px 9px;
+  padding: 4.5px 6.75px;
   white-space: nowrap;
 }
 .text-button {
@@ -736,12 +736,12 @@ td {
   cursor: pointer;
 }
 .list-row {
-  padding: 15px 0;
+  padding: 11.25px 0;
   border-bottom: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
   overflow-wrap: anywhere;
 }
 .list-row p {
@@ -753,7 +753,7 @@ td {
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 22px;
+  gap: 0 16.5px;
 }
 .create-form {
   max-width: 850px;
@@ -761,12 +761,12 @@ td {
 .create-form small {
   display: block;
   color: var(--muted);
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .filter-form {
   display: flex;
   align-items: end;
-  gap: 20px;
+  gap: 15px;
   flex-wrap: wrap;
 }
 .filter-form .field {
@@ -774,10 +774,10 @@ td {
 }
 .skeleton {
   background: linear-gradient(90deg, #e7ede6, #f3f6f2, #e7ede6);
-  padding: 70px;
+  padding: 52.5px;
   color: var(--muted);
   border-radius: var(--radius);
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .modal-backdrop {
   position: fixed;
@@ -790,14 +790,14 @@ td {
   position: relative;
   max-width: 800px;
   width: 100%;
-  padding: 40px;
+  padding: 30px;
 }
 .record-modal pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .record-modal p {
-  margin: 16px 0;
+  margin: 12px 0;
 }
 .close-modal {
   float: right;
@@ -806,12 +806,12 @@ td {
   font-size: 14px;
 }
 .record-modal > .button {
-  margin-top: 25px;
+  margin-top: 18.75px;
 }
 @media (min-width: 1600px) {
   footer {
-    padding-left: max(6%, calc((100vw - 1440px) / 2));
-    padding-right: max(6%, calc((100vw - 1440px) / 2));
+    padding-left: max(6%, calc((75vw - 1080px) / 2));
+    padding-right: max(6%, calc((75vw - 1080px) / 2));
   }
 }
 @media (max-width: 1150px) {
@@ -824,9 +824,9 @@ td {
 }
 @media (max-width: 850px) {
   .mission {
-    padding: 70px 6%;
+    padding: 52.5px 6%;
     grid-template-columns: 1fr;
-    gap: 25px;
+    gap: 18.75px;
   }
   .mission h2 {
     grid-row: auto;
@@ -841,7 +841,7 @@ td {
     max-width: 130px;
   }
   .feature {
-    padding: 30px 0 60px;
+    padding: 22.5px 0 45px;
   }
   .feature.reverse .section-copy {
     order: 0;
@@ -857,7 +857,7 @@ td {
     border-bottom: 1px solid var(--line);
   }
   .product-strip > a:first-child {
-    padding: 30px 0;
+    padding: 22.5px 0;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -865,39 +865,39 @@ td {
     border: 0;
   }
   .product-strip h3 {
-    margin-top: 16px;
+    margin-top: 12px;
   }
   .developer-feature {
     grid-template-columns: 1fr;
-    gap: 35px;
-    padding: 65px 6%;
+    gap: 26.25px;
+    padding: 48.75px 6%;
   }
   .integration-section {
-    padding: 65px 6%;
+    padding: 48.75px 6%;
   }
   .connector-row > span {
     min-width: 42%;
   }
   .solutions-section {
-    padding: 55px 0;
+    padding: 41.25px 0;
   }
   .trust-band {
-    padding: 65px 6%;
+    padding: 48.75px 6%;
   }
   .how-section {
     grid-template-columns: 1fr;
-    gap: 35px;
-    padding: 65px 6%;
+    gap: 26.25px;
+    padding: 48.75px 6%;
   }
   .future-section {
-    padding: 60px 6%;
+    padding: 45px 6%;
   }
   .future-section > div {
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 22.5px;
   }
   .final-cta {
-    padding: 65px 6%;
+    padding: 48.75px 6%;
   }
   .footer-links {
     grid-template-columns: 1fr 1fr;
@@ -906,16 +906,16 @@ td {
     display: block;
   }
   .footer-top p {
-    margin-top: 25px;
+    margin-top: 18.75px;
   }
   .footer-bottom {
-    gap: 20px;
+    gap: 15px;
   }
   .footer-bottom > span:first-child {
     flex-basis: 100%;
   }
   .docs-page {
-    padding: 60px 6%;
+    padding: 45px 6%;
   }
   .docs-grid {
     grid-template-columns: 1fr;
@@ -926,7 +926,7 @@ td {
   }
   .sandbox-banner span {
     display: block;
-    margin-top: 5px;
+    margin-top: 3.75px;
   }
   .form-grid {
     grid-template-columns: 1fr;
@@ -937,18 +937,18 @@ td {
     gap: 0;
   }
   .auth-page {
-    padding: 24px 5% 40px;
+    padding: 18px 5% 30px;
   }
   .checkout-page {
-    padding: 24px 5% 40px;
+    padding: 18px 5% 30px;
   }
   .auth-panel {
-    margin-top: 30px;
-    padding: 27px;
+    margin-top: 22.5px;
+    padding: 20.25px;
   }
   .checkout-card {
-    margin-top: 30px;
-    padding: 27px;
+    margin-top: 22.5px;
+    padding: 20.25px;
   }
   .checkout-total {
     font-size: 34px;
@@ -957,20 +957,20 @@ td {
     display: block;
   }
   .section-heading > .text-link {
-    margin-top: 25px;
+    margin-top: 18.75px;
     max-width: none;
   }
   .code-window pre {
-    padding: 15px;
+    padding: 11.25px;
   }
   .connector-row > span {
     width: 100%;
   }
   .list-row {
-    gap: 10px;
+    gap: 7.5px;
   }
   .record-modal {
-    padding: 25px;
+    padding: 18.75px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1043,22 +1043,22 @@ td {
 .line-items {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
-  margin: 20px 0;
+  padding: 13.5px;
+  margin: 15px 0;
 }
 .line-items legend {
   font-size: 14px;
   font-weight: 600;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 .line-item-row {
   display: grid;
   grid-template-columns: 2fr 0.7fr 1fr auto;
-  gap: 12px;
+  gap: 9px;
   align-items: center;
 }
 .line-item-row .field {
-  margin: 12px 0;
+  margin: 9px 0;
 }
 @media (max-width: 700px) {
   .line-item-row {
@@ -1072,14 +1072,14 @@ td {
 .operations-toolbar {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin: 20px 0;
+  gap: 15px;
+  margin: 15px 0;
   flex-wrap: wrap;
 }
 .currency-selector {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
   font-size: 14px;
 }
 .currency-selector select {
@@ -1098,7 +1098,7 @@ td {
 .metric-definition > strong {
   display: block;
   font-size: 25px;
-  margin: 18px 0;
+  margin: 13.5px 0;
 }
 .metric-definition details {
   font-size: 12px;
@@ -1110,7 +1110,7 @@ td {
 }
 .metric-definition details p {
   font-size: 12px;
-  margin-top: 10px;
+  margin-top: 7.5px;
 }
 .provenance {
   font-size: 12px;
@@ -1131,79 +1131,79 @@ td {
 .data-quality ul {
   font-size: 14px;
   color: var(--muted);
-  padding-left: 18px;
+  padding-left: 13.5px;
   line-height: 2.1;
 }
 .insight-row {
   border-top: 1px solid var(--line);
-  padding: 22px 0;
+  padding: 16.5px 0;
 }
 .insight-row h3 {
-  font-size: 18px;
-  margin: 12px 0;
+  font-size: 14.4px;
+  margin: 9px 0;
 }
 .insight-row small {
   font-size: 12px;
   display: block;
   color: var(--muted);
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .insight-row .text-button {
   font-size: 14px;
 }
 .forecast-action {
-  margin-top: 15px;
+  margin-top: 11.25px;
   border-left: 2px solid var(--accent);
-  padding-left: 15px;
+  padding-left: 11.25px;
 }
 .checkbox-field {
   display: flex;
-  gap: 12px;
+  gap: 9px;
   align-items: start;
   font-size: 14px;
   line-height: 1.7;
-  margin: 22px 0;
+  margin: 16.5px 0;
   color: var(--muted);
 }
 .checkbox-field input {
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
-  margin-top: 3px;
+  margin-top: 2.25px;
   accent-color: var(--accent);
 }
 .assistant-prompts {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 7.5px;
+  margin-top: 15px;
 }
 .assistant-prompts button {
   border: 1px solid var(--line);
   background: var(--surface);
-  padding: 10px 13px;
+  padding: 7.5px 9.75px;
   border-radius: var(--radius);
   font-size: 14px;
 }
 .assistant-text {
   white-space: pre-wrap;
   font-size: 14px !important;
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .assistant-evidence {
   background: var(--surface);
-  padding: 20px;
+  padding: 15px;
   border-radius: var(--radius);
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .assistant-evidence h3 {
-  margin-bottom: 15px;
+  margin-bottom: 11.25px;
 }
 .notification-item {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
-  padding: 22px;
+  gap: 15px;
+  padding: 16.5px;
   border-bottom: 1px solid var(--line);
 }
 .notification-item.unread {
@@ -1211,8 +1211,8 @@ td {
   border-left: 3px solid var(--accent);
 }
 .notification-item h3 {
-  font-size: 17px;
-  margin: 12px 0;
+  font-size: 13.6px;
+  margin: 9px 0;
 }
 .notification-item small {
   font-size: 12px;
@@ -1226,73 +1226,73 @@ td {
   display: flex;
   justify-content: space-between;
   align-items: start;
-  gap: 25px;
+  gap: 18.75px;
   border-top: 1px solid var(--line);
-  padding: 23px 0;
+  padding: 17.25px 0;
 }
 .commerce-row {
   display: flex;
   justify-content: space-between;
   align-items: start;
-  gap: 25px;
+  gap: 18.75px;
   border-top: 1px solid var(--line);
-  padding: 23px 0;
+  padding: 17.25px 0;
 }
 .approval-item p {
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .commerce-row p {
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .approval-form {
   max-width: 350px;
 }
 .approval-form input {
-  margin-bottom: 10px;
+  margin-bottom: 7.5px;
 }
 .approval-form select {
-  margin-bottom: 10px;
+  margin-bottom: 7.5px;
 }
 .compact-form input {
-  margin-bottom: 10px;
+  margin-bottom: 7.5px;
 }
 .compact-form select {
-  margin-bottom: 10px;
+  margin-bottom: 7.5px;
 }
 .commerce-row h3 {
-  font-size: 18px;
+  font-size: 14.4px;
 }
 .commerce-row .row-actions {
   max-width: 330px;
 }
 .dispute-item {
   border-top: 1px solid var(--line);
-  padding: 28px 0;
+  padding: 21px 0;
 }
 .dispute-item h3 {
-  font-size: 21px;
+  font-size: 16.8px;
 }
 .dispute-item > .compact-form {
-  margin: 25px 0;
-  padding: 20px;
+  margin: 18.75px 0;
+  padding: 15px;
   background: var(--surface);
 }
 .connector-catalog {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  gap: 11.25px;
 }
 .connector-catalog article {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 15px;
 }
 .connector-catalog h3 {
-  font-size: 17px;
-  margin-bottom: 15px;
+  font-size: 13.6px;
+  margin-bottom: 11.25px;
 }
 .connector-catalog p {
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .connector-catalog small {
   font-size: 12px;
@@ -1302,11 +1302,11 @@ td {
   list-style: none;
   padding: 0;
   border-left: 1px solid var(--line);
-  margin: 25px 0 25px 6px;
+  margin: 18.75px 0 18.75px 4.5px;
 }
 .event-timeline li {
   position: relative;
-  padding: 0 0 28px 25px;
+  padding: 0 0 21px 18.75px;
   font-size: 14px;
 }
 .event-timeline li:before {
@@ -1320,22 +1320,22 @@ td {
   background: var(--accent);
 }
 .event-timeline .badge {
-  margin-left: 15px;
+  margin-left: 11.25px;
 }
 .event-timeline small {
   display: block;
   color: var(--muted);
-  margin-top: 12px;
+  margin-top: 9px;
   font-size: 12px;
 }
 .evidence-record {
   border: 1px solid var(--line);
-  padding: 15px;
-  margin: 15px 0;
+  padding: 11.25px;
+  margin: 11.25px 0;
 }
 .engineering-doc {
   border-top: 1px solid var(--line);
-  padding: 20px 0;
+  padding: 15px 0;
 }
 .engineering-doc summary {
   font-size: 14px;
@@ -1345,7 +1345,7 @@ td {
 .engineering-doc pre {
   white-space: pre-wrap;
   background: var(--surface);
-  padding: 25px;
+  padding: 18.75px;
   overflow-wrap: anywhere;
 }
 .buyer-portal {
@@ -1353,40 +1353,40 @@ td {
   min-height: 100vh;
 }
 .buyer-portal > header {
-  padding: 25px 6%;
+  padding: 18.75px 6%;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .buyer-portal > main {
   max-width: 1000px;
-  padding: 25px;
+  padding: 18.75px;
   margin: auto;
 }
 .buyer-summary h1 {
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .buyer-amount {
   display: block;
   font-size: 38px;
   font-weight: 650;
-  margin: 25px 0;
+  margin: 18.75px 0;
 }
 .buyer-terms {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 30px;
-  margin: 30px 0;
+  gap: 22.5px;
+  margin: 22.5px 0;
 }
 .buyer-terms h3 {
-  font-size: 17px;
-  margin-bottom: 15px;
+  font-size: 13.6px;
+  margin-bottom: 11.25px;
 }
 .buyer-terms p {
   font-size: 14px;
 }
 .buyer-portal .panel h2 {
-  font-size: 22px;
+  font-size: 17.6px;
 }
 .buyer-portal .record-modal {
   max-width: 850px;
@@ -1410,30 +1410,30 @@ td {
 }
 @media (max-width: 560px) {
   .operations-toolbar {
-    gap: 12px;
+    gap: 9px;
   }
   .connector-catalog {
     grid-template-columns: 1fr;
   }
   .notification-item {
-    padding: 15px;
+    padding: 11.25px;
     display: block;
   }
   .notification-item button {
-    margin-top: 15px;
+    margin-top: 11.25px;
   }
   .buyer-portal > main {
-    padding: 14px;
+    padding: 10.5px;
   }
   .buyer-amount {
     font-size: 30px;
   }
   .buyer-portal > header {
-    gap: 20px;
-    padding: 20px;
+    gap: 15px;
+    padding: 15px;
   }
   .event-timeline .badge {
-    margin: 10px 0;
+    margin: 7.5px 0;
     display: table;
   }
   .metric-definition > strong {
@@ -1447,24 +1447,24 @@ td {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 7%;
-  padding: 85px 6%;
+  padding: 63.75px 6%;
   background: var(--warning-surface);
 }
 .educational-story .section-copy > p {
-  margin: 25px 0;
+  margin: 18.75px 0;
   max-width: 500px;
 }
 .story-steps {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 30px;
+  gap: 7.5px;
+  margin-top: 22.5px;
 }
 .story-steps button {
   display: flex;
-  gap: 20px;
+  gap: 15px;
   text-align: left;
-  padding: 18px;
+  padding: 13.5px;
   border: 1px solid #d9e1d8;
   background: transparent;
   color: var(--muted);
@@ -1480,8 +1480,8 @@ td {
   align-self: center;
 }
 .story-panel h3 {
-  font-size: 23px;
-  margin: 20px 0 12px;
+  font-size: 18.4px;
+  margin: 15px 0 9px;
 }
 .story-panel p {
   font-size: 14px;
@@ -1490,13 +1490,13 @@ td {
   display: block;
   font-size: 12px;
   color: var(--muted);
-  margin-top: 15px;
+  margin-top: 11.25px;
 }
 @media (max-width: 850px) {
   .educational-story {
     grid-template-columns: 1fr;
-    padding: 60px 6%;
-    gap: 35px;
+    padding: 45px 6%;
+    gap: 26.25px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1508,39 +1508,39 @@ td {
 
 .demo-entry {
   display: grid;
-  gap: 14px;
-  margin: 24px 0;
+  gap: 10.5px;
+  margin: 18px 0;
 }
 .demo-banner {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 .demo-banner button {
-  margin-top: 12px;
+  margin-top: 9px;
 }
 .passport-card-title {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
+  gap: 15px;
   align-items: center;
 }
 .passport-symbol {
-  font-size: 70px;
+  font-size: 56px;
   font-weight: 800;
   opacity: 0.3;
 }
 .passport-workspace {
   display: grid;
-  gap: 20px;
+  gap: 15px;
 }
 .passport-workspace fieldset {
   border: 1px solid var(--line);
-  padding: 18px;
+  padding: 13.5px;
   border-radius: var(--radius);
 }
 .check-row {
   display: flex;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 7.5px;
+  padding: 7.5px 0;
   align-items: center;
   overflow-wrap: anywhere;
 }
@@ -1548,10 +1548,10 @@ td {
   width: auto;
 }
 .credential-card {
-  padding: 22px 0;
+  padding: 16.5px 0;
   border-bottom: 1px solid var(--line);
   display: grid;
-  gap: 14px;
+  gap: 10.5px;
 }
 .credential-card pre {
   white-space: pre-wrap;
@@ -1567,7 +1567,7 @@ td {
 }
 .verification-report .list-row {
   align-items: start;
-  gap: 24px;
+  gap: 18px;
   overflow-wrap: anywhere;
 }
 .verification-report .list-row strong {
@@ -1580,22 +1580,22 @@ td {
 .trust-public header {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
+  gap: 15px;
   align-items: center;
-  margin-bottom: 50px;
+  margin-bottom: 37.5px;
 }
 .trust-public > h1 {
   max-width: 850px;
 }
 .trust-public > p {
   max-width: 750px;
-  margin: 24px 0;
+  margin: 18px 0;
 }
 .trust-public textarea {
   min-height: 170px;
 }
 .trust-public form {
-  margin: 24px 0;
+  margin: 18px 0;
 }
 .passport-workspace .panel {
   min-width: 0;
@@ -1615,7 +1615,7 @@ td {
   }
   .verification-report .list-row {
     display: grid;
-    gap: 5px;
+    gap: 3.75px;
   }
   .verification-report .list-row strong {
     max-width: 100%;

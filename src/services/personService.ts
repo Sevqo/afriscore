@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { randomUUID } from "node:crypto";
-import { dbGet, dbAll, dbRun } from "../db";
+import { dbGet, dbAll, dbRun, dbTransaction } from "../db";
 import { appendEvent, getLedger, verifyChainIntegrity } from "./ledgerService";
 import { redactLedgerEvents } from "./redaction";
 
@@ -15,7 +15,7 @@ export interface Person {
   updated_at: string;
 }
 
-// Never store raw national ID / phone numbers — only a salted hash, so the
+// Never store raw national ID / phone numbers — only a keyed HMAC, so the
 // record is verifiable (same input always produces the same hash, so
 // duplicate-registration checks still work) without holding the raw PII.
 //
@@ -38,8 +38,10 @@ function getSalt(): string {
   return salt;
 }
 
-function hashIdentifier(value: string): string {
-  return crypto.createHash("sha256").update(`${getSalt()}:${value}`).digest("hex");
+function legacyIdentifier(value:string){return crypto.createHash('sha256').update(`${getSalt()}:${value}`).digest('hex');}
+export function hashIdentifier(value: string,purpose:'national_id'|'phone'='national_id'): string {
+  const normalized=purpose==='phone'?value.trim().replace(/[\s()-]/g,''):value.trim().toUpperCase();
+  return 'hmac-v2:'+crypto.createHmac('sha256',getSalt()).update(JSON.stringify(['africore-private-identifier-v2',purpose,normalized])).digest('hex');
 }
 
 export async function createPerson(input: { full_name: string; national_id?: string; phone?: string; is_sandbox?: boolean }): Promise<Person> {
@@ -47,14 +49,23 @@ export async function createPerson(input: { full_name: string; national_id?: str
   const person = {
     id: randomUUID(),
     full_name: input.full_name,
-    national_id_hash: input.national_id ? hashIdentifier(input.national_id) : undefined,
-    phone_hash: input.phone ? hashIdentifier(input.phone) : undefined,
+    national_id_hash: input.national_id ? hashIdentifier(input.national_id,'national_id') : undefined,
+    phone_hash: input.phone ? hashIdentifier(input.phone,'phone') : undefined,
     status: "pending_verification",
     is_sandbox: input.is_sandbox ? 1 : 0,
     created_at: now,
     updated_at: now,
   };
 
+  return dbTransaction(async()=>{
+  // Upgrade only exact legacy matches when the original identifier is supplied
+  // again. No raw identifier is persisted and no account/identity is merged.
+  for(const [field,raw,replacement] of [['national_id_hash',input.national_id,person.national_id_hash],['phone_hash',input.phone,person.phone_hash]] as const){
+    if(!raw||!replacement)continue;
+    const previous=await dbAll<{id:string}>(`SELECT id FROM persons WHERE ${field}=?`,[legacyIdentifier(raw)]);
+    await dbRun(`UPDATE persons SET ${field}=? WHERE ${field}=?`,[replacement,legacyIdentifier(raw)]);
+    for(const row of previous)await appendEvent('person',row.id,'identifier.protection_upgraded',{field,scheme:'hmac-v2',reason:'identifier supplied again; no raw identifier retained'});
+  }
   await dbRun(
     `INSERT INTO persons (id, full_name, national_id_hash, phone_hash, status, is_sandbox, created_at, updated_at)
      VALUES (@id, @full_name, @national_id_hash, @phone_hash, @status, @is_sandbox, @created_at, @updated_at)`,
@@ -68,6 +79,7 @@ export async function createPerson(input: { full_name: string; national_id?: str
   });
 
   return { ...person, is_sandbox: !!person.is_sandbox };
+  });
 }
 
 export async function getPerson(id: string): Promise<Person | undefined> {

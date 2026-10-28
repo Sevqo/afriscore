@@ -75,7 +75,7 @@ export function createApp() {
   // Limit before parsing: an unauthenticated flood should be rejected without
   // paying for JSON parsing (and its 1 MB body allowance).
   app.use(ipRateLimit);
-  app.use(express.json({ limit: "1mb", verify: (req,_res,body) => { (req as any).rawBody = body.toString("utf8"); } }));
+  app.use(express.json({ limit: "1mb", verify: (req,_res,body) => { if(req.url?.startsWith('/api/v1/callbacks/'))(req as any).rawBody = body.toString("utf8"); } }));
   app.use('/api/auth', sameOrigin, auth);
   app.use(developerRequestLog);
   app.use('/api/v1',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
@@ -87,7 +87,7 @@ export function createApp() {
   // Liveness: process-only, deliberately does NOT touch the database, so a
   // slow DB cannot cause an orchestrator to kill a healthy process.
   app.get("/v1/health", (_req, res) =>
-    res.json({ status: "ok", service: "afriscore", db_engine: isPostgres ? "postgres" : "sqlite" })
+    res.json({ status: "ok" })
   );
 
   // Readiness: can this instance actually serve requests? Runs a cheap
@@ -96,14 +96,14 @@ export function createApp() {
     const dbEngine = isPostgres ? "postgres" : "sqlite";
     try {
       await withTimeout(dbGet("SELECT 1 AS ok"), READINESS_TIMEOUT_MS, "database readiness check");
-      res.json({ status: "ok", checks: { database: "ok" }, db_engine: dbEngine });
+      res.json({ status: "ok" });
     } catch (err) {
       logger.warn("readiness_failed", {
         checks: { database: "error" },
         db_engine: dbEngine,
         message: err instanceof Error ? err.message : String(err),
       });
-      res.status(503).json({ status: "error", checks: { database: "error" }, db_engine: dbEngine });
+      res.status(503).json({ status: "error" });
     }
   });
 

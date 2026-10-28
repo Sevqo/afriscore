@@ -57,12 +57,11 @@ describe("API routes", () => {
     removeSqliteFile(sqlitePath);
   });
 
-  test("health endpoint reports engine", async () => {
+  test("public health endpoint exposes only non-sensitive status", async () => {
     const res = await api("GET", "/v1/health");
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.body.status, "ok");
-    assert.strictEqual(res.body.db_engine, isPg ? "postgres" : "sqlite");
-    assert.strictEqual(res.body.service, "afriscore");
+    assert.deepEqual(res.body,{status:'ok'});
     assert.ok(res.headers.get("x-request-id"));
     assert.strictEqual(res.headers.get("x-content-type-options"), "nosniff");
     assert.strictEqual(res.headers.get("x-powered-by"), null);
@@ -514,7 +513,7 @@ describe("API routes", () => {
     assert.strictEqual(res.status, 201);
     const serialized = JSON.stringify(res.body);
     assert.ok(!serialized.includes("12129999"), "raw national ID must never appear in a response");
-    assert.ok(res.body.national_id_hash.length === 64);
+    assert.match(res.body.national_id_hash,/^hmac-v2:[a-f0-9]{64}$/);
   });
 
   test("webhook subscription returns a secret once, never on listing", async () => {

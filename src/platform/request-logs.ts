@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { randomUUID } from "node:crypto";
 import { dbGet, dbRun } from "../db/adapter";
 import { hash, now } from "./crypto";
+import {safeLogPath} from '../safe-log-path';
 /** Persist only scoped credential request metadata, never bodies, keys or queries. */
 export function developerRequestLog(
   req: Request,
@@ -16,7 +17,7 @@ export function developerRequestLog(
   )?.[1];
   const environment = String(req.headers["x-environment"] || "sandbox");
   if (org && key && ["sandbox", "production"].includes(environment)) {
-    const route = req.path.replace(/[a-f0-9-]{36}/gi, ":id").slice(0, 500);
+    const route = safeLogPath(req.path).replace(/[a-f0-9-]{36}/gi, ":id").slice(0, 500);
     res.once("finish", () => {
       void (async () => {
         const c = await dbGet(

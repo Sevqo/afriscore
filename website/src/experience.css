@@ -2,8 +2,8 @@
 .hero.hero-compact {
   min-height: 0;
   grid-template-rows: auto;
-  padding: 38px var(--gutter) 32px;
-  gap: 38px;
+  padding: 28.5px var(--gutter) 24px;
+  gap: 28.5px;
   grid-template-columns: 0.9fr 1.1fr;
 }
 .hero-compact .hero-copy {
@@ -11,19 +11,19 @@
   max-width: 560px;
 }
 .hero-compact h1 {
-  font-size: clamp(38px, 4vw, 58px);
+  font-size: clamp(30.4px, 3.2vw, 46.4px);
 }
 .hero-compact p {
-  margin: 20px 0 24px;
+  margin: 15px 0 18px;
   font-size: 17px;
   max-width: 470px;
 }
 .hero-compact .eyebrow {
   font-size: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 10.5px;
 }
 .hero-compact .actions {
-  gap: 18px;
+  gap: 13.5px;
 }
 .product-composition {
   position: relative;
@@ -39,7 +39,7 @@
   left: 0;
   top: 7%;
   width: 88%;
-  padding: 9px 8px 12px;
+  padding: 6.75px 6px 9px;
   border: 1px solid #555;
   border-radius: 12px;
   background: #171717;
@@ -57,7 +57,7 @@
   height: 3px;
   border-radius: 50%;
   background: #777;
-  margin: -5px auto 4px;
+  margin: -3.75px auto 3px;
 }
 .device-base {
   height: 8px;
@@ -73,7 +73,7 @@
   right: 0;
   top: 0;
   width: 24%;
-  padding: 7px 5px;
+  padding: 5.25px 3.75px;
   border: 1px solid #777;
   border-radius: 19px;
   background: #111;
@@ -94,9 +94,9 @@
   color: #1a1a1a;
   border: 1px solid #bbb;
   border-radius: 4px;
-  padding: 10px 14px;
+  padding: 7.5px 10.5px;
   display: grid;
-  gap: 3px;
+  gap: 2.25px;
   box-shadow: 0 5px 10px #0005;
   transform: rotate(-5deg);
 }
@@ -120,24 +120,24 @@
 .home-working-day,
 .home-assurance,
 .home-resources {
-  padding: 56px var(--gutter);
+  padding: 42px var(--gutter);
 }
 .home-groups > div {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 28px;
-  margin-top: 32px;
+  gap: 21px;
+  margin-top: 24px;
 }
 .home-groups article {
   border-top: 1px solid var(--line);
-  padding-top: 20px;
+  padding-top: 15px;
 }
 .home-groups h3 {
-  font-size: 24px;
+  font-size: 19.2px;
 }
 .home-groups p {
   color: var(--muted);
-  margin: 14px 0 20px;
+  margin: 10.5px 0 15px;
 }
 .home-groups a {
   font-size: 14px;
@@ -146,16 +146,16 @@
   background: #f7f7f7;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 64px;
+  gap: 48px;
   align-items: center;
 }
 .home-example > div > p {
-  margin: 20px 0;
+  margin: 15px 0;
   color: var(--muted);
 }
 .home-example .hero-workflow {
   background: #111;
-  padding: 24px;
+  padding: 18px;
   border-radius: 8px;
   color: white;
 }
@@ -166,23 +166,23 @@
 .home-example .hero-workflow figcaption,
 .home-example .hero-workflow small { color: #bbb; }
 .home-example .hero-workflow article {
-  padding: 16px;
+  padding: 12px;
 }
 .home-working-day ol {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   list-style: none;
   padding: 0;
-  gap: 40px;
-  margin-top: 30px;
+  gap: 30px;
+  margin-top: 22.5px;
 }
 .home-working-day b {
   color: var(--muted);
   font-size: 14px;
 }
 .home-working-day h3 {
-  font-size: 23px;
-  margin: 12px 0;
+  font-size: 18.4px;
+  margin: 9px 0;
 }
 .home-working-day p {
   color: var(--muted);
@@ -190,34 +190,34 @@
 .home-assurance {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
-  gap: 80px;
+  gap: 60px;
   background: #111;
   color: white;
 }
 .home-assurance p {
   color: #ccc;
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .home-assurance .text-link {
   color: white;
 }
 .home-assurance h3 {
-  font-size: 28px;
+  font-size: 22.4px;
 }
 .home-resources {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 80px;
+  gap: 60px;
 }
 .home-resources h2 {
-  font-size: 32px;
+  font-size: 25.6px;
 }
 .home-resources p {
-  margin: 20px 0;
+  margin: 15px 0;
   color: var(--muted);
 }
 .distinct-experience {
-  padding: 48px var(--gutter);
+  padding: 36px var(--gutter);
   border-top: 1px solid var(--line);
 }
 .distinct-experience h2 {
@@ -225,13 +225,13 @@
 }
 .distinct-experience > p {
   max-width: 850px;
-  margin: 18px 0;
+  margin: 13.5px 0;
   color: var(--muted);
 }
 .experience-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 48px;
+  gap: 36px;
   align-items: start;
 }
 .experience-split img,
@@ -243,26 +243,26 @@
 }
 .experience-split ul,
 .experience-split ol {
-  padding-left: 20px;
+  padding-left: 15px;
 }
 .experience-split li {
-  margin: 16px 0;
+  margin: 12px 0;
 }
 .experience-label {
   font-size: 12px;
   color: var(--muted);
-  margin: 14px 0 !important;
+  margin: 10.5px 0 !important;
 }
 .experience-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin: 24px 0;
+  margin: 18px 0;
 }
 .experience-tabs button {
   border: 1px solid var(--line);
   background: white;
-  padding: 10px 14px;
+  padding: 7.5px 10.5px;
   border-radius: 3px;
 }
 .experience-tabs button[aria-pressed="true"] {
@@ -271,36 +271,36 @@
 }
 .experience-result {
   background: var(--surface);
-  padding: 24px;
+  padding: 18px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  margin-top: 20px;
+  margin-top: 15px;
 }
 .experience-result h3 {
-  font-size: 24px;
+  font-size: 19.2px;
 }
 .experience-result p {
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .experience-facts {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin: 28px 0;
+  gap: 15px;
+  margin: 21px 0;
 }
 .experience-facts article {
-  padding: 20px;
+  padding: 15px;
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 .experience-facts strong {
   display: block;
   font-size: 28px;
-  margin: 12px 0;
+  margin: 9px 0;
 }
 .experience-table {
   overflow: auto;
-  margin-top: 24px;
+  margin-top: 18px;
 }
 .experience-table table {
   width: 100%;
@@ -310,7 +310,7 @@
 .experience-table th,
 .experience-table td {
   text-align: left;
-  padding: 16px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
@@ -322,30 +322,30 @@
   grid-template-columns: repeat(4, 1fr);
   padding: 0;
   list-style: none;
-  margin: 32px 0;
-  gap: 20px;
+  margin: 24px 0;
+  gap: 15px;
 }
 .experience-timeline li {
   border-top: 2px solid var(--line);
-  padding-top: 16px;
+  padding-top: 12px;
 }
 .experience-timeline strong {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 7.5px;
 }
 .product-education .compact-product-help {
-  padding: 28px var(--gutter);
+  padding: 21px var(--gutter);
 }
 .compact-product-help summary {
-  font-size: 18px;
+  font-size: 14.4px;
   font-weight: 700;
   cursor: pointer;
 }
 .distinct-experience label {
   display: grid;
-  gap: 10px;
+  gap: 7.5px;
   max-width: 480px;
-  margin: 20px 0;
+  margin: 15px 0;
 }
 .distinct-experience input[type="range"] {
   width: 100%;
@@ -353,11 +353,11 @@
 .relationship-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-top: 24px;
+  gap: 9px;
+  margin-top: 18px;
 }
 .relationship-grid button {
-  padding: 20px;
+  padding: 15px;
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -369,7 +369,7 @@
 .relationship-grid strong,
 .relationship-grid span {
   display: block;
-  margin: 6px 0;
+  margin: 4.5px 0;
 }
 .workspace-guidance {
   color: var(--muted);
@@ -378,51 +378,51 @@
 .record-pagination {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin: 20px 0;
+  margin: 15px 0;
 }
 @media (max-width: 1024px) {
   .hero.hero-compact {
-    gap: 24px;
-    padding-top: 32px;
+    gap: 18px;
+    padding-top: 24px;
     grid-template-columns: 1fr 1fr;
   }
   .hero-compact h1 {
-    font-size: 42px;
+    font-size: 33.6px;
   }
   .home-groups > div {
     grid-template-columns: repeat(2, 1fr);
   }
   .home-example {
-    gap: 30px;
+    gap: 22.5px;
   }
   .home-assurance,
   .home-resources {
-    gap: 40px;
+    gap: 30px;
   }
 }
 @media (max-width: 767px) {
   .hero.hero-compact {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
-    padding: 28px var(--gutter) 24px;
-    gap: 20px;
+    padding: 21px var(--gutter) 18px;
+    gap: 15px;
   }
   .hero-compact h1 {
-    font-size: 38px;
+    font-size: 30.4px;
   }
   .hero-compact p {
     font-size: 16px;
     line-height: 1.5;
-    margin: 14px 0 20px;
+    margin: 10.5px 0 15px;
   }
   .hero-compact .eyebrow {
     font-size: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 9px;
   }
   .hero-compact .actions {
-    gap: 14px;
+    gap: 10.5px;
     flex-direction: row;
     align-items: center;
   }
@@ -434,7 +434,7 @@
     aspect-ratio: 1.5;
   }
   .device-invoice {
-    padding: 7px 10px;
+    padding: 5.25px 7.5px;
     bottom: 15%;
   }
   .device-invoice strong {
@@ -445,7 +445,7 @@
   }
   .device-phone {
     border-radius: 13px;
-    padding: 5px 3px;
+    padding: 3.75px 2.25px;
   }
   .device-phone img {
     border-radius: 9px;
@@ -459,7 +459,7 @@
   .home-assurance,
   .home-resources,
   .distinct-experience {
-    padding: 36px var(--gutter);
+    padding: 27px var(--gutter);
   }
   .home-groups > div,
   .home-example,
@@ -467,17 +467,17 @@
   .home-resources,
   .experience-split {
     grid-template-columns: 1fr;
-    gap: 28px;
+    gap: 21px;
   }
   .home-groups > div {
-    gap: 24px;
+    gap: 18px;
   }
   .home-working-day ol {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 18px;
   }
   .home-example .hero-workflow {
-    padding: 18px;
+    padding: 13.5px;
   }
   .experience-facts {
     grid-template-columns: 1fr;
@@ -490,17 +490,17 @@
     min-width: 580px;
   }
   .home-resources h2 {
-    font-size: 28px;
+    font-size: 22.4px;
   }
 }
 @media (max-width: 374px) {
   .hero-compact h1 {
-    font-size: 34px;
+    font-size: 27.2px;
   }
   .hero-compact .actions {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 9px;
   }
   .product-composition {
     aspect-ratio: 1.5;

@@ -122,6 +122,7 @@ async function approval(action: string, resource: string) {
     approver: reviewerId,
     action,
     resource_id: resource,
+    parameters:action==='dispute_resolution'?{decision:'refund'}:{},
   });
   assert.equal(created.status, 201);
   const approved = await api(
@@ -135,6 +136,9 @@ async function approval(action: string, resource: string) {
 }
 before(async () => {
   await migrate();
+  // Global cost reservations persist across repeated fixture runs. Start this
+  // serial suite with an empty synthetic usage ledger, never relaxed limits.
+  await dbRun('DELETE FROM ac2_ai_usage');
   server = createApp().listen(0);
   await new Promise<void>((r) => server.once('listening', r));
   base = 'http://127.0.0.1:' + (server.address() as any).port;
@@ -145,6 +149,7 @@ before(async () => {
   const b = await register('reviewer');
   reviewer = b.cookie;
   reviewerId = b.data.id;
+  await api('/api/auth/verify','POST',{token:b.data.verification_token},reviewer);
   other = (await register('other')).cookie;
   const body = {
     name: 'Stage 2 SME',
@@ -1226,7 +1231,7 @@ test('assistant quota is reserved before provider execution and every tool retur
     (
       await dbGet(
         'SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE org_id=? AND created_at>=?',
-        [org, day() + 'T00:00:00'],
+        [org, new Date().toISOString().slice(0,10) + 'T00:00:00'],
       )
     ).total,
   );

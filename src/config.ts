@@ -49,6 +49,7 @@ export interface AppConfig {
   databaseUrl?: string;
   /** AFRISCORE_ADMIN_TOKEN — bootstrap control-plane credential (32+ chars). */
   adminToken?: string;
+  gatewaySecret?: string;
   /** ID_HASH_SALT — salt for national-ID / phone hashes (32+ chars in prod). */
   idHashSalt?: string;
   /** LEDGER_HMAC_KEY — key anchoring ledger heads (32+ chars in prod). */
@@ -220,6 +221,8 @@ export function validateConfig(appConfig: AppConfig = config): ConfigValidation 
   }
 
   if (prod) {
+    if (!isSecret(appConfig.gatewaySecret ?? process.env.AFRICORE_GATEWAY_SECRET)) errors.push('AFRICORE_GATEWAY_SECRET is required in production (minimum 32 characters).');
+    if (process.env.AFRICORE_GATEWAY_SECRET_PREVIOUS && !isSecret(process.env.AFRICORE_GATEWAY_SECRET_PREVIOUS)) errors.push('AFRICORE_GATEWAY_SECRET_PREVIOUS must contain at least 32 characters when set.');
     if (!appConfig.databaseUrl) errors.push("DATABASE_URL is required in production (PostgreSQL).");
     if (!isSecret(appConfig.adminToken)) errors.push("AFRISCORE_ADMIN_TOKEN is required in production (minimum 32 characters).");
     if (!isSecret(appConfig.idHashSalt)) errors.push("ID_HASH_SALT is required in production (minimum 32 characters).");

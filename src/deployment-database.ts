@@ -1,4 +1,4 @@
-const requiredVersions = ['001-workspaces','002-stage2','003-stage3','004-account-foundation','005-workspace-experiences'];
+const requiredVersions = ['001-workspaces','002-stage2','003-stage3','004-account-foundation','005-workspace-experiences','006-security-hardening'];
 interface DatabasePreparation {
   isPostgres: boolean;
   migrate: () => Promise<void>;

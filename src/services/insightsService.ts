@@ -1,3 +1,4 @@
+import {singleCurrency} from './currency-integrity';
 import { dbAll } from "../db";
 import { Invoice } from "./invoiceService";
 import { Transaction } from "./transactionService";
@@ -33,6 +34,7 @@ export async function getOverdueInvoices(businessId: string): Promise<OverdueInv
 }
 
 export interface CashFlowForecast {
+  currency?:string;
   method: string;
   daily_net_cash_flow_avg: number;
   forecast_next_30d: number;
@@ -50,12 +52,13 @@ export async function getCashFlowForecast(businessId: string): Promise<CashFlowF
   );
 
   const now = Date.now();
+  const currency=singleCurrency(txns);
   // Future-dated transactions must not be projected as if they had happened.
   const settled = txns.filter((t) => new Date(t.occurred_at).getTime() <= now);
 
   if (settled.length === 0) {
     return {
-      method: "insufficient_data",
+      method: "insufficient_data",currency,
       daily_net_cash_flow_avg: 0,
       forecast_next_30d: 0,
       based_on_days: 0,
@@ -73,7 +76,7 @@ export async function getCashFlowForecast(businessId: string): Promise<CashFlowF
   const dailyAvg = net / spanDays;
 
   return {
-    method: "linear_projection_from_history",
+    method: "linear_projection_from_history",currency,
     daily_net_cash_flow_avg: Math.round(dailyAvg * 100) / 100,
     forecast_next_30d: Math.round(dailyAvg * 30 * 100) / 100,
     based_on_days: spanDays,
@@ -108,6 +111,7 @@ export function maskPiiCounterparty(value: string | null | undefined): string | 
 export async function getUnusualTransactions(businessId: string): Promise<UnusualTransaction[]> {
   const txns = await dbAll<Transaction>(`SELECT * FROM transactions WHERE business_id = ? AND status = 'completed'`, [businessId]);
 
+  singleCurrency(txns);
   if (txns.length < 5) return [];
 
   const flagged: UnusualTransaction[] = [];
@@ -144,6 +148,7 @@ export interface CustomerConcentration {
 export async function getCustomerConcentration(businessId: string): Promise<CustomerConcentration[]> {
   const invoices = await dbAll<Invoice>(`SELECT * FROM invoices WHERE business_id = ? AND status = 'paid'`, [businessId]);
 
+  singleCurrency(invoices);
   if (invoices.length === 0) return [];
 
   const realized = invoices

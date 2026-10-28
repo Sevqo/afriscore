@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { logger } from "../logging";
 import type { RequestWithContext } from "./requestContext";
+import {safeLogPath} from '../safe-log-path';
+import {config} from '../config';
 
 /**
  * Consistent error envelope.
@@ -174,13 +176,13 @@ export function errorHandler(err: unknown, req: RequestWithContext, res: Respons
   const logFields = {
     request_id: req.requestId,
     method: req.method,
-    path: req.path.replace(/((?:checkout|buyer|share|presentations)\/)[a-f0-9]{64}/g, '$1[redacted]'),
+    path: safeLogPath(req.path),
     status,
     error_code: code,
     error_name: candidate.name,
     // Log the message so operators can debug; the response body never does for 5xx.
-    message: candidate.message,
-    stack: status >= 500 ? candidate.stack : undefined,
+    message: config.isProduction?undefined:candidate.message,
+    stack: !config.isProduction&&status >= 500 ? candidate.stack : undefined,
   };
   if (status >= 500) logger.error("request_failed", logFields);
   else logger.warn("request_rejected", logFields);

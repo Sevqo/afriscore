@@ -5,6 +5,7 @@ import { Icon } from "../components/Icon";
 import { MediaBlock } from "../components/Media";
 import { publicPageMedia } from "../editorial";
 import { guides, demoLink, type Guide } from "./guides";
+import {ServiceExplainer} from './ServiceExplainer';
 export function ProcessTimeline({ steps }: { steps: Guide["steps"] }) {
   return (
     <ol className="process-timeline">
@@ -156,6 +157,7 @@ export function ProductEducation({ path }: { path: string }) {
           )}
         </section>
         <ProductExperience path={path} />
+        <ServiceExplainer path={path}/>
         <section className="compact-product-help">
           <p className="content-limitation">
             <strong>Current availability:</strong> {guide.limit}
@@ -205,6 +207,7 @@ export function ProductEducation({ path }: { path: string }) {
         <span className="eyebrow">A practical workflow</span>
         <h2>How {guide.name} works</h2>
         <ProcessTimeline steps={guide.steps} />
+        <ServiceExplainer path={path}/>
       </section>
       <AnnotatedProductVisual lesson={guide.lesson} />
       <section className="business-scenario">

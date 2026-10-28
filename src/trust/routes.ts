@@ -296,6 +296,7 @@ trust.get(
     const a = await access(req, 'admin'),
       d = await get(a, uuid(req.params.id), 'document');
     if (d.retention_until < now()) fail(410, 'Document expired');
+    await audit(a.org, a.actor, 'trust.document_download_authorized', d.id);
     res
       .type('application/octet-stream')
       .attachment(d.filename)
@@ -520,7 +521,7 @@ trust.get(
         await dbAll(
           'SELECT id,environment,root,state,data,attempts,created_at FROM ac3_batches ORDER BY created_at DESC LIMIT 100',
         )
-      ).map((r) => ({ ...r, data: JSON.parse(unseal(r.data)) })),
+      ).map((r) => ({ ...r, data: JSON.parse(unseal(r.data,JSON.stringify(['anchor-batch',r.id]))) })),
       credential_status: await dbAll(
         'SELECT status,COUNT(*) AS count FROM ac3_credentials GROUP BY status',
       ),
@@ -576,6 +577,7 @@ trust.get(
     if (!row) fail(404, 'Document not found');
     const d = decode(row);
     if (d.retention_until < now()) fail(410, 'Document expired');
+    await audit(row.org_id, a.actor, 'trust.document_review_authorized', d.id);
     res
       .type('application/octet-stream')
       .attachment(d.filename)

@@ -5,6 +5,7 @@ import { api } from '../lib/api-client';
 import { Logo } from '../components/Logo';
 import { Icon } from '../components/Icon';
 import { PasswordInput } from './PasswordInput';
+import {passwordIssue} from '../../../src/platform/password-strength';
 type AuthResult = { email?: string; managed?: boolean; message?: string; verified?: boolean; reset?: boolean; signin_href?: string; verification_token?: string; recovery_token?: string };
 function Field({label,children}:{label:string;children:ReactNode}) {return <label className="field"><span>{label}</span>{children}</label>;}
 function ErrorBox({error}:{error:string}) {return error ? <div className="alert error" role="alert">{error}</div> : null;}
@@ -21,7 +22,7 @@ export function AuthPage({ mode,kind }: { mode: string;kind?:string }) {
     setBusy(true);
     setError('');
     const d = Object.fromEntries(new FormData(e.currentTarget));
-    if (['signup','reset'].includes(mode) && [...String(d.password || '')].length < 8) {setError('Use a password of at least 8 characters.');setBusy(false);return;}
+    if (['signup','reset'].includes(mode)) {const issue=passwordIssue(String(d.password||''));if(issue){setError(issue);setBusy(false);return;}}
     try {
       const client=await managedClient();
       let r:AuthResult;

@@ -1,4 +1,4 @@
-import { dbAll, dbRun, dbTransaction } from "../db";
+import { dbAll, dbGet, dbRun, dbTransaction, isPostgres } from "../db";
 import {
   Invoice,
   createInvoicePaymentRow,
@@ -9,6 +9,7 @@ import { Transaction } from "./transactionService";
 import { appendEvent } from "./ledgerService";
 import { emitEvent } from "./webhookService";
 import { getBusiness } from "./businessService";
+import {setImmediate as yieldTurn} from 'node:timers/promises';
 
 export type MatchType = "exact" | "tolerance" | "partial";
 
@@ -37,6 +38,12 @@ export interface ReconciliationResult {
  */
 const TOLERANCE_PCT = 0.02;
 const TOLERANCE_MAX_KES = 100;
+
+/** Call inside a transaction before reading invoice balances. SQLite already
+ * serializes transactions; Postgres needs a shared lock across settlement paths. */
+export async function lockReceivables(businessId:string){
+  if(isPostgres)await dbGet('SELECT pg_advisory_xact_lock(hashtext(?))',['legacy-receivables:'+businessId]);
+}
 
 function toleranceFor(amount: number): number {
   return Math.min(amount * TOLERANCE_PCT, TOLERANCE_MAX_KES);
@@ -160,19 +167,21 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
   const business = await getBusiness(businessId);
   if (!business) throw new Error("business_not_found");
 
-  const matches: Array<{ invoice: Invoice; match: Match }> = [];
+
 
   const result = await dbTransaction(async () => {
+    await lockReceivables(businessId);
     const unpaidInvoices = await listOpenInvoicesForBusiness(businessId);
     const matched: Match[] = [];
     const unmatched: ReconciliationResult["unmatched_invoices"] = [];
 
     for (const invoice of unpaidInvoices) {
+      await yieldTurn();
       const candidates = await dbAll<Transaction>(
         `SELECT * FROM transactions
-         WHERE business_id = ? AND type = 'credit' AND status = 'completed' AND matched_invoice_id IS NULL
+         WHERE business_id = ? AND currency = ? AND type = 'credit' AND status = 'completed' AND matched_invoice_id IS NULL
          ORDER BY occurred_at ASC`,
-        [businessId]
+        [businessId,invoice.currency]
       );
       const amountById = new Map(candidates.map((txn) => [txn.id, txn]));
 
@@ -182,7 +191,7 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
         unmatched.push({
           invoice_id: invoice.id,
           amount: invoice.amount,
-          reason: candidates.length === 0 ? "no_unmatched_payments_available" : "no_payment_combination_matched",
+          reason: candidates.length === 0 ? "no_unmatched_payments_available" : "no_unambiguous_match_within_search_budget",
         });
         continue;
       }
@@ -212,7 +221,8 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
         continue;
       }
 
-      const settlement = await markInvoicePaid(invoice.id, match.transaction_ids[0], match.paid_amount);
+      const occurredAt=match.transaction_ids.map(id=>amountById.get(id)!.occurred_at).sort((a,b)=>Date.parse(a)-Date.parse(b)).at(-1)!;
+      const settlement = await markInvoicePaid(invoice.id, match.transaction_ids[0], match.paid_amount,occurredAt);
       if (!settlement.changed) {
         for (const txnId of claimedNow) {
           await dbRun(`UPDATE transactions SET matched_invoice_id = NULL WHERE id = ? AND matched_invoice_id = ?`, [txnId, invoice.id]);
@@ -233,7 +243,7 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
           amount: txn.amount,
           method: paymentMethodForProvider(txn.source_provider),
           reference: txn.external_id,
-          paid_at: new Date().toISOString(),
+          paid_at: txn.occurred_at,
         });
       }
 
@@ -247,38 +257,25 @@ export async function reconcileBusiness(businessId: string): Promise<Reconciliat
       });
 
       matched.push(match);
-      matches.push({ invoice, match });
+      await emitEvent('invoice.paid',{invoice_id:invoice.id,business_id:businessId,transaction_ids:match.transaction_ids,paid_amount:match.paid_amount,match_type:match.match_type},{type:'business',id:businessId,is_sandbox:business.is_sandbox});
     }
 
     return { matched, unmatched_invoices: unmatched };
   });
 
-  // Webhook delivery is intentionally outside the transaction: an outbound
-  // HTTP call must never hold a database transaction open (or roll it back).
-  const subject = { type: "business" as const, id: businessId, is_sandbox: business.is_sandbox };
-  for (const { invoice, match } of matches) {
-    await emitEvent(
-      "invoice.paid",
-      {
-        invoice_id: invoice.id,
-        business_id: businessId,
-        transaction_ids: match.transaction_ids,
-        paid_amount: match.paid_amount,
-        match_type: match.match_type,
-      },
-      subject
-    );
-  }
 
   return result;
 }
 
 /** Pure matching logic — no DB access, so it's directly unit-testable. */
 export function findMatch(invoice: Invoice, candidates: Transaction[]): Match | null {
-  const tolerance = toleranceFor(invoice.amount);
+  candidates=candidates.filter(t=>t.currency===invoice.currency&&t.business_id===invoice.business_id&&t.status==='completed'&&t.type==='credit');
+  const tolerance = invoice.currency==='KES'?toleranceFor(invoice.amount):0;
 
   // 1. Exact single-transaction match.
-  const exact = candidates.find((t) => t.amount === invoice.amount);
+  const exactMatches=candidates.filter(t=>t.amount===invoice.amount);
+  if(exactMatches.length>1)return null;
+  const exact = exactMatches[0];
   if (exact) {
     const trust = withCounterpartyConfidence(1, "exact", invoice, [exact]);
     return {
@@ -293,9 +290,11 @@ export function findMatch(invoice: Invoice, candidates: Transaction[]): Match | 
   }
 
   // 2. Single transaction within tolerance (fees/rounding).
-  const within = candidates
+  const close = candidates
     .filter((t) => Math.abs(t.amount - invoice.amount) <= tolerance)
-    .sort((a, b) => Math.abs(a.amount - invoice.amount) - Math.abs(b.amount - invoice.amount))[0];
+    .sort((a, b) => Math.abs(a.amount - invoice.amount) - Math.abs(b.amount - invoice.amount));
+  if(close.length>1)return null;
+  const within=close[0];
 
   if (within) {
     const diff = invoice.amount - within.amount;
@@ -342,40 +341,23 @@ export function findMatch(invoice: Invoice, candidates: Transaction[]): Match | 
  * whole request on a business with a busy till. Prefers the fewest
  * transactions, then the closest sum.
  */
-function findCombination(candidates: Transaction[], target: number, tolerance: number): Transaction[] | null {
-  const pool = candidates.slice(0, 40);
-  const maxCombo = 4;
-
-  for (let size = 2; size <= maxCombo; size++) {
-    const found = searchCombination(pool, target, tolerance, size, 0, []);
-    if (found) return found;
+export const MATCH_SEARCH_BUDGET=5000;
+function findCombination(candidates:Transaction[],target:number,tolerance:number):Transaction[]|null{
+ const pool=candidates.filter(t=>t.amount>0&&t.amount<=target+tolerance).slice(0,40);
+ let remaining=MATCH_SEARCH_BUDGET;
+ for(let size=2;size<=4;size++){
+ let found:Transaction[]|null=null,ambiguous=false;
+ const visit=(start:number,chosen:Transaction[],sum:number):void=>{
+  if(ambiguous||remaining<=0)return;
+  if(chosen.length===size){if(Math.abs(sum-target)<=tolerance){if(found)ambiguous=true;else found=[...chosen];}return;}
+  for(let i=start;i<pool.length&&!ambiguous&&remaining>0;i++){
+   remaining--;if(sum+pool[i].amount>target+tolerance)continue;
+   chosen.push(pool[i]);visit(i+1,chosen,sum+pool[i].amount);chosen.pop();
   }
-  return null;
-}
-
-function searchCombination(
-  pool: Transaction[],
-  target: number,
-  tolerance: number,
-  size: number,
-  start: number,
-  acc: Transaction[]
-): Transaction[] | null {
-  if (acc.length === size) {
-    const sum = acc.reduce((s, t) => s + t.amount, 0);
-    return Math.abs(sum - target) <= tolerance ? [...acc] : null;
-  }
-
-  for (let i = start; i < pool.length; i++) {
-    const partialSum = acc.reduce((s, t) => s + t.amount, 0) + pool[i].amount;
-    // Prune: already overshot beyond what tolerance allows.
-    if (partialSum - target > tolerance) continue;
-
-    acc.push(pool[i]);
-    const result = searchCombination(pool, target, tolerance, size, i + 1, acc);
-    acc.pop();
-    if (result) return result;
-  }
-
-  return null;
+ };
+ visit(0,[],0);
+ if(ambiguous||remaining<=0)return null;
+ if(found)return found;
+ }
+ return null;
 }

@@ -189,6 +189,7 @@ export function EngineeringView({
   setQuery: (q: string) => void;
 }) {
   if (!data) return null;
+  if(data.restricted)return <section className="panel"><h2>Restricted engineering access</h2><p>Operational tools use a separately authorized internal channel. They are unavailable through the public workspace. Business ownership and Developer API keys do not grant operator access.</p></section>;
   return (
     <>
       <section className="panel">

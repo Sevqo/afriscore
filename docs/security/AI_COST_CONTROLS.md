@@ -1,0 +1,9 @@
+# AI cost controls
+
+External explanation calls require a configured server key/model, verified human session, explicit consent, supported text-only model, at most 8KB serialized question/evidence and at most 700 output tokens. Existing minimized evidence, no tools, `store:false` and timeout remain. `AFRICORE_AI_DISABLED=true` is the emergency kill switch. An API credential cannot invoke external explanations.
+
+Reservations are durable `ac2_ai_usage` rows under one global PostgreSQL transaction lock (SQLite transaction serialization). Every attempted external call reserves USD 1 conservatively. UTC daily and monthly windows count reservations across all organizations, including timeouts and missing usage; switching workspaces cannot reset the identity/global budget. Defaults: identity 20/day, organization 50/day, global 5/day and 25/month, concurrency 2. Private server configuration can only lower/raise limits within validation bounds; clients cannot supply limits. Optional administrative increases are deployment configuration changes, not an unauthenticated API.
+
+Token counts remain provider-reported metadata, not proof of the invoice amount. The USD 1 bound relies on the approved text model and request limits; new models/tools/pricing need policy review. These application reservations are not a verified OpenAI project/account spending feed. Set provider project limits/alerts independently before enabling paid access. No paid provider call or hosted key upload was performed in this remediation. Synthetic tests cover missing usage, concurrent attempts, identity switching, cap and kill switch.
+
+Workspace creation defaults to 20 owned workspaces and 10/day per stable user ID, serialized with that user's creation transaction. Existing access is preserved. Distributed signup/bot protection and distributed rate limits remain scaling requirements; a global AI cap still bounds application cost across many identities.

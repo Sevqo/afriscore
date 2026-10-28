@@ -59,9 +59,9 @@ describe("reconciliation matching", () => {
     assert.strictEqual(m, null);
   });
 
-  test("tolerance picks the closest candidate when several qualify", () => {
+  test("ambiguous tolerance candidates remain unresolved for human review", () => {
     const m = findMatch(invoice(5000), [txn("far", 4920), txn("near", 4995)]);
-    assert.deepStrictEqual(m?.transaction_ids, ["near"]);
+    assert.equal(m,null);
   });
 
   test("partial match combines installment payments", () => {

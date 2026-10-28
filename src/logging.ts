@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { config, LogLevelName } from "./config";
 import type { RequestWithContext } from "./middleware/requestContext";
+import {safeLogPath} from './safe-log-path';
 
 /**
  * Structured JSON logger.
@@ -76,12 +77,11 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
       request_id: context.requestId,
       method: req.method,
       // req.path excludes the query string; req.originalUrl would log it.
-      path: req.path.replace(/((?:checkout|buyer|share|presentations)\/)[a-f0-9]{64}/g, '$1[redacted]'),
+      path: safeLogPath(req.path),
       status: res.statusCode,
       duration_ms: Math.round(durationMs * 1000) / 1000,
       client_id: context.client?.id,
       ip: req.ip,
-      user_agent: req.header("user-agent")?.slice(0, 200),
     });
   });
 

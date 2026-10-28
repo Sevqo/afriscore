@@ -1,0 +1,5 @@
+# Smart contract review
+
+The complete current contract is `chain/contracts/AfriCoreAnchors.sol`. It uses OpenZeppelin AccessControl, Pausable and MerkleProof. Admin and publisher roles are distinct capabilities (the initial admin receives both). Zero administrator/commitments are rejected; a batch root can be published once. Only the admin can pause/unpause; publication is unavailable while paused. Verification checks the stored nonzero root and proof. There is no ether transfer, token, custody, lending or private-document state.
+
+`npm run check:chain` passed against a disposable local chain with authorization, duplicate, pause and proof checks plus signed credential/independent verification flows. Production anchoring remains disabled; authorized test/local workflow does not imply a mainnet deployment, independent contract audit or truth of off-chain evidence. Review operational signing-key custody, issuer recognition, confirmation policy and chain reorganization handling separately before any production publication.

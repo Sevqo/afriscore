@@ -269,7 +269,7 @@ operations.get(
       p = pagination(req.query);
     res.json({
       data: await dbAll(
-        'SELECT * FROM ac2_approvals WHERE org_id=? AND environment=? AND (requester=? OR approver=?) ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        'SELECT a.*,b.parameters,b.review_summary,b.resource_hash,b.consumed_at FROM ac2_approvals a LEFT JOIN ac_approval_bindings b ON b.approval_id=a.id WHERE a.org_id=? AND a.environment=? AND (a.requester=? OR a.approver=?) ORDER BY a.created_at DESC LIMIT ? OFFSET ?',
         [a.org, a.environment, a.actor, a.actor, p.limit, p.offset],
       ),
       ...p,
@@ -493,7 +493,7 @@ operations.get(
     res.setHeader('Content-Type', 'application/octet-stream');
     res
       .attachment(e.filename)
-      .send(Buffer.from(unseal(e.content_base64), 'base64'));
+      .send(Buffer.from(unseal(e.content_base64,JSON.stringify(['evidence',e.org_id,e.environment,e.id])), 'base64'));
     await audit(a.org, a.actor, 'evidence.downloaded', e.id);
   }),
 );

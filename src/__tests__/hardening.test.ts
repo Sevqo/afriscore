@@ -1,3 +1,4 @@
+import {deliverLegacyWebhooks} from '../services/webhookService';
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert";
 import { configureTestEnv, truncateAll, removeSqliteFile } from "./helpers";
@@ -77,6 +78,7 @@ describe("Phase 1 hardening", () => {
     // Business B has no grant: the event must not even be attempted.
     await emitEvent("transaction.created", { business_id: bizB.id }, { type: "business", id: bizB.id, is_sandbox: false });
 
+    await deliverLegacyWebhooks(async()=>new Response(null,{status:503}),async()=>({allowed:true}));
     const eventsA = await dbAll(`SELECT * FROM webhook_events WHERE subject_id = ?`, [bizA.id]);
     const eventsB = await dbAll(`SELECT * FROM webhook_events WHERE subject_id = ?`, [bizB.id]);
     assert.strictEqual(eventsA.length, 1);
@@ -110,6 +112,7 @@ describe("Phase 1 hardening", () => {
     await emitEvent("transaction.created", { business_id: bizA.id, marker: "live-event" }, { type: "business", id: bizA.id, is_sandbox: false });
     await emitEvent("transaction.created", { business_id: bizA.id, marker: "sandbox-event" }, { type: "business", id: bizA.id, is_sandbox: true });
 
+    await deliverLegacyWebhooks(async()=>new Response(null,{status:503}),async()=>({allowed:true}));
     const liveEvent = await dbAll(`SELECT * FROM webhook_events WHERE subject_id = ? AND payload LIKE ?`, [bizA.id, "%live-event%"]);
     const sandboxEvent = await dbAll(`SELECT * FROM webhook_events WHERE subject_id = ? AND payload LIKE ?`, [bizA.id, "%sandbox-event%"]);
     assert.strictEqual(liveEvent[0].delivery_attempts, 1, "live subscription receives live events");

@@ -229,7 +229,7 @@ export async function addEvidence(
       d.statement,
       d.filename || null,
       d.content_type || null,
-      b ? seal(b.toString('base64')) : null,
+      b ? seal(b.toString('base64'),JSON.stringify(['evidence',a.org,a.environment,id])) : null,
       b ? createHash('sha256').update(b).digest('hex') : null,
       now(),
       new Date(Date.now() + 365 * 86400000).toISOString(),
@@ -792,7 +792,7 @@ export async function disputeResolve(
     const dispute = await get(a, id, 'disputes');
     if (!['open', 'under_review'].includes(dispute.status))
       fail(409, 'Dispute already resolved');
-    await requireApproval(a, d.approval_id, 'dispute_resolution', id);
+    await requireApproval(a, d.approval_id, 'dispute_resolution', id,{decision:d.decision});
     const result = await change(a, dispute, {
       status: 'resolved',
       decision: d.decision,

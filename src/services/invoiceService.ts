@@ -219,7 +219,10 @@ export async function refreshInvoiceStatus(invoiceId: string): Promise<Invoice |
   else if (invoice.due_date && new Date(invoice.due_date).getTime() < Date.now()) status = "overdue";
   else status = "sent";
 
-  const paidAt = status === "paid" ? invoice.paid_at ?? new Date().toISOString() : null;
+  const latestReceipt = payments.map(payment => payment.paid_at)
+    .filter(value => Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+  const paidAt = status === "paid" ? latestReceipt ?? invoice.paid_at ?? new Date().toISOString() : null;
   const matchedTransactionId = invoice.matched_transaction_id ?? payments.find((payment) => payment.transaction_id)?.transaction_id ?? null;
 
   await dbRun(
@@ -261,13 +264,14 @@ export async function markOverdueInvoices(businessId: string): Promise<number> {
 export async function markInvoicePaid(
   invoiceId: string,
   transactionId: string,
-  paidAmount: number
+  paidAmount: number,
+  paidAt?: string
 ): Promise<{ invoice: Invoice; changed: boolean }> {
   const now = new Date().toISOString();
   const res = await dbRun(
     `UPDATE invoices SET status = 'paid', matched_transaction_id = ?, paid_amount = ?, paid_at = ?
      WHERE id = ? AND status != 'paid'`,
-    [transactionId, paidAmount, now, invoiceId]
+    [transactionId, paidAmount, paidAt ?? now, invoiceId]
   );
 
   const invoice = (await getInvoice(invoiceId))!;

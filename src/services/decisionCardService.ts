@@ -283,17 +283,17 @@ export function buildBusinessDecisionCard(input: {
   const card: BusinessDecisionCardDraft = {
     subject: { type: "business", id: business.id, name: business.legal_name },
     generated_at: now.toISOString(),
-    currency: CURRENCY,
-    recommended_limit: computeRecommendedLimit(metrics, health, riskBand),
+    currency: metrics.currency||CURRENCY,
+    recommended_limit: 0,
     risk_band: riskBand,
-    verdict: verdictFor(riskBand, overallConfidence),
-    evidence: buildEvidence(metrics, health, confidence),
+    verdict: 'review',
+    evidence: [...buildEvidence(metrics, health, confidence),{key:'source_provenance',label:'Unverified source evidence',value:'human_review_required',impact:'neutral',detail:'Imported credits may include transfers, loans and refunds. They are not verified sales revenue. No financing approval, decline or actionable credit limit is issued.'}],
     confidence,
     adverse_indicators: adverse,
     methodology: {
       score_source: "businessMetricsService (deterministic cash-flow, counterparty and health components)",
       limit_formula:
-        "avg_monthly_inflow * risk_multiplier * concentration_haircut * failed_payment_haircut * health_haircut, rounded down to KES 1,000",
+        "disabled-v2: zero actionable credit limit; independently verified revenue, qualified policy review and human authorization are prerequisites",
       risk_band_mapping: "health band strong→low, stable→moderate, watch→elevated, at_risk→high; three or more adverse indicators moves one band riskier",
     },
     business_name: business.legal_name,

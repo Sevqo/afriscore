@@ -111,19 +111,7 @@ export function OperationsWorkspace({
       } else if (section === 'Risk Review')
         publishData(await api('/risk-signals'));
       else if (section === 'Engineering') {
-        const ops = await request(
-            '/internal/stage2/operations',
-            'GET',
-            undefined,
-            environment,
-          ),
-          docs = await request(
-            '/internal/stage2/docs',
-            'GET',
-            undefined,
-            environment,
-          );
-        publishData({ ops, docs: docs.data });
+        publishData({restricted:true});
       } else publishData({});
     } catch (e) {
       if (current()) setError((e as Error).message);

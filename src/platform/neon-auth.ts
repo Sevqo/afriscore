@@ -125,14 +125,27 @@ export async function neonIdentity(token: string) {
     claims.iat * 1000 <= Date.parse(details.revoked_before)
   )
     throw rejected();
-  await dbRun("UPDATE ac_users SET verified=?,email=? WHERE id=?", [
-    managed.emailVerified ? 1 : 0,
-    managed.email.toLowerCase(),
-    linked!.user_id,
-  ]);
+  const identity=await syncManagedIdentity(linked!.user_id,managed);
   return {
     id: linked!.user_id,
-    email: managed.email.toLowerCase(),
-    verified: managed.emailVerified ? 1 : 0,
+    email: identity.email,
+    verified: identity.verified,
   };
+}
+
+/** Provider identity has already been verified against the fixed issuer and subject. */
+export async function syncManagedIdentity(userId:string,managed:{email:string;emailVerified:boolean}){
+  return dbTransaction(async()=>{
+    if(isPostgres&&managed.emailVerified)await dbGet('SELECT pg_advisory_xact_lock(hashtext(?))',['identity-email:'+managed.email.toLowerCase()]);
+    const current=await dbGet('SELECT id,email,verified FROM ac_users WHERE id=?'+(isPostgres?' FOR UPDATE':''),[userId]);
+    if(!current)throw rejected();
+    // Unverified proposals never replace the last trusted email. Invalidate
+    // ownership-dependent privileges until the provider verifies the proposal.
+    if(!managed.emailVerified){if(Number(current.verified)!==0)await dbRun('UPDATE ac_users SET verified=0 WHERE id=?',[current.id]);return {...current,verified:0};}
+    const email=managed.email.toLowerCase();
+    const conflict=await dbGet('SELECT id FROM ac_users WHERE email=? AND id<>?',[email,current.id]);
+    if(conflict)throw Object.assign(new Error('Verified email conflicts with an existing identity; explicit account review required'),{status:409});
+    if(current.email!==email||Number(current.verified)!==1)await dbRun('UPDATE ac_users SET email=?,verified=1 WHERE id=?',[email,current.id]);
+    return {...current,email,verified:1};
+  });
 }

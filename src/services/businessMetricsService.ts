@@ -1,4 +1,5 @@
 import { dbAll } from "../db";
+import {singleCurrency} from './currency-integrity';
 import { getBusiness, Business } from "./businessService";
 import { Transaction } from "./transactionService";
 import { getReceivablesSummary, ReceivablesSummary } from "./receivablesService";
@@ -78,6 +79,7 @@ export interface CounterpartyIntelligence {
 }
 
 export interface BusinessMetrics {
+  currency?:string;
   window: {
     months: number;
     from: string;
@@ -188,6 +190,7 @@ function standardDeviation(values: number[], mean: number): number {
 }
 
 export function computeBusinessMetrics(transactions: Transaction[], options: MetricsOptions = {}): BusinessMetrics {
+  const currency=singleCurrency(transactions);
   const now = options.now ?? new Date();
   const windowMonths = clamp(Math.floor(options.months ?? DEFAULT_WINDOW_MONTHS), 1, MAX_WINDOW_MONTHS);
   const months = monthsBack(now, windowMonths);
@@ -227,7 +230,7 @@ export function computeBusinessMetrics(transactions: Transaction[], options: Met
   const stdevInflow = standardDeviation(inflows, meanInflow);
   const inflowVolatility = meanInflow > 0 && inflows.length >= 2 ? round2(stdevInflow / meanInflow) : null;
 
-  const revenueTrend = computeRevenueTrend(activeMonthly);
+  const revenueTrend = computeRevenueTrend(activeMonthly,currency);
   const peakActivity = computePeakActivity(settled);
 
   const credits = settled.filter((txn) => txn.type === "credit");
@@ -283,10 +286,14 @@ export function computeBusinessMetrics(transactions: Transaction[], options: Met
     .sort((a, b) => b.outflow - a.outflow)
     .slice(0, 5);
 
-  const failed = transactions.filter((txn) => txn.status === "failed").length;
+  const failed = transactions.filter((txn) => {
+    const time=Date.parse(txn.occurred_at);
+    return txn.status === 'failed' && Number.isFinite(time) && time<=nowMs && monthKey(time)>=firstMonth;
+  }).length;
   const settledCount = settled.length;
 
   return {
+    currency,
     window: {
       months: windowMonths,
       from: `${months[0]}-01T00:00:00.000Z`,
@@ -323,7 +330,7 @@ export function computeBusinessMetrics(transactions: Transaction[], options: Met
   };
 }
 
-function computeRevenueTrend(activeMonthly: MonthlyCashFlow[]): RevenueTrend {
+function computeRevenueTrend(activeMonthly: MonthlyCashFlow[],currency:string): RevenueTrend {
   const method = "newer_half_vs_older_half_mean_monthly_inflow";
   if (activeMonthly.length < 3) {
     return {
@@ -359,7 +366,7 @@ function computeRevenueTrend(activeMonthly: MonthlyCashFlow[]): RevenueTrend {
     direction,
     change_pct: changePct,
     method,
-    detail: `Average monthly inflow moved from ${round2(olderMean)} to ${round2(newerMean)} KES (${changePct}%).`,
+    detail: `Average monthly recorded inflow moved from ${round2(olderMean)} to ${round2(newerMean)} ${currency} (${changePct}%). These entries are not verified sales revenue.`,
   };
 }
 

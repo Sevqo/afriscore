@@ -1,4 +1,5 @@
 import { DateRange } from '../components/DateRange';
+import {useState} from 'react';
 import { DataTable } from '../components/DataTable';
 import { Icon } from '../components/Icon';
 import {
@@ -303,6 +304,7 @@ export function ForecastView({
   api: API;
   setData: (data: any) => void;
 }) {
+  const [scenario,setScenario]=useState('expected');
   return (
     <>
       <Form
@@ -335,13 +337,13 @@ export function ForecastView({
             </select>
           </Field>
           <Field label="Scenario">
-            <select name="scenario">
+            <select name="scenario" value={scenario} onChange={e=>setScenario(e.target.value)}>
               {['expected', 'optimistic', 'conservative', 'custom'].map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>
           </Field>
-          <Field label="Custom expected collection (%)">
+          {scenario==='custom'&&<><Field label="Custom expected collection (%)">
             <input
               name="collection"
               type="number"
@@ -368,6 +370,7 @@ export function ForecastView({
               defaultValue={100}
             />
           </Field>
+          </>}
         </div>
         <button className="button">Calculate scenario</button>
       </Form>

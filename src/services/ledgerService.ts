@@ -49,6 +49,13 @@ interface LedgerHead {
   anchor_hmac: string;
   updated_at: string;
 }
+export type LedgerCheckpoint=Pick<LedgerHead,'subject_type'|'subject_id'|'entry_count'|'head_hash'|'anchor_hmac'>;
+/** Keep this checkpoint outside the database whose rollback it is intended to detect. */
+export async function ledgerCheckpoint(subjectType:'business'|'person',subjectId:string):Promise<LedgerCheckpoint>{
+ if(!(await verifyChainIntegrity(subjectType,subjectId)).valid)throw new Error('Cannot checkpoint a damaged ledger');
+ const head=await getHead(subjectType,subjectId);if(!head)throw new Error('No authenticated ledger head to checkpoint');
+ return {subject_type:subjectType,subject_id:subjectId,entry_count:Number(head.entry_count),head_hash:head.head_hash,anchor_hmac:head.anchor_hmac};
+}
 
 export interface ChainVerification {
   valid: boolean;
@@ -227,10 +234,12 @@ export async function getLedger(subjectType: "business" | "person", subjectId: s
  */
 export async function verifyChainIntegrity(
   subjectType: "business" | "person",
-  subjectId: string
+  subjectId: string,
+  checkpoint?:LedgerCheckpoint
 ): Promise<ChainVerification> {
   const entries = await getLedger(subjectType, subjectId);
   const head = await getHead(subjectType, subjectId);
+  if(checkpoint&&(checkpoint.subject_type!==subjectType||checkpoint.subject_id!==subjectId||!head||Number(head.entry_count)!==Number(checkpoint.entry_count)||head.head_hash!==checkpoint.head_hash||head.anchor_hmac!==checkpoint.anchor_hmac))return {valid:false,reason:'external_checkpoint_mismatch',entryCount:entries.length,anchored:!!head};
 
   let expectedPrev = GENESIS_HASH;
   let expectedSeq: number | null = null;

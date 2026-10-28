@@ -1,4 +1,5 @@
 import { capture } from '../operations/events';
+import {pinnedWebhookFetch} from '../services/webhook-http';
 import { createHmac, randomUUID } from 'node:crypto';
 import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { hash, now, seal, unseal } from './crypto';
@@ -154,7 +155,10 @@ export async function processProviderResult(
       'SELECT * FROM ac_events WHERE environment=? AND provider_ref=?',
       [a.environment, result.reference],
     );
-    if (previous) return { duplicate: true, event_id: previous.id };
+    if (previous) {
+      if(previous.org_id!==request.org_id||previous.request_id!==request.id||previous.currency!==result.currency||Number(previous.amount_minor)!==result.amount_minor||previous.status!==result.status)fail(409,'Provider reference conflicts with its original authoritative event');
+      return { duplicate: true, event_id: previous.id };
+    }
     const eventId = randomUUID();
     await dbRun(
       'INSERT INTO ac_events(id,org_id,environment,request_id,provider_ref,status,amount_minor,currency,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
@@ -298,7 +302,7 @@ export async function processProviderResult(
 let running = false;
 export async function deliverWebhooks(
   org?: string,
-  transport: typeof fetch = fetch,
+  transport: typeof fetch = pinnedWebhookFetch,
   validate = isDeliverableWebhookTarget,
   environment?: string,
 ) {
@@ -306,7 +310,7 @@ export async function deliverWebhooks(
   running = true;
   try {
     const rows = await dbAll(
-      `SELECT d.*,e.url,e.secret FROM ac_deliveries d JOIN ac_endpoints e ON e.id=d.endpoint_id WHERE d.status='pending' AND d.next_at<=?${org ? ' AND d.org_id=?' : ''}${environment ? ' AND e.environment=?' : ''} ORDER BY d.created_at LIMIT 25`,
+      `SELECT d.*,e.url,e.secret,e.environment AS endpoint_environment FROM ac_deliveries d JOIN ac_endpoints e ON e.id=d.endpoint_id WHERE d.status='pending' AND d.next_at<=?${org ? ' AND d.org_id=?' : ''}${environment ? ' AND e.environment=?' : ''} ORDER BY d.created_at LIMIT 25`,
       [now(), ...(org ? [org] : []), ...(environment ? [environment] : [])],
     );
     for (const row of rows) {
@@ -315,7 +319,7 @@ export async function deliverWebhooks(
         const target = await validate(row.url);
         if (!target.allowed) throw new Error('target_denied');
         const timestamp = Math.floor(Date.now() / 1000).toString();
-        const signature = createHmac('sha256', unseal(row.secret))
+        const signature = createHmac('sha256', unseal(row.secret,JSON.stringify(['endpoint',row.org_id,row.endpoint_environment,row.endpoint_id])))
           .update(timestamp + '.' + row.payload)
           .digest('hex');
         const response = await transport(row.url, {

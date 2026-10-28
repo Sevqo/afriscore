@@ -18,6 +18,13 @@ import {
 import { guides } from "../src/education/guides.ts";
 import { matchingExample } from "../src/education/experienceModel.ts";
 import { createRequestGate } from "../src/components/requestGate.ts";
+test('every service guide includes an original explanatory workflow image in its rendered page',()=>{
+ for(const [route,guide]of Object.entries(guides)){
+  const name=route.slice(1).replaceAll('/','-')+'.svg',source=fs.readFileSync(path.join(process.cwd(),'public/media/explainers',name),'utf8');
+  assert.match(source,/<title id="title">/);assert.match(source,/<desc id="desc">/);assert.ok(source.includes(guide.name.replaceAll('&','&amp;')));
+  const html=fs.readFileSync(path.join(process.cwd(),'dist',route.slice(1),'index.html'),'utf8');assert.ok(html.includes('/media/explainers/'+name),route);
+ }
+});
 
 test("two receipts close the invoice once; duplicate, unknown, currency and excessive events cannot reduce it", () => {
   assert.equal(matchingExample(false, "matched").remaining, 1000);

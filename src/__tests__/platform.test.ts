@@ -101,12 +101,14 @@ test('sign up, verify, create workspace and isolate another user', async () => {
     ).status,
     400,
   );
-  other = (
+  const otherSignup = (
     await request('/api/auth/signup', 'POST', {
       email: email('other'),
       password: 'a-strong-test-password',
     })
-  ).cookie;
+  );
+  other=otherSignup.cookie;
+  await request('/api/auth/verify','POST',{token:otherSignup.data.verification_token},other);
   const r = await request(
     '/api/v1/organizations',
     'POST',
@@ -422,12 +424,12 @@ test('scoped API credential isolation, storage and revocation; webhook signature
     owner,
   );
   assert.equal(hook.status, 201);
-  const ep = await dbGet('SELECT secret FROM ac_endpoints WHERE id=?', [
+  const ep = await dbGet('SELECT * FROM ac_endpoints WHERE id=?', [
     hook.data.id,
   ]);
   assert.notEqual(ep.secret, hook.data.secret);
-  assert.equal(unseal(ep.secret), hook.data.secret);
-  const signed = createHmac('sha256', unseal(ep.secret))
+  assert.equal(unseal(ep.secret,JSON.stringify(['endpoint',ep.org_id,ep.environment,ep.id])), hook.data.secret);
+  const signed = createHmac('sha256', unseal(ep.secret,JSON.stringify(['endpoint',ep.org_id,ep.environment,ep.id])))
     .update('123.raw')
     .digest('hex');
   assert.equal(
@@ -555,7 +557,7 @@ test('webhook worker signs raw payload, retries errors and reaches dead letter w
     digest = signature.match(/v1=([a-f0-9]+)/)![1];
   assert.equal(
     digest,
-    createHmac('sha256', unseal(ep.secret))
+    createHmac('sha256', unseal(ep.secret,JSON.stringify(['endpoint',ep.org_id,ep.environment,ep.id])))
       .update(timestamp + '.' + received.body)
       .digest('hex'),
   );
@@ -858,12 +860,14 @@ test('record search and status filters run before stable pagination and keep wil
   await request(prefix + '/records/invoices', 'POST', doc, owner);
   const filtered = await request(
     prefix +
-      '/records/invoices?limit=1&status=issued&q=status-pagination-fixture',
+      '/records/invoices?limit=1&status=issued&q='+issued.data.id,
     'GET',
     undefined,
     owner,
   );
   assert.equal(filtered.data.data[0].id, issued.data.id);
+  const hidden=await request(prefix+'/records/invoices?q=status-pagination-fixture','GET',undefined,owner);
+  assert.deepEqual(hidden.data.data,[],'Private notes must not act as a search oracle');
   const pageA = await request(
     prefix + '/records/customers?limit=1',
     'GET',

@@ -7,13 +7,18 @@ import path from "path";
  *
  * Engine is chosen by TEST_DATABASE_URL:
  *   unset -> SQLite, using a per-suite throwaway file
- *   set   -> PostgreSQL, using a per-suite schema so suites can't collide
+ *   set   -> dedicated local PostgreSQL fixture database, suites run serially
  *
  * `npm test` runs SQLite; `npm run test:pg` runs the same suites against
  * a real Postgres instance. Both must pass before a change ships.
  */
 export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath: string } {
   process.env.AFRISCORE_ADMIN_TOKEN = "test-only-admin-token-at-least-32-characters";
+  process.env.AFRICORE_ENCRYPTION_KEY='fixture-only-encryption-key-at-least-32-characters';
+  process.env.AFRICORE_ENCRYPTION_WRITE_VERSION='2';
+  process.env.ID_HASH_SALT='fixture-only-private-identifier-key-at-least-32-characters';
+  process.env.LEDGER_HMAC_KEY='fixture-only-ledger-anchor-key-at-least-32-characters';
+  process.env.OPENAI_API_KEY='';process.env.AFRICORE_AI_MODEL='';
   // Orbit tests always use the in-memory queue backend, never a live Redis.
   delete process.env.REDIS_URL;
   // Prevent config.ts from reloading a real managed provider from local .env.
@@ -21,6 +26,9 @@ export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath
   const pgUrl = process.env.TEST_DATABASE_URL;
 
   if (pgUrl) {
+    const target=new URL(pgUrl),host=target.hostname.replace(/^\[|\]$/g,'');
+    if(!['localhost','127.0.0.1','::1'].includes(host)||!/(?:test|security|refinement)/i.test(target.pathname))
+      throw new Error('Tests require a dedicated local fixture database; remote/production targets are refused');
     process.env.DATABASE_URL = pgUrl;
     return { isPg: true, sqlitePath: "" };
   }

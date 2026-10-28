@@ -113,7 +113,7 @@ export async function grant(a: Access, input: any) {
         a.environment,
         d.recipient_org,
         hash(token),
-        seal(JSON.stringify({ ...d, nonce, presentation: vp, types })),
+        seal(JSON.stringify({ ...d, nonce, presentation: vp, types }),JSON.stringify(['grant',a.org,a.environment,id])),
         expires,
         d.one_time ? 1 : 0,
         now(),
@@ -173,7 +173,7 @@ export async function consume(req: any, token: string) {
       (current.one_time && current.consumed_at)
     )
       fail(410, 'Share expired, revoked or already used');
-    const data = JSON.parse(unseal(current.data));
+    const data = JSON.parse(unseal(current.data,JSON.stringify(['grant',current.org_id,current.environment,current.id])));
     for (const id of data.credential_ids) {
       const c = await credential(a, id);
       if ((await verifyCredential(c.token)).overall !== 'meets_sandbox_policy')
@@ -272,7 +272,7 @@ export async function verifyPresentation(
       'urn:uuid:' + grant.recipient_org !== audience
     )
       throw Error('Authorization expired or revoked');
-    const data = JSON.parse(unseal(grant.data));
+    const data = JSON.parse(unseal(grant.data,JSON.stringify(['grant',grant.org_id,grant.environment,grant.id])));
     if (data.nonce !== nonce || data.presentation !== token)
       throw Error('Request substitution detected');
     report.authorization = 'current_grant';

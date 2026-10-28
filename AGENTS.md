@@ -1,5 +1,11 @@
 # AfriCore agent guide
 
+## Security second pass — 28 October 2026
+
+Read docs/security/SECOND_PASS_REMEDIATION.md, SECURITY_FINDINGS_REGISTER.md and RESIDUAL_RISKS.md before changing gateway, identity, finance, encryption or webhook behavior. Migration 006 is additive and applied to the approved development branch only. Preserve version-aware decryption and existing keys; production ciphertext write activation is staged. Unknown workspace routes fail closed through the explicit capability map. Keep settlement/outbox atomic, preserve transaction occurrence dates, serialize competing receipts and retain manual-review/zero-credit decisions for unverified imports. Public customer routing denies internal operations; never restore it by exposing a gateway credential. Eight-character minimum is the explicit owner choice. No HIBP egress without specific consent; no claimed managed MFA while unsupported.
+
+The owner's subsequent compact-interface request overrides the earlier instruction to preserve public spacing: shared heading sizes are reduced about 20%, spacing about 25%, controls compacted while editable text retains 16px mobile zoom protection. See docs/COMPACT_EXPERIENCE_UPDATE.md. Keep full HTML service explanations alongside the original vector diagrams.
+
 For product-experience/reliability work read docs/HOMEPAGE_REFINEMENT.md, PRODUCT_DIFFERENTIATION.md, CONTENT_ARCHITECTURE.md, PRODUCT_FUNCTIONAL_AUDIT.md, END_TO_END_TEST_RESULTS.md, DEFECT_REGISTER.md and RELIABILITY_IMPROVEMENTS.md. Preserve the compact content-sized hero, real synthetic UI composition and invoice teaching below it. Keep products distinct. Preserve filter-before-pagination, literal search escaping, stable page order, stale-request scope/version guards and per-workspace worker failure isolation. Test query changes on both database engines. Distinguish rendered screens/browser-demo behavior from connected backend journeys and external production authorization.
 
 

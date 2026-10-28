@@ -311,7 +311,7 @@ describe("receivables feed the dashboard and decision card", () => {
     assert.strictEqual(dashboard.body.receivables.open_invoice_count, 1);
     assert.strictEqual(dashboard.body.receivables.open_invoice_value, 2500);
     assert.ok(dashboard.body.receivables.dso_days !== null);
-    assert.strictEqual(dashboard.body.receivables.matched_payment_ratio, 1);
+    assert.strictEqual(dashboard.body.receivables.matched_payment_ratio, 0, 'Manual receipts are not independently matched transaction evidence');
 
     const card = await api("POST", `/v1/businesses/${businessId}/decision-card`, { apiKey: client.body.api_key });
     assert.strictEqual(card.status, 201);

@@ -1,0 +1,9 @@
+# Authentication hardening
+
+Keep the existing Neon managed identity and stable subject links. JWT verification remains EdDSA-only with pinned issuer/audience, expiry/max-age and application revocation checks. Email is not a merge key. Verified email conflicts return 409; unverified proposals cannot replace trusted ownership information. Invitation acceptance requires verified email.
+
+The owner explicitly retained a minimum of eight characters. Local signup/reset policy allows 8–200 characters, rejects predictable common-root variants and repetition, and is shared by server and UI. Existing login passwords are not normalized or rejected under new-password policy. No password-derived data leaves the application for screening. An automatic review required separate consent for a five-character HIBP hash prefix; it remains unimplemented without that consent. Frontend checks cannot enforce policy against direct managed-provider requests.
+
+Privileged MFA remains an external gate, not a claimed completed feature. The current [Managed Auth plugin list](https://neon.com/docs/auth/guides/plugins) and [roadmap](https://neon.com/docs/auth/roadmap) expose a fixed supported set; the installed Neon client has no two-factor flow. Upstream Better Auth plugin examples cannot simply be installed into the managed server. Preserve existing accounts rather than replacing their provider or trusting a client-supplied MFA flag. Public operator routing is denied; no private privileged internet entry point should be opened before an MFA-capable policy/enrollment flow is qualified.
+
+The frontend pins its transitive Better Auth dependency to a patched 1.7.x release. This patches local dependencies, not Neon's vendor-managed server; vendor-side patch assurance remains necessary. No SMTP changes, fresh real-account signup, physical mailbox or hardware-key acceptance is implied by synthetic session checks.

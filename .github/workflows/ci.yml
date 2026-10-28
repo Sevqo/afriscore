@@ -4,7 +4,7 @@ on:
   push:
     # Also test feature branches directly: once a PR is closed (or before one
     # is opened) a closed-PR branch would otherwise never run CI.
-    branches: [main, "improvements/**", "feat/**", "fix/**"]
+    branches: [main, "codex/**", "improvements/**", "feat/**", "fix/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
