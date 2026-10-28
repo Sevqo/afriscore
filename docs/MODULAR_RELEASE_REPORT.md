@@ -52,7 +52,7 @@ The prior compact release already reduced application controls/headings and spac
 | Editable mobile text/minimum control height | 16 px / 44 px | Preserved for legibility and touch/zoom behavior |
 | Operational panel padding | 16 px | Preserved compact baseline |
 
-Marketplace cards are content-sized, three/two/one columns by available width; filters/actions wrap. Data tables scroll within their own containers. Native dates use the shared validation and containment rules. Browser screenshots are local ignored evidence under `.tmp/marketplace`, including mobile catalog/usage and desktop My Services. Physical device coverage remains separate.
+Marketplace cards are content-sized, three/two/one columns by available width; filters/actions wrap. Data tables scroll within their own containers. Native dates use the shared validation and containment rules. Browser screenshots are local ignored evidence under `.tmp/marketplace`, including mobile catalog/usage and the public homepage/product explanation. Actual inspected DOM widths included 375 and 1265 px, with body width matching the viewport and mobile inputs at 16 px. Browser viewport overrides did not reliably resize an existing tab; requested sizes are not reported as measured coverage. Physical device and a full breakpoint matrix remain separate acceptance work.
 
 ## Authentication, performance and remaining external gates
 
@@ -62,8 +62,19 @@ Render free-tier wake-up remains a latency boundary. Backend identity, revocatio
 
 ## Validation and deployment record
 
-Release validation and exact deployed revisions are appended after final checks. Earlier complete runs passed SQLite 241 plus one PostgreSQL-only skip, PostgreSQL 242, frontend 24, gateway 4, startup 3, contract checks and local EVM/independent verification. One intermediate local suite suffered a connection reset during a suspended/stale loopback connection; the entire affected platform suite passed on immediate isolated rerun. Final release logs are separate from that intermediate result.
+Final release validation passed SQLite **241 with one PostgreSQL-only skip**, PostgreSQL **242**, frontend **24**, gateway **4**, startup **3**, lint/type checks, **59 legacy / 169 workspace** contract operations and local EVM/independent verification. [All five GitHub CI jobs passed for application commit a3510ff](https://github.com/Sevqo/afriscore/actions/runs/40732604890). One intermediate local suite suffered a connection reset during a suspended/stale loopback connection; the entire affected platform suite passed on immediate isolated rerun, followed by clean complete release suites on both engines. Production dependency audit: backend zero findings; website seven low transitive findings, zero moderate/high/critical, consistent with the documented dependency gate.
 
 Neon development migration **007-service-marketplace applied** after an encrypted local backup and verified encrypted readback: 61 public application tables, 169 rows at backup time. This is not a full restore drill. Existing keys, accounts, names and records were preserved; production branch was not touched. Backend startup stays verify-only and now requires all seven migration versions plus marketplace tables. Public internal routes remain blocked.
 
-Cloudflare/Render deployment and final CI status are pending final release verification at the time this initial implementation report is written. Do not interpret source or an attempted deploy as a verified running release. Rollback must preserve additive tables and the version-aware encryption reader; never roll back to a legacy-only ciphertext reader or reset the database.
+Verified deployment:
+
+- Application source: [`a3510ffb0e802f9a5b61a273f114f5c1525edf45`](https://github.com/Sevqo/afriscore/commit/a3510ffb0e802f9a5b61a273f114f5c1525edf45), pushed to main with the requested author email.
+- Render: `dep-dbh2obutlv9c73dsckrg`, **Deploy succeeded / Live**, matching application commit; existing free single instance and verify-only database startup retained.
+- Cloudflare: worker version `8708a014-ac0f-41b1-be38-3395bbb3cda8`, verified public page includes the new service explanation and activation link.
+- Site: [AfriCore](https://africore-web.cypriankiprop41.workers.dev). Origin: [existing Render backend](https://africore-api.onrender.com), protected from direct application access.
+- Hosted synthetic account/bootstrap and all three workspace reads: **200**. Business/Personal/Developer catalogs: **22 / 6 / 9** eligible services. All three usage views return zero amount due and collection disabled.
+- Anonymous account **401**, public internal service administration **404**, direct-origin protected account **403**, readiness **200** with only the status field.
+- Existing private synthetic Passport API/readback succeeds, context-bound hosted ciphertext decrypts with its correct binding and rejects a wrong binding. **7 application users, 9 workspaces and Continua preserved.** No real customer record was reset or deleted.
+- Post-release account timing and its cold-start limitations are recorded in AUTH_PERFORMANCE.
+
+This verifies the online evaluation deployment, not external financial authorization, mailbox receipt, physical-device acceptance or a production launch certification. Rollback must preserve additive tables and the version-aware encryption reader; never roll back to a legacy-only ciphertext reader or reset the database.
