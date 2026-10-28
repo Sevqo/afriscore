@@ -17,7 +17,7 @@ export function Workspaces({ account }: { account: any }) {
     setError("");
     try {
       const w = await api("/api/auth/workspaces", "POST", { ...d, kind });
-      location.href = url(w);
+      location.href = url(w)+(w.existing?'':'#Explore%20Services');
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);

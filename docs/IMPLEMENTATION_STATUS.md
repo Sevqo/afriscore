@@ -1,5 +1,9 @@
 # Implementation status — Stage 3 sandbox beta
 
+## Modular platform — 28 October 2026
+
+Service discovery, persisted entitlements, explicit new-workspace service selection, My Services/pinning, dynamic navigation, six price models, authoritative usage/reservations/limits/alerts and zero-due estimate statements are implemented across Personal, Business and Developer. Independent customer entry, Business Expenses/Cash Flow and optional Intelligence/Passport support reads are repaired. Authentication redirects/bootstrap and fresh managed-identity reads are optimized; unnecessary verification prompts are removed. Migration 007 is applied only to approved Neon development after encrypted backup/readback. Final local release checks: SQLite 241 plus one PostgreSQL-only skip, PostgreSQL 242, frontend 24, gateway 4, startup 3 and local chain/independent verification. See MODULAR_RELEASE_REPORT, SERVICE_ARCHITECTURE, SERVICE_CATALOG, SERVICE_PRICING, NEON_EMAIL_VERIFICATION and AUTH_PERFORMANCE. Automated customer charging and live providers remain disabled; actual mailbox receipt remains unverified by owner choice. Deployment verification is recorded in the release report, separately from source completion.
+
 ## Current multi-account status — 2026-10-27
 
 Neon development has Managed Better Auth with verification codes, persistent Personal/Business/Developer workspaces, account routing/switching, profile/security flows and scoped API request logs. Full backend regression: 204/204 on SQLite and PostgreSQL; final account refinements: 4/4 on each engine. Website build/14 checks, typecheck, both contracts and isolated chain verification passed. Exact live/browser evidence and external limits are in END_TO_END_TEST_RESULTS and AUTHENTICATION. Production was not activated; real-mailbox delivery, production SMTP/domains, external webhook receiver and physical-device qualification remain open. Historical sections below record earlier releases.

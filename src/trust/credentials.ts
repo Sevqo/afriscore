@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { dbAll, dbGet, dbRun } from '../db';
 import { Access, audit, fail } from '../platform/auth';
+import {requireServices,checkLimits,recordUsage} from '../marketplace/engine';
 import { seal, unseal, now, hash } from '../platform/crypto';
 import { atomic } from '../operations/store';
 import { emit } from '../operations/events';
@@ -281,6 +282,8 @@ export async function issue(a: Access, requestId: string) {
       request.expires_at < now()
     )
       fail(403, 'An active holder-authorized issuance request is required');
+    await requireServices(a,['credentials']);
+    await checkLimits(a,'credentials',1);
     const i = await dbGet(
       'SELECT * FROM ac3_issuers WHERE id=? AND org_id=? AND environment=?',
       [request.issuer_id, a.org, a.environment],
@@ -556,6 +559,7 @@ export async function issue(a: Access, requestId: string) {
     );
     await change(a, request, { status: 'issued', credential_id: id });
     await audit(holder.org, a.actor, 'credential.issued', id);
+    await recordUsage(a,'credentials','credential:'+id,1,'credential_issued');
     await emit(holder, 'credential.issued', {
       id,
       issuer_id: i.id,

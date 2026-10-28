@@ -2,6 +2,7 @@
 // imported below, and the DB adapter snapshots DATABASE_URL at import time.
 import { config } from "./config";
 import { trust } from './trust/routes';
+import {marketplace} from './marketplace/routes';
 import {neonAuthURL} from './platform/neon-auth';
 import {developerRequestLog} from './platform/request-logs';
 import { auth, sameOrigin } from './platform/auth';
@@ -80,6 +81,7 @@ export function createApp() {
   app.use(developerRequestLog);
   app.use('/api/v1',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
   app.use('/api/v1', sameOrigin, platform);
+  app.use('/api/v1',sameOrigin,marketplace);
   app.use('/api/v1', sameOrigin, operations);
   app.use('/api/v1',sameOrigin,trust);
   app.get('/api/openapi.json', (_req,res) => res.sendFile('platform-openapi.json',{root:process.cwd()}));

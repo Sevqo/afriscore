@@ -1,5 +1,6 @@
 import { migrateTrust } from '../trust/schema';
 import {migrateSecurity} from '../platform/security-schema';
+import {migrateMarketplace} from '../marketplace/schema';
 import { migrateOperations } from '../operations/schema';
 import { migratePlatform } from '../platform/schema';
 import { migrateAccounts } from '../platform/accounts-schema';
@@ -315,6 +316,7 @@ export async function migrate(): Promise<void> {
   await migrateAccounts();
   await migrateWorkspaceExperiences();
   await migrateSecurity();
+  await migrateMarketplace();
 
   if (isPostgres) {
     await dbExec(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS matched_invoice_id TEXT;`);

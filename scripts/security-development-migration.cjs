@@ -3,6 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {parseEnv}=require('node:util');
 const websocket=process.argv.includes('--websocket');
+const marketplace=process.argv.includes('--marketplace');
 const driver=websocket?require('../.tmp/security/neon-runtime/node_modules/@neondatabase/serverless'):require('pg');
 if(websocket){driver.neonConfig.webSocketConstructor=WebSocket;driver.neonConfig.useSecureWebSocket=true;}
 const {Client}=driver;
@@ -46,6 +47,11 @@ async function main(){
    await client.query('BEGIN');
    try{
     for(const statement of securityStatements)await client.query(statement);
+    if(marketplace){
+     const {migrateMarketplace}=require('../dist/marketplace/schema');
+     const query=(sql,params=[])=>{let n=0;return client.query(sql.replace(/\?/g,()=>'$'+(++n)),params);};
+     await migrateMarketplace({isPostgres:true,dbTransaction:fn=>fn(),dbGet:async(sql,params)=>(await query(sql,params)).rows[0],dbAll:async(sql,params)=>(await query(sql,params)).rows,dbRun:async(sql,params)=>({changes:(await query(sql,params)).rowCount}),dbExec:sql=>query(sql)});
+    }
     for(const table of ['ac_approval_bindings','ac_legacy_deliveries']){
      await client.query('ALTER TABLE '+table+' ENABLE ROW LEVEL SECURITY');
      await client.query('REVOKE ALL ON '+table+' FROM PUBLIC');
@@ -54,8 +60,9 @@ async function main(){
     await client.query('COMMIT');
    }catch(error){await client.query('ROLLBACK');throw error;}
   }
-  const after=await client.query("SELECT version FROM public.platform_migrations WHERE version='006-security-hardening'");
-  const summary={branch:snapshot.branch,backup:path.basename(file),encryptedReadbackVerified:true,inventory,migrationApplied:after.rows.length===1,fullRestoreTested:false};
+  const target=marketplace?'007-service-marketplace':'006-security-hardening';
+  const after=await client.query('SELECT version FROM public.platform_migrations WHERE version=$1',[target]);
+  const summary={branch:snapshot.branch,backup:path.basename(file),encryptedReadbackVerified:true,inventory,migration:target,migrationApplied:after.rows.length===1,fullRestoreTested:false};
   fs.writeFileSync('.tmp/security/development-migration-result.json',JSON.stringify(summary,null,2));
   console.log(JSON.stringify(summary));
  }finally{await client.end();}

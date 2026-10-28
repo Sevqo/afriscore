@@ -1,4 +1,4 @@
-import { dbAll } from '../db';
+import { dbAll,dbGet } from '../db';
 import { runAutomations } from './automation';
 import { all } from './store';
 import { sync } from './integrations';
@@ -24,8 +24,9 @@ export async function processOperations() {
           api: false,
         };
         try {
-          await runAutomations(a);
-          for (const c of (await all(a, 'connectors')).filter(
+          const enabled=async(service:string)=>!!await dbGet("SELECT e.service_id FROM ac_service_entitlements e JOIN ac_services s ON s.id=e.service_id WHERE e.org_id=? AND e.environment=? AND e.service_id=? AND e.status='active' AND s.enabled=1",[a.org,a.environment,service]);
+          if(await enabled('automations'))await runAutomations(a);
+          for (const c of (await enabled('connect')?await all(a, 'connectors'):[]).filter(
             (c) =>
               c.status === 'retrying' &&
               c.next_retry_at <= new Date().toISOString(),

@@ -8,7 +8,7 @@
   margin-bottom: 30px;
 }
 .account-entry h1 {
-  font-size: clamp(25.6px, 3.2vw, 41.6px);
+  font-size: clamp(24px, 2.56vw, 33.28px);
   max-width: 850px;
 }
 .account-entry > p {

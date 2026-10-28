@@ -1,4 +1,5 @@
 import { RefinedHome } from './education/RefinedHome';
+import {usePathname} from './lib/navigation';
 import {AccountApp} from './accounts/Accounts';
 import {AccountChooser} from './accounts/AccountChooser';
 import { DeveloperTutorial } from './education/DeveloperTutorial';
@@ -156,7 +157,7 @@ const headlines: Record<string, string> = {
   '/solutions/contractors': 'Keep deliveries, invoices and payments connected.',
 };
 export function App() {
-  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  const path = usePathname();
   usePageMetadata(path);
   if (path === '/verify-credential') return <TrustPublic mode="verify" />;
   if (path.startsWith('/trust/share/')) return <TrustPublic mode="share" />;

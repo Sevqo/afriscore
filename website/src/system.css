@@ -1090,7 +1090,7 @@ td code {
   padding: 24px var(--gutter) 48px;
 }
 .trust-public > h1 {
-  font-size: clamp(27.2px, 3.6vw, 48px);
+  font-size: clamp(24px, 2.88vw, 38.4px);
 }
 .trust-public header {
   padding-bottom: 18px;
@@ -1249,7 +1249,7 @@ td code {
     padding-top: 42px;
   }
   .hero h1 {
-    font-size: clamp(32px, 4.16vw, 44.8px);
+    font-size: clamp(26px, 3.328vw, 35.84px);
   }
   .hero p {
     font-size: 17px;
@@ -1925,7 +1925,7 @@ td.numeric {
 :is(.business-shell,.focused-account) :is(.workspace-content,.account-content){padding:18px;min-width:0;padding-bottom:max(24px,env(safe-area-inset-bottom))}
 :is(.business-shell,.focused-account) :is(.workspace-title,.account-top){gap:9px;margin-bottom:12px;padding-bottom:0}
 :is(.business-shell,.focused-account) .workspace-title p{margin:4.5px 0 0;max-width:65ch}
-:is(.business-shell,.focused-account) .panel{padding:var(--app-panel);margin-block:0 12px;min-width:0;border-radius:6px}
+:is(.business-shell,.focused-account) .panel{padding:var(--app-panel);margin-block:0 12px;min-width:0;border-radius:var(--radius)}
 :is(.business-shell,.focused-account) :is(.metric-grid,.account-metrics){gap:7.5px;margin:0 0 12px;grid-template-columns:repeat(4,minmax(0,1fr))}
 :is(.business-shell,.focused-account) :is(.metric-grid .panel,.account-metrics section){padding:10.5px;gap:4.5px;margin:0;min-height:0}
 :is(.business-shell,.focused-account) :is(.metric-grid strong,.account-metrics strong){display:block;font-size:clamp(21px,2vw,28px);margin:4.5px 0 0;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
@@ -1935,7 +1935,7 @@ td.numeric {
 :is(.business-shell,.focused-account) .field{min-width:0;gap:3.75px;margin:0}
 :is(.business-shell,.focused-account) .field>span{font-size:13px}
 :is(.business-shell,.focused-account) :is(form,.form-grid,.account-form,.account-inline-form){gap:9px}
-:is(.business-shell,.focused-account) :is(.button,.secondary-button,.quiet-button,.row-actions button,.quick-actions button){min-height:35.2px;padding:6px 10.5px;border-radius:4px;font-size:14px;line-height:1.4;white-space:normal;text-decoration:none;color:var(--text)}
+:is(.business-shell,.focused-account) :is(.button,.secondary-button,.quiet-button,.row-actions button,.quick-actions button){min-height:35.2px;padding:6px 10.5px;border-radius:var(--radius-button);font-size:14px;line-height:1.4;white-space:normal;text-decoration:none;color:var(--text)}
 :is(.business-shell,.focused-account) .quick-actions{gap:6px}
 :is(.business-shell,.focused-account) .empty-state{padding:12px 0;min-height:0;text-align:left}
 :is(.business-shell,.focused-account) .empty-state :is(h3,h4){font-size:12.8px;margin:0 0 4.5px}
@@ -1998,7 +1998,7 @@ td.numeric {
 .account-entry .account-form h2{font-size:23px;margin-bottom:0}
 .account-entry .account-options:empty{display:none}
 .account-entry .account-type-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-width:480px;margin:16px 0}
-.account-entry .account-type-tabs button{width:100%;border-radius:4px;min-width:0;padding:8px;font-size:13px}
+.account-entry .account-type-tabs button{width:100%;border-radius:var(--radius-button);min-width:0;padding:8px;font-size:13px}
 .account-entry .account-form p{font-size:14px;margin:0}
 .focused-mobile-header{display:none}
 @media(max-width:767px){

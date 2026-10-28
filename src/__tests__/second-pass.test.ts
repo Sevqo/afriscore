@@ -5,6 +5,7 @@ import {configureTestEnv} from './helpers';
 configureTestEnv('second-pass');
 import {migrate,dbRun,dbGet,closeDb} from '../db';
 import {askAssistant,aiQuotaDay,type ExplanationProvider} from '../operations/assistant';
+import {activate} from '../marketplace/engine';
 import {safeLogPath} from '../safe-log-path';
 import {createWorkspace} from '../platform/accounts';
 import type {Access} from '../platform/auth';
@@ -63,6 +64,7 @@ test('workspace authorization uses explicit route metadata and rejects unknown r
 test('AI identity and global reservations survive workspace switching, concurrency and missing provider usage',async()=>{
  const names=['OPENAI_API_KEY','AFRICORE_AI_MODEL','AFRICORE_AI_USER_DAILY_LIMIT','AFRICORE_AI_DAILY_BUDGET_USD','AFRICORE_AI_MONTHLY_BUDGET_USD','AFRICORE_AI_CONCURRENCY_LIMIT','AFRICORE_AI_DISABLED'];const previous=names.map(n=>process.env[n]);
  try{Object.assign(process.env,{OPENAI_API_KEY:'fixture-never-network',AFRICORE_AI_MODEL:'fixture',AFRICORE_AI_USER_DAILY_LIMIT:'1',AFRICORE_AI_DAILY_BUDGET_USD:'5',AFRICORE_AI_MONTHLY_BUDGET_USD:'25',AFRICORE_AI_CONCURRENCY_LIMIT:'2',AFRICORE_AI_DISABLED:'false'});
+ for(const id of [org,org2]){await dbRun("INSERT INTO ac_memberships(org_id,user_id,role) VALUES (?,?,'owner') ON CONFLICT(org_id,user_id) DO NOTHING",[id,actor]);await activate(a(id),'assistant');}
  let calls=0;const provider:ExplanationProvider={name:'fixture',explain:async()=>{calls++;return {text:'Bounded fixture explanation',input_tokens:null,output_tokens:null};}};
  const input={question:'Explain the covered records',consent_to_provider:true};
  const outcomes=await Promise.allSettled([askAssistant(a(),input,provider),askAssistant(a(org2),input,provider)]);assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.equal(calls,1);
@@ -70,7 +72,7 @@ test('AI identity and global reservations survive workspace switching, concurren
  process.env.AFRICORE_AI_DISABLED='true';await assert.rejects(askAssistant(a(),input,provider),(e:any)=>e.status===503);assert.equal(calls,1);
  process.env.AFRICORE_AI_DISABLED='false';process.env.AFRICORE_AI_DAILY_BUDGET_USD='5';await assert.rejects(askAssistant({...a(),api:true},input,provider),(e:any)=>e.status===403);
  await dbRun('UPDATE ac_users SET verified=0 WHERE id=?',[actor]);await assert.rejects(askAssistant(a(),input,provider),(e:any)=>e.status===403);await dbRun('UPDATE ac_users SET verified=1 WHERE id=?',[actor]);
- }finally{names.forEach((name,i)=>{if(previous[i]===undefined)delete process.env[name];else process.env[name]=previous[i];});}
+ }finally{await dbRun('DELETE FROM ac_memberships WHERE user_id=? AND org_id IN (?,?)',[actor,org,org2]);names.forEach((name,i)=>{if(previous[i]===undefined)delete process.env[name];else process.env[name]=previous[i];});}
 });
 test('workspace owner limits serialize concurrent creation and do not revoke existing access',async()=>{
  const previous=process.env.AFRICORE_WORKSPACE_OWNER_LIMIT;process.env.AFRICORE_WORKSPACE_OWNER_LIMIT='1';

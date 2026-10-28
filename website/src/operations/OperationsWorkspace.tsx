@@ -37,12 +37,14 @@ export function OperationsWorkspace({
   environment,
   role,
   onNavigate,
+  services=[],
 }: {
   section: string;
   org: string;
   environment: string;
   role: string;
   onNavigate: (tab: string) => void;
+  services?:string[];
 }) {
   const base = '/organizations/' + org,
     [data, setData] = useState<any>(null),
@@ -59,7 +61,7 @@ export function OperationsWorkspace({
     finance = ['owner', 'admin', 'finance'].includes(role),
     operations = ['owner', 'admin', 'finance', 'operations'].includes(role),
     admin = ['owner', 'admin'].includes(role);
-  const scope = org + '\0' + environment + '\0' + section + '\0' + currency + '\0' + dates.from + '\0' + dates.to;
+  const scope = org + '\0' + environment + '\0' + section + '\0' + currency + '\0' + dates.from + '\0' + dates.to+'\0'+services.join(',');
   const currentScope = useRef(scope),
     gate = useRef(createRequestGate());
   currentScope.current = scope;
@@ -80,7 +82,7 @@ export function OperationsWorkspace({
     try {
       if (section === 'Intelligence') {
         const params=new URLSearchParams({currency,...(dates.from?{from:dates.from}:{}),...(dates.to?{to:dates.to}:{})});
-        const [snapshot,expenses,obligations]=await Promise.all([api('/intelligence?'+params),api('/expenses'),api('/obligations')]);
+        const [snapshot,expenses,obligations]=await Promise.all([api('/intelligence?'+params),services.some(s=>['expenses','cash_flow'].includes(s))?api('/expenses'):Promise.resolve({data:[]}),services.includes('cash_flow')?api('/obligations'):Promise.resolve({data:[]})]);
         publishData(snapshot);publishSecondary({expenses:expenses.data,obligations:obligations.data});
       } else if (section === 'Forecasts')
         publishData(
@@ -201,6 +203,8 @@ export function OperationsWorkspace({
           action={action}
           currency={currency}
           writable={finance}
+          expenseAccess={services.some(s=>['expenses','cash_flow'].includes(s))}
+          obligationAccess={services.includes('cash_flow')}
           onNavigate={onNavigate}
               dates={dates}
               onDates={(from,to)=>setDates({from,to})}

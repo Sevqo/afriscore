@@ -75,10 +75,12 @@ export function PassportWorkspace({
   org,
   environment,
   role,
+  serviceIds,
 }: {
   org: string;
   environment: string;
   role: string;
+  serviceIds?:string[];
 }) {
   const [tab, setTab] = useState('Overview'),
     [data, setData] = useState<any>(null),
@@ -97,18 +99,20 @@ export function PassportWorkspace({
     api = (path: string, method = 'GET', body?: any) =>
       request(base + path, method, body, environment);
   async function load() {
-    const result = await api('/passport');
+    const [result,sourceRows,historyRows,issuerRows,issuanceRows] = await Promise.all([
+      api('/passport'),api('/sources'),api('/history'),
+      editable&&enabled('credentials')?api('/issuers'):Promise.resolve({data:[]}),
+      editable&&enabled('credentials')?api('/issuance-requests'):Promise.resolve({data:[]}),
+    ]);
     setData(result);
-    if (editable) {
-      setIssuers((await api('/issuers')).data);
-      setIssuance((await api('/issuance-requests')).data);
-    }
-    setSources((await api('/sources')).data);
-    setHistory((await api('/history')).data);
+    setIssuers(issuerRows.data);setIssuance(issuanceRows.data);
+    setSources(sourceRows.data);setHistory(historyRows.data);
   }
+  const enabled=(id:string)=>isDemo()||!serviceIds||serviceIds.includes(id);
+  const serviceScope=serviceIds?.join(',')||'';
   useEffect(() => {
     load().catch((e) => setError(e.message));
-  }, [org, environment]);
+  }, [org, environment,serviceScope]);
   async function act(fn: () => Promise<any>) {
     setError('');
     setNotice('');
@@ -173,7 +177,7 @@ export function PassportWorkspace({
         </p>
       )}
       <nav className="passport-tabs" aria-label="Business Passport sections">
-        {tabs.map((t) => (
+        {tabs.filter(t=>{const required=({'Business Identity':'verification',Credentials:'credentials','Issuer Desk':'credentials','Business Network':'trust_network'} as Record<string,string>)[t];return !required||enabled(required);}).map((t) => (
           <button
             key={t}
             aria-current={tab === t ? 'page' : undefined}

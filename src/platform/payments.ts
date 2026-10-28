@@ -5,6 +5,7 @@ import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { hash, now, seal, unseal } from './crypto';
 import { fail, audit, Access } from './auth';
 import { isDeliverableWebhookTarget } from '../services/webhookService';
+import {entitlement,recordUsage,reserve,finishReservation} from '../marketplace/engine';
 
 export async function record(a: Access, id: string, kind?: string) {
   const row = await dbGet(
@@ -291,6 +292,9 @@ export async function processProviderResult(
       await enqueue(a, 'payment.failed', { request_id: request.id });
     }
     await audit(a.org, a.actor, 'payment.' + result.status, eventId);
+    // An authoritative callback must settle even if service access was turned
+    // off after checkout. Account for the confirmed event without a new charge.
+    if(result.status==='succeeded'&&!exception&&await entitlement(a,'payments'))await recordUsage(a,'payments','provider-event:'+eventId,1,'provider_confirmed_event');
     return {
       event_id: eventId,
       status: result.status,
@@ -313,7 +317,11 @@ export async function deliverWebhooks(
       `SELECT d.*,e.url,e.secret,e.environment AS endpoint_environment FROM ac_deliveries d JOIN ac_endpoints e ON e.id=d.endpoint_id WHERE d.status='pending' AND d.next_at<=?${org ? ' AND d.org_id=?' : ''}${environment ? ' AND e.environment=?' : ''} ORDER BY d.created_at LIMIT 25`,
       [now(), ...(org ? [org] : []), ...(environment ? [environment] : [])],
     );
+    let processed=0;
     for (const row of rows) {
+      const usageAccess:Access={org:row.org_id,environment:row.endpoint_environment,actor:'webhook_worker',role:'system',api:false};
+      let reservation:string;
+      try{reservation=await reserve(usageAccess,'webhooks');}catch(error){if([402,429].includes((error as any).status))continue;throw error;}
       let error: string | null = null;
       try {
         const target = await validate(row.url);
@@ -339,7 +347,7 @@ export async function deliverWebhooks(
         error = e instanceof Error ? e.message : 'delivery_failed';
       }
       const attempts = row.attempts + 1;
-      await dbRun(
+      await dbTransaction(async()=>{await dbRun(
         'UPDATE ac_deliveries SET attempts=?,status=?,next_at=?,last_error=? WHERE id=?',
         [
           attempts,
@@ -350,9 +358,10 @@ export async function deliverWebhooks(
           error,
           row.id,
         ],
-      );
+      );await finishReservation(usageAccess,reservation,!error,'delivery:'+row.id,'signed_webhook_delivered');});
+      processed++;
     }
-    return { processed: rows.length };
+    return { processed };
   } finally {
     running = false;
   }

@@ -6,6 +6,7 @@ import { hash, now } from '../platform/crypto';
 import { atomic } from '../operations/store';
 import { record } from '../platform/payments';
 import { emit } from '../operations/events';
+import {entitlement,recordUsage,raiseAlerts} from '../marketplace/engine';
 import {
   passportInput,
   evidenceInput,
@@ -287,6 +288,9 @@ export async function reviewIdentity(a: Access, id: string, input: any) {
             'Reviewed documentation only; not government registry verification or independent representative authority.',
         });
     }
+  if(['document_reviewed','rejected'].includes(d.decision)&&(await entitlement(a,'verification'))?.status==='active'){
+    await recordUsage(a,'verification','identity-review:'+review.id,1,'manual_review_completed');await raiseAlerts(a);
+  }
   return updated;
 }
 export async function uploadDocument(a: Access, input: any) {

@@ -1,4 +1,6 @@
 import {workspaceRouteAllowed} from './workspace-capabilities';
+import {withServiceRequest,checkServiceAccess,marketplaceRequest} from '../marketplace/request';
+import {catalogFor} from '../marketplace/engine';
 import { newPassword } from './password-policy';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
@@ -25,7 +27,7 @@ export const route =
   (fn: (req: Request, res: Response) => Promise<any>) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await fn(req, res);
+      await withServiceRequest(req,res,()=>fn(req,res));
     } catch (error) {
       if (error instanceof ZodError) {
         res
@@ -65,7 +67,7 @@ function sessionToken(req: Request) {
     '(?:^|;\\s*)' + sessionCookieName() + '=([a-f0-9]{64})(?:;|$)',
   ).exec(req.headers.cookie || '')?.[1];
 }
-export async function user(req: Request) {
+async function resolveUser(req: Request) {
   if(neonAuthURL()) {
     const bearer=req.headers.authorization?.match(/^Bearer (eyJ[A-Za-z0-9_.-]+)$/)?.[1];
     if(!bearer) fail(401,'Managed sign in required');
@@ -78,6 +80,11 @@ export async function user(req: Request) {
     [hash(token!), now()],
   );
   return row || fail(401, 'Session expired');
+}
+export async function user(req:Request){
+  const context=marketplaceRequest.getStore();
+  if(!context)return resolveUser(req);
+  return context.identity||=(resolveUser(req));
 }
 export interface Access {
   actor: string;
@@ -110,7 +117,8 @@ export async function access(
     if (!credential || !JSON.parse(credential.scopes).includes(capability))
       fail(403, 'Credential scope or organization denied');
     await audit(org, credential.id, 'api.' + capability, req.path);
-    return { actor: credential.id, org, environment, role: 'api', api: true };
+    const a={ actor: credential.id, org, environment, role: 'api', api: true };
+    await checkServiceAccess(req,a);return a;
   }
   const u = await user(req);
   const m = await dbGet(
@@ -121,7 +129,8 @@ export async function access(
     fail(403, 'Organization permission denied');
   if (environment === 'production' && !u.verified)
     fail(403, 'Verify your email before accessing production');
-  return { actor: u.id, org, environment, role: m.role, api: false };
+  const a={ actor: u.id, org, environment, role: m.role, api: false };
+  await checkServiceAccess(req,a);return a;
 }
 // Browser mutations require same origin; JSON-only writes also prevent cross-site form CSRF.
 export function sameOrigin(req: Request, res: Response, next: NextFunction) {
@@ -228,9 +237,13 @@ auth.post(
 );
 
 auth.get('/account', route(async (req, res) => {
+  const started=performance.now();
   const u = await user(req);
+  const identityAt=performance.now(),resolved=await resolveWorkspace(u.id),workspaceAt=performance.now();
+  const service_catalog=resolved.workspace?await catalogFor({org:resolved.workspace.id,actor:u.id,environment:'sandbox',role:resolved.workspace.role,api:false}):null;
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ user: u, ...await resolveWorkspace(u.id) });
+  res.setHeader('Server-Timing',`identity;dur=${(identityAt-started).toFixed(1)},workspaces;dur=${(workspaceAt-identityAt).toFixed(1)},services;dur=${(performance.now()-workspaceAt).toFixed(1)}`);
+  res.json({ user: u, ...resolved,service_catalog });
 }));
 
 auth.get('/sessions',route(async(req,res)=>{

@@ -1,4 +1,4 @@
-const requiredVersions = ['001-workspaces','002-stage2','003-stage3','004-account-foundation','005-workspace-experiences','006-security-hardening'];
+const requiredVersions = ['001-workspaces','002-stage2','003-stage3','004-account-foundation','005-workspace-experiences','006-security-hardening','007-service-marketplace'];
 interface DatabasePreparation {
   isPostgres: boolean;
   migrate: () => Promise<void>;
@@ -12,5 +12,5 @@ export async function prepareDatabase(mode: string | undefined, db: DatabasePrep
   const applied = new Set((await db.dbAll('SELECT version FROM platform_migrations')).map(row => row.version));
   if (requiredVersions.some(version => !applied.has(version)))
     throw new Error('Deployment schema is incomplete; run reviewed migrations separately');
-  await db.dbAll('SELECT 1 FROM ac_users, ac_memberships, ac_workspaces, ac_identity_links, ac_personal_income, ac2_objects, ac3_objects WHERE FALSE');
+  await db.dbAll('SELECT 1 FROM ac_users, ac_memberships, ac_workspaces, ac_identity_links, ac_personal_income, ac2_objects, ac3_objects, ac_services, ac_service_prices, ac_service_entitlements, ac_service_history, ac_usage_events, ac_usage_reservations, ac_service_limits, ac_usage_alerts, ac_billing_statements WHERE FALSE');
 }

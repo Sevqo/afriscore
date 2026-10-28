@@ -3,6 +3,7 @@ const source = fs.readFileSync('src/platform/routes.ts', 'utf8');
 const auth = fs.readFileSync('src/platform/auth.ts', 'utf8');
 const stage2 = fs.readFileSync('src/operations/routes.ts', 'utf8');
 const stage3 = fs.readFileSync('src/trust/routes.ts', 'utf8');
+const marketplace = fs.readFileSync('src/marketplace/routes.ts', 'utf8');
 const { z } = require('zod');
 const contracts = require('../dist/operations/contracts');
 const schemaNames = [
@@ -45,6 +46,7 @@ const operations = [
   ...source.matchAll(/platform\.(get|post|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage2.matchAll(/operations\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage3.matchAll(/trust\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
+  ...marketplace.matchAll(/marketplace\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...auth.matchAll(/auth\.(get|post|patch)\s*\(\s*'([^']+)'/g),
 ];
 for (const op of operations) {

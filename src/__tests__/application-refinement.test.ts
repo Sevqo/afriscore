@@ -1,14 +1,14 @@
 import { before,after,test } from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {configureTestEnv} from './helpers';
+import {configureTestEnv,productFixtureBody} from './helpers';
 configureTestEnv('application-refinement');
 import {migrate,closeDb,dbGet,dbRun} from '../db';
 import {createApp} from '../app';
 let server:ReturnType<ReturnType<typeof createApp>['listen']>,base:string;
 before(async()=>{await migrate();server=createApp().listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));base='http://127.0.0.1:'+(server.address() as {port:number}).port;});
 after(async()=>{await new Promise<void>(resolve=>server.close(()=>resolve()));await closeDb();});
-async function req(path:string,method='GET',body?:unknown,cookie=''){const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json',Cookie:cookie},body:['GET','HEAD'].includes(method)?undefined:JSON.stringify(body??{})});return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]||''};}
+async function req(path:string,method='GET',body?:unknown,cookie=''){const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json',Cookie:cookie},body:['GET','HEAD'].includes(method)?undefined:JSON.stringify(productFixtureBody(path,method,body??{}))});return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]||''};}
 async function identity(){const email=randomUUID()+'@example.test';const result=await req('/api/auth/signup','POST',{email,password:'Private-test-identity-2026!'});assert.equal(result.status,201);await req('/api/auth/verify','POST',{token:result.data.verification_token});return {...result,email};}
 async function workspace(cookie:string,kind='business'){const r=await req('/api/auth/workspaces','POST',{kind,name:'Isolated refinement '+kind,display_name:'Test owner',country:'KE',currency:'KES',timezone:'Africa/Nairobi'},cookie);assert.equal(r.status,201);return '/api/v1/organizations/'+r.data.id;}
 test('team invitation renewal/revocation, member roles and removal enforce current tenant access and the final owner',async()=>{

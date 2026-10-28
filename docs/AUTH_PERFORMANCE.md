@@ -1,0 +1,26 @@
+# Authentication and workspace bootstrap performance
+
+## Findings and changes
+
+Login previously performed a full-page transition into `/app`, then `location.replace` during account render into the workspace, reconstructing the SDK and repeating bootstrap. Personal/Developer loaded every product endpoint together on each refresh; one unavailable product blocked the complete page. Successful managed sign-in also rendered an unnecessary verification action. Ordinary 403 product/role denial cleared the whole account as if its session had expired.
+
+Local navigation now keeps the application and provider modules mounted, redirects in an effect, bounds API requests and distinguishes identity failure (401) from a scoped denial. Identity header restoration deduplicates only concurrent calls and guards against an old result restoring a logged-out identity. Private data stays memory-only and scoped; no token/capability is persisted for speed.
+
+Account bootstrap includes the currently resolved workspace's catalog, with explicit workspace/environment scope, so the matching service hook can use it once without another initial fetch. Workspace membership and profile reads run together. Catalog reads run together. Managed identity restoration combines fresh provider/link/app-state/revocation reads into a joined query; a changed identity still follows the locked synchronization path. No identity or membership result is cached across backend requests. `Server-Timing` exposes identity/workspace/catalog durations without identifiers or credentials.
+
+Personal and Developer fetch only relevant view data; optional product failures no longer disable foundation pages. Passport support reads run in parallel and credential-only support data is not fetched for a Passport-only subscriber. Intelligence similarly excludes unactivated optional expense/obligation reads.
+
+## Measured baseline
+
+28 October 2026, existing Cloudflare/Render evaluation, approved synthetic identity, server responses fully consumed:
+
+| Measurement | Before |
+|---|---:|
+| Provider session/JWT restoration | 1,842 ms |
+| First account request | 14,220 ms |
+| Three warm account requests | 1,229 / 905 / 915 ms |
+| Business report | 1,354 ms |
+
+This measures HTTP/session stages, not a fresh verified mailbox login or physical iPhone rendering. The first request includes host wake-up/network effects; it is not a steady-state database query benchmark. After-deployment timings are recorded in MODULAR_RELEASE_REPORT once measured.
+
+Render's free service may sleep. Removing redundant requests cannot eliminate a sleeping backend's cold start. No paid hosting upgrade, fabricated latency target or authentication bypass was introduced.

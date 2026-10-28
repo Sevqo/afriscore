@@ -55,28 +55,21 @@ export async function neonIdentity(token: string) {
     claims.banned === true
   )
     throw rejected();
-  if (
-    await dbGet(
-      "SELECT token_hash FROM ac_revoked_access_tokens WHERE token_hash=? AND expires_at>?",
-      [hash(token), now()],
-    )
-  )
-    throw rejected();
+  const provider = "neon:" + new URL(base).origin;
   const managed = await dbGet(
-    'SELECT id,email,"emailVerified",banned FROM neon_auth."user" WHERE id=?',
-    [claims.sub],
+    `SELECT m.id,m.email,m."emailVerified",m.banned,l.user_id,u.email AS app_email,u.verified AS app_verified,d.revoked_before,
+      EXISTS(SELECT 1 FROM ac_revoked_access_tokens r WHERE r.token_hash=? AND r.expires_at>?) AS token_revoked
+      FROM neon_auth."user" m LEFT JOIN ac_identity_links l ON l.provider=? AND l.subject=m.id::text
+      LEFT JOIN ac_users u ON u.id=l.user_id LEFT JOIN ac_account_details d ON d.user_id=l.user_id WHERE m.id=?`,
+    [hash(token),now(),provider,claims.sub],
   );
   if (
     !managed ||
-    managed.banned ||
+    managed.banned || managed.token_revoked ||
     managed.email.toLowerCase() !== claims.email.toLowerCase()
   )
     throw rejected();
-  const provider = "neon:" + new URL(base).origin;
-  let linked = await dbGet(
-    "SELECT user_id FROM ac_identity_links WHERE provider=? AND subject=?",
-    [provider, claims.sub],
-  );
+  let linked = managed.user_id ? {user_id:managed.user_id} : undefined;
   if (!linked)
     await dbTransaction(async () => {
       await dbGet('SELECT id FROM neon_auth."user" WHERE id=? FOR UPDATE', [
@@ -116,7 +109,7 @@ export async function neonIdentity(token: string) {
       );
       linked = { user_id: id };
     });
-  const details = await dbGet(
+  const details = managed.user_id ? managed : await dbGet(
     "SELECT revoked_before FROM ac_account_details WHERE user_id=?",
     [linked!.user_id],
   );
@@ -125,7 +118,9 @@ export async function neonIdentity(token: string) {
     claims.iat * 1000 <= Date.parse(details.revoked_before)
   )
     throw rejected();
-  const identity=await syncManagedIdentity(linked!.user_id,managed);
+  const identity=managed.user_id&&managed.app_email===managed.email.toLowerCase()&&Number(managed.app_verified)===(managed.emailVerified?1:0)
+    ? {email:managed.app_email,verified:managed.app_verified}
+    : await syncManagedIdentity(linked!.user_id,managed);
   return {
     id: linked!.user_id,
     email: identity.email,
@@ -135,6 +130,11 @@ export async function neonIdentity(token: string) {
 
 /** Provider identity has already been verified against the fixed issuer and subject. */
 export async function syncManagedIdentity(userId:string,managed:{email:string;emailVerified:boolean}){
+  // A verified unchanged identity needs no transaction or uniqueness lock.
+  // This is still a fresh database read on every request, never a cross-request
+  // authorization cache; changed/contested emails take the locked path below.
+  const observed=await dbGet('SELECT id,email,verified FROM ac_users WHERE id=?',[userId]);
+  if(observed&&observed.email===managed.email.toLowerCase()&&Number(observed.verified)===(managed.emailVerified?1:0))return observed;
   return dbTransaction(async()=>{
     if(isPostgres&&managed.emailVerified)await dbGet('SELECT pg_advisory_xact_lock(hashtext(?))',['identity-email:'+managed.email.toLowerCase()]);
     const current=await dbGet('SELECT id,email,verified FROM ac_users WHERE id=?'+(isPostgres?' FOR UPDATE':''),[userId]);

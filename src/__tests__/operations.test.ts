@@ -2,8 +2,9 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { configureTestEnv } from './helpers';
+import { configureTestEnv,productFixtureBody } from './helpers';
 configureTestEnv('stage2');
+import {activate} from '../marketplace/engine';
 import { migrate, dbAll, dbGet, dbRun, closeDb } from '../db';
 import { createApp } from '../app';
 import { Access } from '../platform/auth';
@@ -53,7 +54,7 @@ async function api(
       ...(cookie ? { Cookie: cookie } : {}),
       ...headers,
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(productFixtureBody(path,method,body)),
   });
   let data: any;
   try {
@@ -347,7 +348,7 @@ test('Stage 2 APIs deny cross-tenant and cross-environment access', async () => 
     owner,
     { 'X-Environment': 'production', ...idempotent() },
   );
-  assert.equal(prod.status, 400);
+  assert.equal(prod.status, 402); // No production entitlement was selected.
   assert.equal((await api('/api/v1/internal/stage2/operations')).status, 403);
 });
 test('automations deduplicate schedules, persist runs, pause and respect opt outs', async () => {
@@ -429,6 +430,7 @@ test('assistant is tool-scoped, minimizes data, fails truthfully and logs usage 
   // Synthetic value: every configured call below uses an injected fixture provider.
   process.env.OPENAI_API_KEY = 'fixture-only-no-network';
   process.env.AFRICORE_AI_MODEL = 'fixture-model';
+  await activate(access(),'assistant');
   const fake: ExplanationProvider = {
     name: 'fixture',
     async explain(input) {
@@ -1132,7 +1134,7 @@ test('protected order guards and expired approvals cannot authorize collection o
     owner,
     { 'X-Environment': 'production', ...idempotent() },
   );
-  assert.equal(production.status, 503);
+  assert.equal(production.status, 402); // Test activation never grants live access.
 });
 
 test('a broken workspace job cannot starve another tenant and worker retries do not duplicate its notification', async () => {
@@ -1238,6 +1240,7 @@ test('assistant quota is reserved before provider execution and every tool retur
   process.env.OPENAI_API_KEY = 'fixture-only-no-network';
   process.env.AFRICORE_AI_MODEL = 'fixture-model';
   process.env.AFRICORE_AI_DAILY_REQUEST_LIMIT = String(existing + 1);
+  await activate(access(),'assistant');
   let calls = 0;
   const provider: ExplanationProvider = {
     name: 'fixture',

@@ -1,5 +1,13 @@
 import fs from "fs";
 import path from "path";
+import {serviceCatalog} from '../marketplace/catalog';
+/** Legacy product journey suites explicitly request their full fixture catalog.
+ * Marketplace onboarding tests deliberately do not use this helper. */
+export function productFixtureBody(path:string,method:string,body:any){
+ if(method!=='POST'||!['/api/v1/organizations','/api/auth/workspaces'].includes(path)||!body||body.services!==undefined)return body;
+ const kind=body.kind||'business';
+ return {...body,services:serviceCatalog.filter(s=>s.kinds.includes(kind)&&s.availability!=='unavailable').map(s=>s.id)};
+}
 
 /**
  * Test environment setup. Must be imported BEFORE any module that loads
@@ -19,6 +27,7 @@ export function configureTestEnv(suiteName: string): { isPg: boolean; sqlitePath
   process.env.ID_HASH_SALT='fixture-only-private-identifier-key-at-least-32-characters';
   process.env.LEDGER_HMAC_KEY='fixture-only-ledger-anchor-key-at-least-32-characters';
   process.env.OPENAI_API_KEY='';process.env.AFRICORE_AI_MODEL='';
+  process.env.AFRISCORE_WEBHOOK_ALLOWED_HOSTS='example.com,hooks.partner.example';
   // Orbit tests always use the in-memory queue backend, never a live Redis.
   delete process.env.REDIS_URL;
   // Prevent config.ts from reloading a real managed provider from local .env.

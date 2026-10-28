@@ -1,7 +1,7 @@
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Server } from 'node:http';
-import { configureTestEnv } from './helpers';
+import { configureTestEnv,productFixtureBody } from './helpers';
 configureTestEnv('platform');
 import { migrate, dbGet, dbAll, dbRun, closeDb } from '../db';
 import { createApp } from '../app';
@@ -26,7 +26,7 @@ async function request(
       ...(cookie ? { Cookie: cookie } : {}),
       ...headers,
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(productFixtureBody(path,method,body)),
   });
   const data = await res.json();
   return {
@@ -232,7 +232,7 @@ test('customer, order and invoice persist with validated transitions', async () 
         { 'X-Environment': 'production' },
       )
     ).status,
-    404,
+    402,
   );
 });
 test('checkout delayed then success, duplicates, reconciliation, balanced journal, reports and export', async () => {
@@ -771,8 +771,7 @@ test('webhook listing and replay respect environment isolation', async () => {
     owner,
     { 'X-Environment': 'production' },
   );
-  assert.equal(production.status, 200);
-  assert.deepEqual(production.data.deliveries, []);
+  assert.equal(production.status, 402); // Sandbox service access is not inherited.
   const delivery = await dbGet('SELECT id FROM ac_deliveries WHERE org_id=?', [
     org,
   ]);
@@ -786,7 +785,7 @@ test('webhook listing and replay respect environment isolation', async () => {
         { 'X-Environment': 'production' },
       )
     ).status,
-    404,
+    402,
   );
 });
 
@@ -901,8 +900,8 @@ test('record search and status filters run before stable pagination and keep wil
         owner,
         { 'X-Environment': 'production' },
       )
-    ).data.data,
-    [],
+    ).status,
+    402,
   );
 });
 

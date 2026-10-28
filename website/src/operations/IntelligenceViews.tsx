@@ -25,6 +25,8 @@ export function IntelligenceView({
   onNavigate,
   dates,
   onDates,
+  expenseAccess=true,
+  obligationAccess=true,
 }: {
   data: any;
   secondary: any;
@@ -35,6 +37,8 @@ export function IntelligenceView({
   onNavigate: (tab: string) => void;
   dates: {from:string;to:string};
   onDates:(from:string,to:string)=>void;
+  expenseAccess?:boolean;
+  obligationAccess?:boolean;
 }) {
   if (!data) return null;
   return (
@@ -156,7 +160,7 @@ export function IntelligenceView({
         </div>
       </section>
       <div className="dashboard-columns">
-        {writable && (
+        {writable && expenseAccess && (
           <Form
             submit={(d) =>
               action(
@@ -229,7 +233,7 @@ export function IntelligenceView({
             <p>Merchant-recorded, not independently verified.</p>
           </Form>
         )}
-        {writable && (
+        {writable && obligationAccess && (
           <Form
             submit={(d) =>
               action(() =>

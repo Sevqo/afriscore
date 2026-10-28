@@ -9,6 +9,7 @@ import { money, amount, today, Field, Alert, Currency } from "./AccountUI";
 import { DeveloperPanels } from "./DeveloperPanels";
 import {Overlay} from '../components/Overlay';
 import {Icon} from '../components/Icon';
+import {useMarketplace,Services,ServiceGate,marketTabs,visibleServiceTab,canReadServiceTab,favoriteTabs} from '../marketplace/Services';
 export function FocusedWorkspace({
   workspace: w,
   account,
@@ -21,6 +22,7 @@ export function FocusedWorkspace({
   const items = personal
     ? [
         "Overview",
+        ...marketTabs,
         "Income",
         "Expenses",
         "Invoices",
@@ -33,6 +35,7 @@ export function FocusedWorkspace({
       ]
     : [
         "Overview",
+        ...marketTabs,
         "My Applications",
         "API Keys",
         "API Explorer",
@@ -55,6 +58,9 @@ export function FocusedWorkspace({
     [currency, setCurrency] = useState(w.currency||account.profile?.currency || "KES"),
     [from, setFrom] = useState(""),
     [to, setTo] = useState("");
+  useEffect(()=>{history.replaceState(null,'',location.pathname+location.search+'#'+encodeURIComponent(tab));},[tab]);
+  const market=useMarketplace(w.id,environment,w.kind,account?.service_catalog);
+  const pins=favoriteTabs(market),visibleItems=[...new Set([...items.filter(t=>['Overview',...marketTabs].includes(t)),...pins,...items])].filter(t=>visibleServiceTab(market,t));
   const [data, setData] = useState<any>({}),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -82,9 +88,12 @@ export function FocusedWorkspace({
     setBusy(true);
     setError("");
     setData({});
+    if(marketTabs.includes(tab)||!canReadServiceTab(market,tab)){setBusy(false);return;}
+    const read=(needed:boolean,path:string)=>needed?call(path):Promise.resolve({data:[]});
+    const has=(id:string)=>market.catalog?.services.some((s:any)=>s.id===id&&s.status==='active');
     const requests = personal
       ? [
-          call(
+          read(['Overview','Cash Flow','Reports'].includes(tab),
             "/personal-summary?" +
               new URLSearchParams({
                 currency,
@@ -92,18 +101,18 @@ export function FocusedWorkspace({
                 ...(to ? { to } : {}),
               }),
           ),
-          call("/personal-income"),
-          call("/expenses?limit=100"),
-          call("/records/customers?limit=100"),
-          call("/records/invoices?limit=100"),
-          call("/records/transactions?limit=100"),
+          read(tab==='Income'||tab==='Overview'&&has('income'),"/personal-income"),
+          read(tab==='Expenses',"/expenses?limit=100"),
+          read(['Clients','Invoices'].includes(tab),"/records/customers?limit=100"),
+          read(tab==='Invoices',"/records/invoices?limit=100"),
+          read(tab==='Payment Records',"/records/transactions?limit=100"),
         ]
       : [
-          call("/records/applications?limit=100"),
-          call("/credentials"),
-          call("/webhooks"),
-          call("/audit"),
-          call("/request-logs"),
+          read(has('developer_api')&&['Overview','Usage & Limits','My Applications','API Keys','API Explorer'].includes(tab),"/records/applications?limit=100"),
+          read(has('developer_api')&&['Overview','Usage & Limits','API Keys','API Explorer'].includes(tab),"/credentials"),
+          read(has('webhooks')&&['Overview','Usage & Limits','Webhooks'].includes(tab),"/webhooks"),
+          read(['Request Logs'].includes(tab),"/audit"),
+          read(['Overview','Usage & Limits','Request Logs'].includes(tab),"/request-logs"),
         ];
     Promise.all(requests)
       .then((values) => {
@@ -136,7 +145,7 @@ export function FocusedWorkspace({
     return () => {
       generation.current++;
     };
-  }, [w.id, environment, currency, from, to, revision]);
+  }, [w.id, environment, currency, from, to, revision,tab,market.catalog]);
   async function mutate(fn: () => Promise<any>) {
     const version = generation.current;
     setBusy(true);
@@ -212,7 +221,7 @@ export function FocusedWorkspace({
   const navigation=<>
         <Logo />
         <p>{personal ? "PERSONAL WORKSPACE" : "DEVELOPER CONSOLE"}</p>
-        <nav aria-label={personal?'Personal navigation':'Developer navigation'}>{items.map(t=><a key={t} href={t==='Settings'?'/app/account':t==='Learn'?'/learn':'#'+encodeURIComponent(t)} aria-current={tab===t?'page':undefined} onClick={()=>{setTab(t);setNavigationOpen(false);}}>{t}</a>)}</nav>
+        <nav aria-label={personal?'Personal navigation':'Developer navigation'}>{visibleItems.map(t=><a key={t} href={t==='Settings'?'/app/account':t==='Learn'?'/learn':'#'+encodeURIComponent(t)} aria-current={tab===t?'page':undefined} onClick={()=>{setTab(t);setNavigationOpen(false);}}>{t}</a>)}</nav>
         <a href="/app/workspaces">Switch or add workspace</a>
         <button onClick={async()=>{try{await managedSignOut();location.href='/login';}catch(e){setError((e as Error).message);}}}>Sign out</button>
       </>;
@@ -224,7 +233,7 @@ export function FocusedWorkspace({
         <nav
           aria-label={personal ? "Personal navigation" : "Developer navigation"}
         >
-          {items.map((t) => (
+          {visibleItems.map((t) => (
             <a
               key={t}
               href={
@@ -289,6 +298,7 @@ export function FocusedWorkspace({
         <h2>{tab}</h2>
         <Alert error={error} />
         {busy && <p role="status">Updating workspace…</p>}
+        {marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>
         {personal && (
           <>
             {['Overview','Cash Flow','Reports'].includes(tab)&&<DateRange from={from} to={to} onApply={(start,end)=>{setFrom(start);setTo(end);}}><Field label="Currency"><Currency value={currency} onChange={(e:any)=>setCurrency(e.target.value)}/></Field></DateRange>}
@@ -574,6 +584,7 @@ export function FocusedWorkspace({
             workspace={w}
           />
         )}
+        </ServiceGate>}
       </main>
     </div>
   );

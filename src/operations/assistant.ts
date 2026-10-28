@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { dbGet, dbRun, dbTransaction, isPostgres } from '../db';
 import { Access, audit, fail } from '../platform/auth';
 import { now } from '../platform/crypto';
+import {reserve,finishReservation} from '../marketplace/engine';
 export const aiQuotaDay=(date=new Date())=>date.toISOString().slice(0,10);
 import { financialSnapshot, forecast, forecastSchema } from './intelligence';
 
@@ -184,6 +185,7 @@ export async function askAssistant(
   if(Buffer.byteLength(JSON.stringify({question:d.question,evidence}),'utf8')>8000)fail(413,'AI evidence exceeds the bounded request size');
   const id = randomUUID(),
     started = Date.now();
+  let serviceReservation='';
   await dbTransaction(async () => {
     // One durable global reservation lock across tenants and API instances.
     if(isPostgres)await dbGet('SELECT pg_advisory_xact_lock(71402819)');
@@ -208,6 +210,7 @@ export async function askAssistant(
     if(Number(userUsage.total)>=bounded('AFRICORE_AI_USER_DAILY_LIMIT',20))fail(429,'Identity AI quota reached');
     if(Number(daily.total)>=bounded('AFRICORE_AI_DAILY_BUDGET_USD',5)||Number(monthly.total)>=bounded('AFRICORE_AI_MONTHLY_BUDGET_USD',25))fail(429,'Platform AI budget reached');
     if(Number(pending.total)>=bounded('AFRICORE_AI_CONCURRENCY_LIMIT',2))fail(429,'AI concurrency limit reached');
+    serviceReservation=await reserve(a,'assistant');
     await dbRun(
       'INSERT INTO ac2_ai_usage(id,org_id,environment,actor,provider,model,status,duration_ms,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
       [
@@ -232,6 +235,7 @@ export async function askAssistant(
       "UPDATE ac2_ai_usage SET status='succeeded',input_tokens=?,output_tokens=?,duration_ms=? WHERE id=?",
       [result.input_tokens, result.output_tokens, Date.now() - started, id],
     );
+    await finishReservation(a,serviceReservation,true,'explanation:'+id,'provider_explanation_completed');
     return {
       status: 'answered',
       explanation: result.text,
@@ -242,6 +246,7 @@ export async function askAssistant(
       usage_id: id,
     };
   } catch (error) {
+    await finishReservation(a,serviceReservation,false,'explanation:'+id,'provider_explanation_failed');
     const code =
       (error as any).code ||
       ((error as Error).name === 'TimeoutError'

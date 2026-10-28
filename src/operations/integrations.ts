@@ -5,6 +5,7 @@ import { now } from '../platform/crypto';
 import { all, atomic, change, create, get } from './store';
 import { emit } from './events';
 import { notify } from './automation';
+import {requireServices,checkLimits,recordUsage} from '../marketplace/engine';
 export const connectorCatalog = [
   {
     provider: 'sandbox_accounting',
@@ -111,6 +112,7 @@ export async function connect(a: Access, input: unknown) {
 }
 export async function sync(a: Access, id: string, at = new Date()) {
   return atomic(a, async () => {
+    await requireServices(a,['connect']);
     let c = await get(a, id, 'connectors');
     if (a.role === 'system') {
       const member = await dbGet(
@@ -167,6 +169,8 @@ export async function sync(a: Access, id: string, at = new Date()) {
     }
     // Deterministic reference data is isolated, never represented as a live balance or revenue.
     const batch = 'sandbox-batch-' + id;
+    const alreadyCounted=await dbGet('SELECT id FROM ac_usage_events WHERE org_id=? AND environment=? AND service_id=? AND idempotency_key=?',[a.org,a.environment,'connect','connector:'+batch]);
+    if(!alreadyCounted)await checkLimits(a,'connect',1);
     const sample = {
       schema_version: '1.0',
       external_id: batch,
@@ -215,6 +219,7 @@ export async function sync(a: Access, id: string, at = new Date()) {
       { id, provider: c.provider, batch_id: batch },
       { key: 'connector-batch:' + id + ':' + batch },
     );
+    await recordUsage(a,'connect','connector:'+batch,1,'connector_batch_completed');
     return c;
   });
 }

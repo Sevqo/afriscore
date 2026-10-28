@@ -1,7 +1,7 @@
 import { before, after, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { configureTestEnv } from "./helpers";
+import { configureTestEnv,productFixtureBody } from "./helpers";
 configureTestEnv("workspace-experiences");
 import { migrate, closeDb, dbGet, dbRun } from "../db";
 import { createApp } from "../app";
@@ -27,7 +27,7 @@ async function req(
   const response = await fetch(base + path, {
     method,
     headers: { "Content-Type": "application/json", Cookie: cookie, ...headers },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(productFixtureBody(path,method,body)),
   });
   return {
     status: response.status,

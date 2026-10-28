@@ -14,6 +14,8 @@ import { Icon, type IconName } from './components/Icon';
 import { useRef } from 'react';
 import { useFocusScope } from './components/useFocusScope';
 import { PassportWorkspace } from './trust/PassportWorkspace';
+import {MoneyTools} from './marketplace/MoneyTools';
+import {useMarketplace,Services,ServiceGate,marketTabs,visibleServiceTab,canReadServiceTab,favoriteTabs} from './marketplace/Services';
 import {
   startDemo,
   isDemo,
@@ -158,7 +160,7 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
   {
     label: 'Workspace',
     icon: 'grid',
-    items: ['Overview', 'Customers', 'Orders', 'Invoices', 'Payments'],
+    items: ['Overview', ...marketTabs, 'Customers', 'Orders', 'Invoices', 'Payments'],
   },
   {
     label: 'Finance & intelligence',
@@ -166,6 +168,7 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
     items: [
       'Intelligence',
       'Cash Flow',
+      'Expenses',
       'Forecasts',
       'Transactions',
       'Reconciliation',
@@ -205,7 +208,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
 
   const [me, setMe] = useState<any>(null),
     [orgs, setOrgs] = useState<any[]>([]),
-    [org, setOrg] = useState(''),
+    [org, setOrg] = useState(initialOrg||''),
     [tab, setTab] = useState(() => {
       const saved = decodeURIComponent(location.hash.slice(1));
       return tabs.includes(saved) ? saved : 'Overview';
@@ -221,6 +224,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     [selected, setSelected] = useState<any>(null),
     [documentCurrency, setDocumentCurrency] = useState('KES');
   const [navOpen, setNavOpen] = useState(false);
+  const market=useMarketplace(org,environment,'business',account?.service_catalog,isDemo());
   const [offset, setOffset] = useState(0),
     [search, setSearch] = useState('');
   const requestGate = useRef(createRequestGate());
@@ -300,7 +304,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     if (currentScope.current !== viewScope) return;
     const latest = requestGate.current.begin();
     const current = () => latest() && currentScope.current === viewScope;
-    if (!org || tab === 'Business Passport' || operationsTabs.includes(tab)) {
+    if (!org || tab==='Expenses' || marketTabs.includes(tab) || !canReadServiceTab(market,tab) || tab === 'Business Passport' || operationsTabs.includes(tab)) {
       setError('');
       setBusy(false);
       return;
@@ -326,7 +330,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     setNotice('');
     load();
     return () => requestGate.current.invalidate();
-  }, [org, tab, environment, offset, search, filterQuery]);
+  }, [org, tab, environment, offset, search, filterQuery, market.catalog]);
   useEffect(() => {
     setOffset(0);
     setQuery('');
@@ -456,6 +460,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
             ))}
           </select>
         </Field>
+        {!customers.length&&<p>Add a customer in Customers first. Customer entry is included with Invoicing and Orders.</p>}
         <div className="form-grid">
           <Field label="Currency">
             <select
@@ -722,7 +727,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
         </div>
         <span className="workspace-label">Business workspace</span>
         <nav aria-label="Business navigation">
-          {navigation.map((group) => (
+          {[{label:'Pinned services',icon:'grid' as IconName,items:favoriteTabs(market)},...navigation].map(group=>({...group,items:group.items.filter(t=>visibleServiceTab(market,t))})).filter(group=>group.items.length).map((group) => (
             <details
               key={group.label}
               className="workspace-nav-group"
@@ -811,7 +816,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
             </button>
           </div>
           <div>
-            {(isDemo()||['Developers','Settings'].includes(tab))&&<select
+            {(isDemo()||tab==='Developers')&&<select
               aria-label="Data environment"
               value={environment}
               onChange={(e) => setEnvironment(e.target.value)}
@@ -861,6 +866,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
             </div>
             {org &&
               writable &&
+              visibleServiceTab(market,tab) &&
               [
                 'Customers',
                 'Orders',
@@ -904,8 +910,8 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
           )}
           {!org || creating === ('workspace' as any) ? (
             onboardingForm()
-          ) : (
-            <>
+          ) : marketTabs.includes(tab) ? <Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)}/> : (
+            <ServiceGate market={market} tab={tab} navigate={setTab}><>
               {creating && (
                 <form className="panel create-form" onSubmit={create}>
                   <h2>
@@ -993,12 +999,15 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                   org={org}
                   environment={environment}
                   role={organization?.role || 'viewer'}
+                  serviceIds={market.catalog?.services.filter((s:any)=>s.status==='active').map((s:any)=>s.id)||[]}
                 />
               )}
+              {['Cash Flow','Expenses'].includes(tab)&&<MoneyTools api={call} scope={org+'\0'+environment} cashFlow={tab==='Cash Flow'} writable={['owner','admin','finance'].includes(organization?.role)}/>}
               {operationsTabs.includes(tab) && (
                 <OperationsWorkspace
                   key={org + environment + tab}
                   section={tab}
+                  services={market.catalog?.services.filter((s:any)=>s.status==='active').map((s:any)=>s.id)||[]}
                   org={org}
                   environment={environment}
                   role={organization?.role || 'viewer'}
@@ -1114,7 +1123,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                                       'awaiting_payment',
                                       'partially_paid',
                                     ].includes(r.status) &&
-                                      writable && (
+                                      writable && market.catalog?.services.some((s:any)=>s.id==='payments'&&s.status==='active') && (
                                         <button
                                           onClick={() => requestPayment(r)}
                                         >
@@ -1393,9 +1402,9 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                       Identity and business verification are not completed
                       automatically.
                     </p>
-                    <a href="/verify">
+                    {me?.verified||account?.user?.verified ? <p>Email verified.</p> : <a href="/verify">
                       Verify your email <Icon name="right" />
-                    </a>
+                    </a>}
                   </section>
                   <section className="panel">
                     <h2>Audit history</h2>
@@ -1558,7 +1567,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                   </section>
                 </Overlay>
               )}
-            </>
+            </></ServiceGate>
           )}
         </main>
       </div>

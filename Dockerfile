@@ -46,6 +46,7 @@ COPY website ./
 COPY dashboard/shared /app/dashboard/shared
 # The browser and backend share only this pure, local password policy.
 COPY src/platform/password-strength.ts /app/src/platform/password-strength.ts
+COPY src/marketplace/catalog.ts /app/src/marketplace/catalog.ts
 RUN npm run build
 
 # --- Production dependencies only ------------------------------------------

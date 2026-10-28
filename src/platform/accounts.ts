@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { currencySchema } from "./domain";
 import {reserveWorkspaceCreation} from './workspace-limits';
+import {activate} from '../marketplace/engine';
 
 export const workspaceInput = z
   .object({
@@ -32,6 +33,7 @@ export const workspaceInput = z
     phone: z.string().max(50).default(""),
     use_case: z.string().max(500).default(""),
     language: z.string().max(80).default(""),
+    services:z.array(z.string().regex(/^[a-z][a-z0-9_]{1,60}$/)).max(30).default([]),
   })
   .strict();
 export const destination = (
@@ -113,22 +115,22 @@ export async function createWorkspace(userId: string, input: unknown) {
       `INSERT INTO ac_account_details(user_id,country,use_case,language) VALUES (?,?,?,?) ON CONFLICT(user_id) DO NOTHING`,
       [userId, d.country, d.use_case, d.language],
     );
+    for(const service of d.services)await activate({org:id,actor:userId,environment:'sandbox',role:'owner',api:false},service);
     return { id, kind: d.kind, existing: false };
   });
 }
 
 /** Preferences are hints only; every resolution rechecks live membership. */
 export async function resolveWorkspace(userId: string) {
-  const rows = await dbAll(
+  const [rows,profile] = await Promise.all([dbAll(
     `SELECT w.id,w.kind,o.name,m.role,o.profile AS workspace_settings
  FROM ac_workspaces w JOIN ac_organizations o ON o.id=w.id
  JOIN ac_memberships m ON m.org_id=w.id
  WHERE m.user_id=? AND w.status='active' ORDER BY w.created_at,w.id`,
     [userId],
-  );
-  const profile = await dbGet("SELECT * FROM ac_profiles WHERE user_id=?", [
+  ),dbGet("SELECT * FROM ac_profiles WHERE user_id=?", [
     userId,
-  ]);
+  ])]);
   const memberships=rows.map(({workspace_settings,...w})=>{
     let settings:any={};try{settings=JSON.parse(workspace_settings);}catch{/* Old metadata has safe defaults. */}
     return {...w,currency:settings.currency||profile?.currency||'KES',timezone:settings.timezone||profile?.timezone||'Africa/Nairobi'};

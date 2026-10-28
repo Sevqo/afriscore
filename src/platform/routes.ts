@@ -1,5 +1,6 @@
 import { trustEvents } from '../trust/contracts';
 import {reserveWorkspaceCreation} from './workspace-limits';
+import {activate} from '../marketplace/engine';
 import { stage2Events } from '../operations/events';
 import { Router } from 'express';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
@@ -79,6 +80,7 @@ const profileSchema = z.object({
   registration_number: z.string().max(80).optional(),
   tax_id: z.string().max(80).optional(),
   features: z.array(z.string().max(50)).max(20).default([]),
+  services:z.array(z.string().regex(/^[a-z][a-z0-9_]{1,60}$/)).max(30).default([]),
 });
 platform.get(
   '/organizations',
@@ -110,6 +112,7 @@ platform.post(
       );
       await dbRun("INSERT INTO ac_workspaces(id,kind,status,created_at) VALUES (?,'business','active',?)", [id, now()]);
       await audit(id, u.id, 'organization.created', id);
+      for(const service of p.services)await activate({org:id,actor:u.id,environment:'sandbox',role:'owner',api:false},service);
     });
     res.status(201).json({ id, ...p, verification_status: 'unverified' });
   }),

@@ -8,6 +8,7 @@ import { permitted } from '../platform/domain';
 import { now,hash } from '../platform/crypto';
 import { all, atomic, change, create, day, get, legacy } from './store';
 import { emit } from './events';
+import {requireServices,checkLimits,recordUsage} from '../marketplace/engine';
 
 export async function notify(
   a: Access,
@@ -178,6 +179,7 @@ async function candidates(a: Access, w: any, at: Date) {
 }
 export async function runAutomations(a: Access, at = new Date()) {
   return atomic(a, async () => {
+    await requireServices(a,['automations']);
     await dbRun(
       "UPDATE ac2_approvals SET status='expired' WHERE org_id=? AND environment=? AND status='pending' AND expires_at<?",
       [a.org, a.environment, at.toISOString()],
@@ -246,6 +248,7 @@ export async function runAutomations(a: Access, at = new Date()) {
         continue;
       }
       try {
+        await checkLimits(a,'automations',1);
         const template = automationTemplates.find((t) => t.id === w.template);
         if (!template) throw new Error('unsupported_template');
         const resource = run.trigger_key.split(':').at(-1);
@@ -296,6 +299,7 @@ export async function runAutomations(a: Access, at = new Date()) {
           ],
         );
         await audit(a.org, w.created_by, 'automation.succeeded', run.id);
+        await recordUsage(a,'automations','workflow:'+run.id,1,'workflow_completed');
       } catch (error) {
         const attempts = run.attempts + 1;
         await dbRun(

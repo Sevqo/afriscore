@@ -1,5 +1,9 @@
 # AfriCore agent guide
 
+## Modular service marketplace — 28 October 2026
+
+Read docs/SERVICE_ARCHITECTURE.md, SERVICE_CATALOG.md, SERVICE_PRICING.md, NEON_EMAIL_VERIFICATION.md, AUTH_PERFORMANCE.md and MODULAR_RELEASE_REPORT.md before service/auth/billing changes. Migration 007 is additive. New workspaces explicitly select products; existing evaluation access is preserved. Keep customer entry included with Invoicing/Orders, foundation reports/security/revocation independent, and service/kind/capability authorization separate. Never meter from client success assertions. Preserve immutable price/event history, bounded internal corrections, transactional caps/reservations and worker fences. Platform statements are estimates with zero due; collection stays disabled. Real mailbox receipt remains unverified by owner choice. Shared controls use 8px corners; retain 16px mobile edit text and touch-size floors. Run both database suites, frontend/content, contracts, lint/type, gateway/startup and local chain checks. Never run tests against Neon.
+
 ## Security second pass — 28 October 2026
 
 Read docs/security/SECOND_PASS_REMEDIATION.md, SECURITY_FINDINGS_REGISTER.md and RESIDUAL_RISKS.md before changing gateway, identity, finance, encryption or webhook behavior. Migration 006 is additive and applied to the approved development branch only. Preserve version-aware decryption and existing keys; production ciphertext write activation is staged. Unknown workspace routes fail closed through the explicit capability map. Keep settlement/outbox atomic, preserve transaction occurrence dates, serialize competing receipts and retain manual-review/zero-credit decisions for unverified imports. Public customer routing denies internal operations; never restore it by exposing a gateway credential. Eight-character minimum is the explicit owner choice. No HIBP egress without specific consent; no claimed managed MFA while unsupported.

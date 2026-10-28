@@ -30,11 +30,11 @@
   --warning-surface: #fff8e5;
   --danger: #a22b20;
   --danger-surface: #fff0ed;
-  --radius-button: 3px;
-  --radius-input: 5px;
-  --radius: 6px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius: 10px;
   --radius-editorial: 18px;
-  --radius-menu: 6px;
+  --radius-menu: 10px;
   --shadow-menu: 0 8px 24px #00000014;
   --space-1: 3px;
   --space-2: 6px;
@@ -51,6 +51,6 @@
   --motion-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
   --font-body: 'DM Sans Variable', Arial, sans-serif;
   --font-code: 'Space Mono', monospace;
-  --type-display: clamp(30.4px, 3.68vw, 54.4px);
-  --type-section: clamp(24px, 2.56vw, 38.4px);
+  --type-display: clamp(26px, 2.944vw, 43.52px);
+  --type-section: clamp(20px, 2.048vw, 30.72px);
 }

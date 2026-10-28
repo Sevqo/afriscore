@@ -8,7 +8,11 @@ import { Workspaces } from "./WorkspaceSetup";
 import { AccountSettings } from "./AccountSettings";
 import { FocusedWorkspace } from "./FocusedWorkspace";
 import "./accounts.css";
+import {navigate,usePathname} from '../lib/navigation';
+import {ServiceAdmin} from '../marketplace/ServiceAdmin';
+import {serviceCatalog} from '../../../src/marketplace/catalog';
 export function AccountApp() {
+  const path=usePathname();
   const [account, setAccount] = useState<any>(null),
     [error, setError] = useState("");
   useEffect(() => {
@@ -26,6 +30,13 @@ export function AccountApp() {
     };
   }, []);
   useEffect(()=>{const changed=()=>{setAccount(null);setError('Your session or workspace permissions changed. Sign in to resolve current access.');};window.addEventListener('africore:access-changed',changed);return()=>window.removeEventListener('africore:access-changed',changed);},[]);
+  useEffect(()=>{
+    if(!account||!['/app','/auth/callback'].includes(path))return;
+    const create=new URLSearchParams(location.search).get('create');
+    const destination=types.some(t=>t.kind===create)?'/app/workspaces?create='+create:account.destination;
+    const service=new URLSearchParams(location.search).get('service');
+    if(typeof destination==='string'&&destination.startsWith('/app'))navigate(destination+(serviceCatalog.some(s=>s.id===service)?(destination.includes('?')?'&':'?')+'service='+encodeURIComponent(service!)+'#Explore%20Services':''),true);
+  },[account,path]);
   if (isDemo()) return <BusinessApp />;
   if (error)
     return (
@@ -44,17 +55,11 @@ export function AccountApp() {
         Loading your account…
       </main>
     );
-  const path = location.pathname;
   if (path === "/app" || path === "/auth/callback") {
-    const create = new URLSearchParams(location.search).get("create");
-    location.replace(
-      types.some((t) => t.kind === create)
-        ? "/app/workspaces?create=" + create
-        : account.destination,
-    );
     return <p role="status">Opening your workspace…</p>;
   }
   if (path === "/app/account") return <AccountSettings account={account} />;
+  if (path === '/app/service-admin') return <ServiceAdmin/>;
   if (path === "/app/workspaces") return <Workspaces account={account} />;
   const target = path.startsWith("/app/business/")
     ? account.workspaces.find(

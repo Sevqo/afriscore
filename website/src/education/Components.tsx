@@ -6,6 +6,12 @@ import { MediaBlock } from "../components/Media";
 import { publicPageMedia } from "../editorial";
 import { guides, demoLink, type Guide } from "./guides";
 import {ServiceExplainer} from './ServiceExplainer';
+import {serviceCatalog} from '../../../src/marketplace/catalog';
+function ServiceChoice({path}:{path:string}){
+ const products=serviceCatalog.filter(s=>s.documentation===path);
+ if(!products.length)return null;
+ return <section className="compact-product-help"><h2>Choose the tools you need</h2>{products.map(s=><article key={s.id}><h3>{s.name}</h3><p>{s.detail}</p><p><strong>How it works:</strong> {s.workflow.join(' → ')}.</p><p><strong>Usage measure:</strong> {s.unit}. {s.dependencies.length?'Required services: '+s.dependencies.map(id=>serviceCatalog.find(p=>p.id===id)?.name||id).join(', ')+'.':'No other optional service is required.'}</p><p>Free evaluation is the initial plan. Review the applicable published price, setup and limits before activation. Automated customer charging is disabled.</p><a className="button" href={'/login?service='+encodeURIComponent(s.id)}>Review {s.name} in your workspace <Icon name="right"/></a></article>)}</section>;
+}
 export function ProcessTimeline({ steps }: { steps: Guide["steps"] }) {
   return (
     <ol className="process-timeline">
@@ -158,6 +164,7 @@ export function ProductEducation({ path }: { path: string }) {
         </section>
         <ProductExperience path={path} />
         <ServiceExplainer path={path}/>
+        <ServiceChoice path={path}/>
         <section className="compact-product-help">
           <p className="content-limitation">
             <strong>Current availability:</strong> {guide.limit}
@@ -210,6 +217,7 @@ export function ProductEducation({ path }: { path: string }) {
         <ServiceExplainer path={path}/>
       </section>
       <AnnotatedProductVisual lesson={guide.lesson} />
+      <ServiceChoice path={path}/>
       <section className="business-scenario">
         <span className="eyebrow">An illustrative business story</span>
         <h2>What using it could look like</h2>

@@ -30,7 +30,8 @@ export async function api(
     );
   });
   if (!r.ok) {
-    if ([401,403].includes(r.status)&&!headers.Authorization&&!headers.authorization) {clearPrivateQueries();window.dispatchEvent(new CustomEvent('africore:access-changed'));}
+    if (r.status===401&&!headers.Authorization&&!headers.authorization) {clearPrivateQueries();window.dispatchEvent(new CustomEvent('africore:access-changed'));}
+    if(r.status===403)invalidateWorkspace(path,environment);
     throw new Error(
       data.message ||
         data.issues?.map((i: { message: string }) => i.message).join(', ') ||

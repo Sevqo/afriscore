@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { configureTestEnv } from './helpers';
+import { configureTestEnv,productFixtureBody } from './helpers';
 configureTestEnv('stage3');
 import { createApp } from '../app';
 import { migrate, dbGet, dbAll, dbRun, closeDb } from '../db';
@@ -46,7 +46,7 @@ async function api(
       ...(cookie ? { Cookie: cookie } : {}),
       ...headers,
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(productFixtureBody(path,method,body)),
   });
   let data: any;
   try {
@@ -155,8 +155,8 @@ test('passport is private, stable, tenant-scoped and migration safe', async () =
       await api(path(org, '/passport'), 'GET', undefined, owner, {
         'X-Environment': 'production',
       })
-    ).data.passport,
-    null,
+    ).status,
+    402,
   );
 });
 test('evidence derives assurance from actual records and never accepts invented source verification', async () => {
@@ -789,7 +789,7 @@ test('production trust mutations and cross-tenant API access remain denied', asy
         { 'X-Environment': 'production' },
       )
     ).status,
-    503,
+    402,
   );
   assert.equal(
     (await api(path(org, '/grants'), 'GET', undefined, stranger)).status,
