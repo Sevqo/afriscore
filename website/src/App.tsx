@@ -1,6 +1,11 @@
+import {lazy,Suspense} from "react";
+import {PublicDiscovery} from "./education/PublicDiscovery";
+import {discoveryPages} from "./education/discoveryPages";
+import {ServiceEducationPage} from "./education/ServiceEducationPage";
+import {serviceEducation} from "./education/serviceEducation";
 import { RefinedHome } from './education/RefinedHome';
 import {usePathname} from './lib/navigation';
-import {AccountApp} from './accounts/Accounts';
+const AccountApp=lazy(()=>import('./accounts/Accounts').then(m=>({default:m.AccountApp})));
 import {AccountChooser} from './accounts/AccountChooser';
 import { DeveloperTutorial } from './education/DeveloperTutorial';
 import { ProductEducation } from './education/Components';
@@ -8,16 +13,16 @@ import { Learn } from './education/Learn';
 import { guides, demoLink } from './education/guides';
 import { usePageMetadata } from './education/metadata';
 import { groups } from './navigation';
-import { TrustPublic } from './trust/TrustPublic';
+const TrustPublic=lazy(()=>import('./trust/TrustPublic').then(m=>({default:m.TrustPublic})));
 import { startDemo } from './demo/transport';
 import { publicPageMedia } from './editorial';
-import { BuyerPortal } from './operations/BuyerPortal';
+const BuyerPortal=lazy(()=>import('./operations/BuyerPortal').then(m=>({default:m.BuyerPortal})));
 
 import { Icon } from './components/Icon';
 import { Header } from './components/Header';
 import { pages, media } from './content';
 import { FeatureSection } from './components/Media';
-import { Checkout } from './BusinessApp';
+const Checkout=lazy(()=>import('./BusinessApp').then(m=>({default:m.Checkout})));
 import { AuthPage } from './accounts/AuthPage';
 import { Logo } from './components/Logo';
 function Footer() {
@@ -156,7 +161,8 @@ const headlines: Record<string, string> = {
   '/solutions/social-commerce': 'Turn conversations into organized orders.',
   '/solutions/contractors': 'Keep deliveries, invoices and payments connected.',
 };
-export function App() {
+export function App(){return <Suspense fallback={<main className="account-entry" role="status">Loading your destination…</main>}><Application/></Suspense>;}
+function Application() {
   const path = usePathname();
   usePageMetadata(path);
   if (path === '/verify-credential') return <TrustPublic mode="verify" />;
@@ -178,6 +184,7 @@ export function App() {
   if (['/signin', '/signup', '/recover', '/verify', '/reset'].includes(path))
     return <AuthPage mode={path.slice(1)} />;
   const page = pages[path];
+  const educationService=Object.entries(serviceEducation).find(([,value])=>value.route===path)?.[0];
   return (
     <>
       <a href="#main" className="skip-link">
@@ -185,7 +192,7 @@ export function App() {
       </a>
       <Header />
       <main id="main">
-        {path === '/' ? (
+        {discoveryPages[path]?<PublicDiscovery path={path}/>:educationService ? <ServiceEducationPage id={educationService}/> : path === '/' ? (
           <Home />
         ) : path === '/learn' || path.startsWith('/learn/') ? (
           <Learn slug={path.split('/')[2]} />

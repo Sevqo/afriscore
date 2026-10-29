@@ -1,3 +1,4 @@
+import {serviceCatalog} from "../../../src/marketplace/catalog";
 import { Logo } from "../components/Logo";
 import { Icon, type IconName } from "../components/Icon";
 import { MediaBlock } from "../components/Media";
@@ -18,7 +19,7 @@ export function AccountChooser() {
           <a
             className="account-option"
             key={t.kind}
-            href={"/sign-up/" + t.kind}
+            href={"/sign-up/" + t.kind + (serviceCatalog.some(s=>s.id===new URLSearchParams(location.search).get("service")&&s.kinds.includes(t.kind as "personal"|"business"|"developer"))?"?service="+encodeURIComponent(new URLSearchParams(location.search).get("service")!):"")}
           >
             <MediaBlock media={editorial[t.kind==='personal'?'personal':t.kind==='business'?'business':'developers']} /><Icon name={t.icon as IconName} />
             <h2>{t.title}</h2>

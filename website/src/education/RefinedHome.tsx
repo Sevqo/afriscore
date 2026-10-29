@@ -1,3 +1,4 @@
+import {ServiceFinder} from "./ServiceFinder";
 import { Icon } from '../components/Icon';
 import { EditorialCard, MediaCarousel } from '../components/Media';
 import { editorial } from '../editorial';
@@ -214,7 +215,7 @@ export function RefinedHome() {
           <p>Kenya first. Built for the continent.</p>
         </div>
       </section>
-      <section className="home-resources">
+      <ServiceFinder/><section className="home-resources">
         <article>
           <span className="eyebrow">For developers</span>
           <h2>Build against explicit records and states.</h2>

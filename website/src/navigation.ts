@@ -1,5 +1,12 @@
 export const groups: Record<string, [string, string][]> = {
   Products: [
+    ["Browse services", "/products"],
+    ["Customers & clients", "/products/customers"],
+    ["Orders", "/products/orders"],
+    ["Expenses", "/products/expenses"],
+    ["Income tracking", "/products/income"],
+    ["Fulfillment & delivery", "/products/fulfillment"],
+    ["AI Business Assistant", "/products/assistant"],
     ['AfriCore Business', '/products/business'],
     ['Business Passport · Beta', '/products/business-passport'],
     ['Trust Network', '/products/trust-network'],
@@ -18,6 +25,10 @@ export const groups: Record<string, [string, string][]> = {
     ['Protected Payments · Sandbox', '/products/protected-payments'],
   ],
   Solutions: [
+    ["Freelancers", "/solutions/freelancers"],
+    ["Retail shops", "/solutions/retail"],
+    ["Suppliers", "/solutions/suppliers"],
+    ["Service businesses", "/solutions/service-businesses"],
     ['Social commerce', '/solutions/social-commerce'],
     ['SMEs', '/solutions/smes'],
     ['Contractors & suppliers', '/solutions/contractors'],
@@ -25,6 +36,7 @@ export const groups: Record<string, [string, string][]> = {
   ],
   Developers: [
     ['Developer platform', '/developers'],
+    ['Signed webhooks', '/products/webhooks'],
     ['Verify a credential', '/verify-credential'],
     ['Verification APIs', '/products/verification-api'],
     ['Interactive demo', '/demo'],
@@ -32,6 +44,7 @@ export const groups: Record<string, [string, string][]> = {
     ['API sandbox', '/sandbox'],
   ],
   Resources: [
+    ["How it works", "/how-it-works"],
     ['AfriCore Learn', '/learn'],
     ['Financial glossary', '/learn/glossary'],
     ['Help & support', '/support'],
@@ -48,7 +61,13 @@ export const productSections = [
   {
     title: 'Run your business',
     paths: [
+      '/products',
       '/products/business',
+      '/products/customers',
+      '/products/orders',
+      '/products/expenses',
+      '/products/income',
+      '/products/fulfillment',
       '/products/pay',
       '/products/invoicing',
       '/products/reconciliation',
@@ -59,6 +78,7 @@ export const productSections = [
     title: 'Understand & connect',
     paths: [
       '/products/intelligence',
+      '/products/assistant',
       '/products/automations',
       '/products/connect',
       '/products/data',

@@ -23,6 +23,7 @@ try {
   const { publicPaths, renderPublic } =
     await server.ssrLoadModule('/src/prerender.tsx');
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8');
+  await fs.writeFile(path.resolve(root, '../deploy/cloudflare/public-paths.json'), JSON.stringify([...new Set(publicPaths)].sort(), null, 2) + '\n');
   const origin = process.env.AFRICORE_SITE_URL || '';
   for (const route of [...new Set(publicPaths)]) {
     const rendered = renderPublic(route),
@@ -66,6 +67,15 @@ try {
           esc(rendered.description) +
           '"></head>',
       );
+    const structured = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: rendered.title,
+      description: rendered.description,
+      url: canonical,
+      inLanguage: 'en',
+    }).replaceAll('<', '\\u003c');
+    html = html.replace('</head>', '<meta property="og:url" content="' + esc(canonical) + '"><script type="application/ld+json">' + structured + '</script></head>');
     const target = route === '/' ? dist : path.join(dist, route.slice(1));
     await fs.mkdir(target, { recursive: true });
     await fs.writeFile(path.join(target, 'index.html'), html);

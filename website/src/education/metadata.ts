@@ -1,8 +1,17 @@
+import {discoveryPages} from "./discoveryPages";
+import {serviceEducation} from "./serviceEducation";
+import {serviceCatalog} from "../../../src/marketplace/catalog";
+import {learningPaths} from "./learningPaths";
 import { useEffect } from "react";
 import { pages } from "../content";
 import { guides } from "./guides";
 import { lessons } from "./Learn";
 export function pageMetadata(path: string) {
+  if(discoveryPages[path])return {title:discoveryPages[path].title+" | AfriCore",description:discoveryPages[path].description};
+  const serviceId=Object.entries(serviceEducation).find(([,c])=>c.route===path)?.[0];
+  if(serviceId)return {title:serviceCatalog.find(s=>s.id===serviceId)!.name+" | AfriCore",description:serviceEducation[serviceId].problem};
+  const learningPath=path.startsWith("/learn/")?learningPaths[path.split("/")[2]]:undefined;
+  if(learningPath)return {title:learningPath.title+" | AfriCore Learn",description:learningPath.objective};
   if(path==='/get-started'||path==='/signup'||path.startsWith('/sign-up/')||path==='/login'||path==='/signin'||path.startsWith('/app')||path==='/auth/callback') {
     return {title:path==='/get-started'||path==='/signup'?'Choose your AfriCore experience':path.startsWith('/sign-up/')?'Create your AfriCore '+path.split('/')[2]+' account':path==='/login'||path==='/signin'?'Sign in to AfriCore':path.startsWith('/app/personal')?'AfriCore Personal':path.startsWith('/app/developer')?'AfriCore Developer Console':'Your AfriCore workspaces',description:'One identity for your Personal, Business and Developer workspaces. Access follows your current memberships.'};
   }

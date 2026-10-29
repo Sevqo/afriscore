@@ -166,3 +166,6 @@ See MILESTONE_2_REPORT.md and MILESTONE_2_ARCHITECTURE.md for implementation, ex
 
 ## Connected platform continuation — 29 October 2026
 The owner approved Milestone 3 and reuse of the existing OpenAI key. See CONNECTED_PLATFORM_REPORT.md and CONNECTED_PLATFORM_ARCHITECTURE.md for exact delivered scope, validation, additive migration 009, deployment and external gates. Optional Data, private conversations, version-bound workflows, evidenced alerts, prospective forecast evaluation and independent trust dimensions extend the existing services. Prior financial/auth/issuer/proof controls remain authoritative. External AI output is credit-blocked; no live institutional provider, production signing/chain or Capital capability is claimed. Milestone 4 remains held for review.
+
+## Public learning continuation — 29 October 2026
+Milestone 4 is owner-authorized. See MILESTONE_4_REPORT.md, PUBLIC_LEARNING_ARCHITECTURE.md and PUBLIC_PRODUCT_CAPABILITIES.md for added public journeys, isolated exercises, browser-local learning, catalog-backed discovery, service-context handoff, route splitting, SEO and precise release qualification. No database migration, identity merge, paid upgrade or live financial/provider activation is part of this milestone.

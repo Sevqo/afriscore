@@ -1,4 +1,6 @@
 // Only the gateway credential belongs at the edge. Database/provider secrets stay in Node.
+import publicPaths from './public-paths.json' with { type: 'json' };
+const publicPages = new Set(publicPaths);
 function origin(value) {
   const url = new URL(value);
   if (url.protocol !== 'https:' || url.origin !== value || url.username || url.password)
@@ -58,9 +60,14 @@ export async function handle(request, env, upstreamFetch = fetch) {
   }
   if (url.pathname === '/internal' || url.pathname.startsWith('/internal/')) return new Response('Not found', { status: 404 });
   if (!['GET','HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
+  const normalized = url.pathname.replace(/\/+$/, '') || '/';
+  const application = /^(?:\/app(?:\/|$)|\/checkout\/|\/buyer\/|\/trust\/share\/|\/passport\/|\/sign-up\/)/.test(normalized) || ['/get-started','/signup','/login','/signin','/forgot-password','/auth/callback','/recover','/verify','/reset','/demo','/verify-credential'].includes(normalized);
+  const asset = /\.[a-z0-9]+$/i.test(normalized);
+  if (!publicPages.has(normalized) && !application && !asset) return secured(new Response('Page not found', {status:404}));
   let authOrigin = '';
   if (env.NEON_AUTH_ORIGIN) { try { authOrigin = origin(env.NEON_AUTH_ORIGIN).origin; } catch { return unavailable(); } }
   const response = await env.ASSETS.fetch(request);
+  if (asset && (response.headers.get('Content-Type') || '').includes('text/html')) return secured(new Response('Asset not found', {status:404}));
   return secured(response, { html: (response.headers.get('Content-Type') || '').includes('text/html'), authOrigin });
 }
 export default { fetch(request, env) { return handle(request, env); } };

@@ -2,6 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import worker, { handle } from './worker.mjs';
 const env = { BACKEND_ORIGIN:'https://africore-api.example', AFRICORE_GATEWAY_SECRET:'x'.repeat(40), NEON_AUTH_ORIGIN:'https://auth.example', ASSETS:{ fetch:async () => new Response('<html>app</html>',{headers:{'Content-Type':'text/html'}}) } };
+test('known public education pages remain available while unknown pages and missing assets return 404',async()=>{
+ for(const path of ['/learn/freelancer-starter','/products/assistant','/solutions/freelancers','/how-it-works'])assert.equal((await handle(new Request('https://africore.example'+path),env)).status,200,path);
+ for(const path of ['/missing-page','/products/not-a-service','/learn/missing-lesson','/assets/missing.js'])assert.equal((await handle(new Request('https://africore.example'+path),env)).status,404,path);
+ const cssEnv={...env,ASSETS:{fetch:async()=>new Response('body{}',{headers:{'Content-Type':'text/css'}})}};
+ assert.equal((await handle(new Request('https://africore.example/assets/valid.css'),cssEnv)).status,200);
+});
 test('API paths preserve method, exact query, body and identity without leaking the gateway credential',async()=>{
   let seen;
   const response=await handle(new Request('https://africore.example/api/v1/organizations/fixture/records?cursor=a%2Fb',{method:'POST',headers:{authorization:'Bearer user-jwt',origin:'https://africore.example','x-africore-gateway-secret':'spoof','x-africore-client-ip':'spoof','x-forwarded-for':'spoof','CF-Connecting-IP':'192.0.2.1'},body:'{"amount":100}'}),env,async request=>{seen=request;return Response.json({ok:true});});

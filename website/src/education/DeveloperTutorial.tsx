@@ -27,6 +27,8 @@ function CodeSample({ label, code }: { label: string; code: string }) {
   );
 }
 export function DeveloperTutorial() {
+  const [example,setExample]=useState('success');
+  const outcomes:Record<string,[string,string]>={success:['200 · Illustrative empty result',response],unauthorized:['401 · Authentication required','Provide a valid scoped server credential. No credential is included in this exercise.'],forbidden:['403 · Access denied','Check current workspace membership, API scopes, environment and enabled service.'],conflict:['409 · State conflict','Inspect the original operation before retrying a write. Never create a second financial action blindly.'],limited:['429 · Rate limited','Respect retry guidance and bounded backoff. Do not retry a financial write with a fresh idempotency key.']};
   return (
     <section className="developer-tutorial">
       <span className="eyebrow">A first API request</span>
@@ -43,6 +45,7 @@ export function DeveloperTutorial() {
         label="200 · Example for an empty workspace"
         code={response}
       />
+      <section className="learning-paths"><h3>Inspect an example outcome</h3><p>Local teaching examples only. This control sends no API request and accepts no key.</p><label>Response scenario<select value={example} onChange={e=>setExample(e.target.value)}><option value="success">Empty sandbox result</option><option value="unauthorized">Missing credential</option><option value="forbidden">Permission denied</option><option value="conflict">Write state conflict</option><option value="limited">Rate limit</option></select></label><p role="status">{outcomes[example][0]}</p><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{outcomes[example][1]}</pre><p>For real requests, use your authorized Developer Console and the current OpenAPI schema. These explanatory error messages are not exact server response payloads.</p></section>
       <ol>
         <li>
           <strong>Authentication:</strong> a scoped key identifies the allowed

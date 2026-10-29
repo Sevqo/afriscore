@@ -1,3 +1,4 @@
+import {InvoiceLab,IntegrityLab,CredentialLab,SourceLab} from "./TeachingLabs";
 import { useState } from "react";
 import { InteractiveChart, financialSeries } from "../charts/InteractiveChart";
 import { InteractiveExample } from "./InteractiveExample";
@@ -321,7 +322,7 @@ function Rule() {
 }
 function Connections({ data }: { data: boolean }) {
   return (
-    <>
+    <><SourceLab data={data}/>
       <h2>
         {data
           ? "Turn source records into usable, traceable fields."
@@ -453,7 +454,7 @@ function Network() {
 function Anchor() {
   return (
     <>
-      <h2>Check that this credential belongs to this anchored batch.</h2>
+      <h2>Check that this credential belongs to this anchored batch.</h2><IntegrityLab/>
       <Label />
       <ol className="process-timeline">
         {[
@@ -638,7 +639,7 @@ export function ProductExperience({ path }: { path: string }) {
         <Protection />
       ) : kind === "invoice" ? (
         <>
-          <h2>Follow the amount your customer still owes.</h2>
+          <h2>Follow the amount your customer still owes.</h2><InvoiceLab/><figure><img src="/media/editorial/contractor-invoice-v2.webp" alt="Original illustration of a fictional contractor preparing an invoice in her workshop; invoice preparation and receiving payment are separate steps." width="1200" height="800" loading="lazy" style={{width:"100%",height:"auto"}}/><figcaption>Original AfriCore editorial illustration · fictional contractor, not customer evidence.</figcaption></figure>
           <Label />
           <div className="experience-split">
             <div>
@@ -660,8 +661,8 @@ export function ProductExperience({ path }: { path: string }) {
                 </li>
               </ol>
               <p>
-                Reminders are in-app follow-ups. A formal credit-note ledger and
-                eTIMS validation are not implemented; drafts and eligible
+                Reminders are in-app follow-ups. Posted credit notes reduce debt without recording a receipt.
+                eTIMS validation is not enabled; drafts and eligible
                 void/cancel transitions have explicit guards.
               </p>
             </div>
@@ -720,7 +721,7 @@ export function ProductExperience({ path }: { path: string }) {
         </>
       ) : kind === "credential" ? (
         <>
-          <h2>One claim. Three different roles.</h2>
+          <h2>One claim. Three different roles.</h2><CredentialLab/><figure><img src="/media/editorial/supplier-selective-sharing-v2.webp" alt="Original illustration: a fictional wholesaler shares one selected document with a retailer while keeping the rest of her folder closed." width="1200" height="800" loading="lazy" style={{width:"100%",height:"auto"}}/><figcaption>Fictional selective-sharing scene; documents shown are not real credentials.</figcaption></figure>
           <ol className="experience-timeline">
             <li>
               <strong>Issuer</strong>Reviews evidence and signs the specific

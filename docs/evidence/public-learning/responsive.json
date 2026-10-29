@@ -1,0 +1,386 @@
+[
+  {
+    "route": "/",
+    "requestedWidth": 320,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 320,
+    "width": 321
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 320,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 320,
+    "width": 321
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 320,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 320,
+    "width": 321
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 320,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 320,
+    "width": 321
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 320,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 320,
+    "width": 321
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 320,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 320,
+    "width": 321
+  },
+  {
+    "route": "/",
+    "requestedWidth": 360,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 345,
+    "width": 360
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 360,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 345,
+    "width": 360
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 360,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 345,
+    "width": 360
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 360,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 345,
+    "width": 360
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 360,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 345,
+    "width": 360
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 360,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 345,
+    "width": 360
+  },
+  {
+    "route": "/",
+    "requestedWidth": 375,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 360,
+    "width": 376
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 375,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 360,
+    "width": 376
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 375,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 360,
+    "width": 376
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 375,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 360,
+    "width": 376
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 375,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 360,
+    "width": 376
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 375,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 360,
+    "width": 376
+  },
+  {
+    "route": "/",
+    "requestedWidth": 390,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 390,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 390,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 390,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 390,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 390,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "route": "/",
+    "requestedWidth": 430,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 415,
+    "width": 430
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 430,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 415,
+    "width": 430
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 430,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 415,
+    "width": 430
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 430,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 415,
+    "width": 430
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 430,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 415,
+    "width": 430
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 430,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 415,
+    "width": 430
+  },
+  {
+    "route": "/",
+    "requestedWidth": 768,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 768,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 768,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 768,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 768,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 768,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "route": "/",
+    "requestedWidth": 1024,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1009,
+    "width": 1024
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 1024,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1009,
+    "width": 1024
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 1024,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1009,
+    "width": 1024
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 1024,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1009,
+    "width": 1024
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 1024,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1009,
+    "width": 1024
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 1024,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1009,
+    "width": 1024
+  },
+  {
+    "route": "/",
+    "requestedWidth": 1440,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1425,
+    "width": 1440
+  },
+  {
+    "route": "/learn",
+    "requestedWidth": 1440,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1425,
+    "width": 1440
+  },
+  {
+    "route": "/learn/freelancer-starter",
+    "requestedWidth": 1440,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1425,
+    "width": 1440
+  },
+  {
+    "route": "/products/invoicing",
+    "requestedWidth": 1440,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1425,
+    "width": 1440
+  },
+  {
+    "route": "/products/assistant",
+    "requestedWidth": 1440,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1425,
+    "width": 1440
+  },
+  {
+    "route": "/how-it-works",
+    "requestedWidth": 1440,
+    "brokenImages": 0,
+    "h1": 1,
+    "scrollWidth": 1425,
+    "width": 1440
+  }
+]

@@ -50,7 +50,7 @@ export function AuthPage({ mode,kind }: { mode: string;kind?:string }) {
         r={email,managed:true,message:mode==='signup'?'Account created. Verify your email if requested, then continue.':mode==='recover'?'If the account exists, a recovery email was sent.':'Authentication updated.'};
         if(mode==='signup') {
           const session=await client.getSession();
-          if(session.data?.user?.emailVerified){navigate('/app/workspaces?create='+encodeURIComponent(intent||'business'));return;}
+          if(session.data?.user?.emailVerified){navigate('/app'+intentQuery);return;}
           r.needsVerification=true;
           r.message='Check your email for the verification code, then verify your account.';
         }
@@ -131,7 +131,7 @@ export function AuthPage({ mode,kind }: { mode: string;kind?:string }) {
         </form>
         {result && (
           <div className="alert" role="status">
-            {(mode==='signup'||result.needsVerification)&&<>{!result.managed&&<a className="button" href={'/app/workspaces?create='+encodeURIComponent(intent||'business')}>Continue to workspace setup</a>}{result.needsVerification&&<a className="button" href={'/verify?email='+encodeURIComponent(result.email || "")+(intent?'&create='+encodeURIComponent(intent):'')}>Verify email and continue</a>}</>}
+            {(mode==='signup'||result.needsVerification)&&<>{!result.managed&&<a className="button" href={'/app'+intentQuery}>Continue to workspace setup</a>}{result.needsVerification&&<a className="button" href={'/verify?email='+encodeURIComponent(result.email || "")+(intent?'&create='+encodeURIComponent(intent):'')+(serviceCatalog.some(s=>s.id===service)?'&service='+encodeURIComponent(service!):'')}>Verify email and continue</a>}</>}
             {result.signin_href&&<a className="button" href={result.signin_href}>Sign in to continue</a>}
             <p>
               {result.verified
@@ -162,7 +162,7 @@ export function AuthPage({ mode,kind }: { mode: string;kind?:string }) {
 
           </div>
         )}
-        <div className="auth-links">{mode === 'signin' ? <p>New to AfriCore? <a href="/get-started">Create an account</a></p> : <a href={'/login'+intentQuery}>Back to sign in</a>}</div><footer className="auth-footer"><a href="/">Back to AfriCore</a></footer>
+        <div className="auth-links">{mode === 'signin' ? <p>New to AfriCore? <a href={"/get-started"+intentQuery}>Create an account</a></p> : <a href={'/login'+intentQuery}>Back to sign in</a>}</div><footer className="auth-footer"><a href="/">Back to AfriCore</a></footer>
       </div>
     </div>
   );

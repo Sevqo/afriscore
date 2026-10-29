@@ -44,7 +44,7 @@ export function AccountApp() {
         <Logo />
         <h1>Workspace unavailable</h1>
         <Alert error={error} />
-        <a className="button" href="/login">
+        <a className="button" href={"/login"+location.search}>
           Sign in
         </a>
       </main>

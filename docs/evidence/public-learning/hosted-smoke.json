@@ -1,0 +1,78 @@
+{
+  "managedIdentity": true,
+  "checks": [
+    {
+      "kind": "personal",
+      "financial_summary": 200
+    },
+    {
+      "kind": "personal",
+      "endpoint": "assistant/conversations",
+      "status": 402,
+      "inactiveService": true
+    },
+    {
+      "kind": "business",
+      "financial_summary": 200
+    },
+    {
+      "kind": "business",
+      "endpoint": "assistant/conversations",
+      "status": 200,
+      "inactiveService": false
+    },
+    {
+      "kind": "business",
+      "endpoint": "data/quality",
+      "status": 200,
+      "inactiveService": false
+    },
+    {
+      "kind": "business",
+      "endpoint": "intelligence/alerts",
+      "status": 200,
+      "inactiveService": false
+    },
+    {
+      "kind": "business",
+      "endpoint": "forecasts/evaluations",
+      "status": 200,
+      "inactiveService": false
+    },
+    {
+      "kind": "business",
+      "endpoint": "trust/assessment",
+      "status": 200,
+      "inactiveService": false
+    },
+    {
+      "provider_readiness": 200,
+      "daraja_disabled": true
+    },
+    {
+      "kind": "developer",
+      "financial_summary": 200
+    },
+    {
+      "kind": "developer",
+      "endpoint": "assistant/conversations",
+      "status": 402,
+      "inactiveService": true
+    },
+    {
+      "kind": "developer",
+      "endpoint": "data/quality",
+      "status": 200,
+      "inactiveService": false
+    },
+    {
+      "path": "/v1/health",
+      "status": 200
+    },
+    {
+      "path": "/v1/readiness",
+      "status": 200
+    }
+  ],
+  "realFundsMoved": false
+}

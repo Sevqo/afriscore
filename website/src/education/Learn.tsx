@@ -1,3 +1,6 @@
+import {ServiceFinder} from "./ServiceFinder";
+import {LearningJourney} from "./LearningJourney";
+import {learningPaths} from "./learningPaths";
 import { AnnotatedProductVisual } from "./Components";
 import { useState } from "react";
 import { guides } from "./guides";
@@ -259,6 +262,7 @@ export function Learn({ slug }: { slug?: string }) {
         </a>
       </article>
     );
+  if (slug && learningPaths[slug]) return <article className="learn-article"><nav className="breadcrumbs" aria-label="Breadcrumb"><a href="/learn">AfriCore Learn</a></nav><span className="eyebrow">Guided learning path</span><h1>{learningPaths[slug].title}</h1><LearningJourney key={slug} slug={slug} titles={Object.fromEntries(Object.entries(lessons).map(([id,l])=>[id,l.title]))}/></article>;
   if (slug && !lesson)
     return (
       <section className="learn-article">
@@ -283,7 +287,7 @@ export function Learn({ slug }: { slug?: string }) {
         <h1>{lesson.title}</h1>
         <p className="article-deck">{lesson.definition}</p>
         <p className="article-meta">
-          AfriCore product education · Reviewed 26 October 2026 · General
+          AfriCore product education · Content version 1 · Reviewed 29 October 2026 · General
           education
         </p>
         <h2>The idea in practice</h2>
@@ -322,6 +326,7 @@ export function Learn({ slug }: { slug?: string }) {
         <a className="button" href={lesson.path}>
           Explore {guide.name}
         </a>
+        <LearningJourney key={slug} slug={slug} titles={Object.fromEntries(Object.entries(lessons).map(([id,l])=>[id,l.title]))}/>
         <section className="related-learning">
           <h2>Keep learning</h2>
           {Object.entries(lessons)
@@ -359,7 +364,8 @@ export function Learn({ slug }: { slug?: string }) {
           Explore the financial glossary
         </a>
       </section>
-      <section className="learn-library">
+      <LearningJourney titles={Object.fromEntries(Object.entries(lessons).map(([id,l])=>[id,l.title]))}/>
+      <ServiceFinder/><section className="learn-library">
         <div className="learning-filters">
           <label>
             Find a guide

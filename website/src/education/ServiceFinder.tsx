@@ -1,0 +1,16 @@
+import { serviceEducation } from "./serviceEducation";
+import { useState } from 'react';
+import { serviceCatalog, type WorkspaceKind } from '../../../src/marketplace/catalog';
+const goals: Record<string, string[]> = {
+    'Send invoices': ['invoicing'], 'Organize customers and orders': ['customers', 'orders'],
+    'Record income and costs': ['income', 'expenses', 'cash_flow'], 'Understand payments': ['payments', 'reconciliation'],
+    'Review financial patterns': ['intelligence', 'forecasting', 'assistant'], 'Reduce routine follow-up': ['automations'],
+    'Import authorized records': ['connect', 'data'], 'Share business evidence': ['passport', 'verification', 'credentials', 'trust_network', 'blockchain'],
+    'Build with APIs': ['developer_api', 'webhooks', 'verification_api'],
+};
+const availability = { available: 'Available', evaluation: 'Evaluation', requires_configuration: 'Requires setup', unavailable: 'Unavailable' };
+export function ServiceFinder() {
+    const [goal, setGoal] = useState('Send invoices'), [kind, setKind] = useState<WorkspaceKind>('business');
+    const candidates = serviceCatalog.filter(s => goals[goal].includes(s.id)), eligible = candidates.filter(s => s.kinds.includes(kind));
+    return <section className="learning-paths" id="service-finder"><span className="eyebrow">Choose only what you need</span><h2>What would you like to do with AfriCore?</h2><p>Explore without an account. Recommendations are optional; review setup and the applicable price before activating a service.</p><div className="learning-filters"><label>Your task<select value={goal} onChange={e => setGoal(e.target.value)}>{Object.keys(goals).map(g => <option key={g}>{g}</option>)}</select></label><label>Workspace<select value={kind} onChange={e => setKind(e.target.value as WorkspaceKind)}><option value="personal">Personal</option><option value="business">Business</option><option value="developer">Developer</option></select></label></div><p role="status">{eligible.length} eligible {eligible.length === 1 ? 'service' : 'services'} for this task in {kind}.</p><div className="lesson-grid">{eligible.map(s => <article key={s.id}><span>{availability[s.availability]}</span><h3>{s.name}</h3><p>{s.description}</p><p>{s.detail}</p><p><strong>Usage measure:</strong> {s.unit}.</p><p><strong>Dependencies:</strong> {s.dependencies.length ? s.dependencies.map(id => serviceCatalog.find(p => p.id === id)!.name).join(', ') : 'No other optional service required.'}</p>{s.setup.map(t => <p key={t}>{t}</p>)}<p>Current initial plan: free evaluation. No customer charging is enabled. Published prices and your existing price version are reviewed in the workspace.</p><p><a href={serviceEducation[s.id]?.route || s.documentation}>Explore how it works</a></p><a className="secondary-button" href={'/app?create=' + kind + '&service=' + s.id}>Review {s.name} in your workspace</a></article>)}</div>{!eligible.length && <p>This task is not available in the selected workspace. Choose another workspace to inspect eligible options; your account will not be changed.</p>}<p>Availability describes the software service. External providers, live collection and institutional verification require their own configuration and authorization. Capital remains deferred.</p></section>;
+}
