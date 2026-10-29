@@ -1,4 +1,8 @@
-import { DateRange } from './components/DateRange';
+import {CustomerTools} from './finance/CustomerTools';
+import {FinancialOverview} from './finance/FinancialOverview';
+import {parseMoney,parsePercent} from '../../src/finance/money';
+import {PaymentCentre} from './finance/PaymentCentre';
+import {RecordFinanceDetails} from './finance/RecordFinanceDetails';
 import { TeamDirectory } from './accounts/TeamDirectory';
 import { peekQuery, cancelOtherWorkspaceReads } from './lib/query-cache';
 import {managedSignOut} from './accounts/auth';
@@ -23,7 +27,7 @@ import {
 import { OperationsWorkspace, operationsTabs } from './operations/OperationsWorkspace';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from './components/Logo';
-import { api, apiFetch } from './lib/api-client';
+import { api } from './lib/api-client';
 function ErrorBox({ error }: { error: string }) {
   return error ? (
     <div className="alert error" role="alert">
@@ -204,7 +208,8 @@ const tabs = navigation.flatMap((group) => group.items);
 export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:any}={}) {
   const [resolvingOrgs,setResolvingOrgs]=useState(true),[orgLoadError,setOrgLoadError]=useState('');
   const workspaceSwitch = useRef(0);
-  const [reportFilters,setReportFilters]=useState({from:'',to:'',currency:'KES'});
+  const creationKeys=useRef(new Map<string,string>());
+  const [reportFilters]=useState({from:'',to:'',currency:'KES'});
 
   const [me, setMe] = useState<any>(null),
     [orgs, setOrgs] = useState<any[]>([]),
@@ -232,6 +237,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     org + '\0' + environment + '\0' + tab + '\0' + offset + '\0' + search + '\0' + JSON.stringify(reportFilters);
   const currentScope = useRef(viewScope);
   currentScope.current = viewScope;
+  const [invoiceFilter,setInvoiceFilter]=useState('all');
   const recordTabs = [
     'Customers',
     'Orders',
@@ -272,7 +278,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
   const base = '/api/v1/organizations/' + org;
   const suffix=({Overview:'/report','Cash Flow':'/report',Reports:'/report',Payments:'/payments',Reconciliation:'/reconciliation',Team:'/team',Developers:'/records/applications',Settings:'/audit'} as Record<string,string>)[tab]||'/records/'+tab.toLowerCase();
   const filterQuery=new URLSearchParams(Object.fromEntries(Object.entries(reportFilters).filter(([,v])=>v))).toString();
-  const resource=suffix+(recordTabs.includes(tab)?'?limit=25&offset='+offset+'&q='+encodeURIComponent(search):['Overview','Cash Flow','Reports'].includes(tab)?'?'+filterQuery:'');
+  const resource=suffix+(recordTabs.includes(tab)?'?limit=25&offset='+offset+'&q='+encodeURIComponent(search)+(tab==='Invoices'&&invoiceFilter!=='all'?'&status='+invoiceFilter:''):['Overview','Cash Flow','Reports'].includes(tab)?'?'+filterQuery:'');
   const data=loaded?.scope===viewScope?loaded.value:peekQuery<any>(base+resource,environment,isDemo())||null;
   const setData=(value:any)=>setLoaded({scope:viewScope,value});
   useEffect(()=>{if(org)cancelOtherWorkspaceReads(base,environment);},[org,environment]);
@@ -294,12 +300,11 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
       .catch(e=>setOrgLoadError((e as Error).message))
       .finally(()=>setResolvingOrgs(false));
   }, []);
-  const call = (
-    suffix: string,
-    method = 'GET',
-    body?: unknown,
-    headers?: Record<string, string>,
-  ) => api(base + suffix, method, body, environment, headers);
+  const call = (suffix:string,method='GET',body?:unknown,headers?:Record<string,string>) => {
+    const intent=base+'\0'+environment+'\0'+suffix+'\0'+JSON.stringify(body),idempotent=method==='POST'&&(/^\/records\//.test(suffix)||suffix==='/expenses');
+    if(idempotent&&!creationKeys.current.has(intent))creationKeys.current.set(intent,crypto.randomUUID());
+    return api(base+suffix,method,body,environment,idempotent?{'Idempotency-Key':creationKeys.current.get(intent)!,...headers}:headers).then(result=>{if(idempotent)creationKeys.current.delete(intent);return result;});
+  };
   async function load() {
     if (currentScope.current !== viewScope) return;
     const latest = requestGate.current.begin();
@@ -330,7 +335,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     setNotice('');
     load();
     return () => requestGate.current.invalidate();
-  }, [org, tab, environment, offset, search, filterQuery, market.catalog]);
+  }, [org, tab, environment, offset, search, filterQuery, market.catalog,invoiceFilter]);
   useEffect(() => {
     setOffset(0);
     setQuery('');
@@ -378,12 +383,13 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
       if (['Orders', 'Invoices'].includes(tab)) {
         body = {
           customer_id: raw.customer_id,
+          ...(raw.number?{number:raw.number}:{}),
           currency: raw.currency,
           items: JSON.parse(raw.items),
           issue_date: raw.issue_date,
           due_date: raw.due_date,
-          discount_minor: Number(raw.discount_minor || 0),
-          tax_bps: Number(raw.tax_bps || 0),
+          discount_minor: parseMoney(String(raw.discount_amount||'0'),raw.currency),
+          tax_bps: parsePercent(String(raw.tax_percent||'0')),
           notes: raw.notes || '',
           terms: raw.terms || '',
           payment_instructions: raw.payment_instructions || '',
@@ -420,23 +426,6 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     );
     if (r) setNotice('API key — copy now, shown once: ' + r.key);
   }
-  async function exportReport() {
-    try {
-      const res = await apiFetch(base + '/report?format=csv&'+filterQuery, {
-        credentials: 'same-origin',
-        headers: { 'X-Environment': environment },
-      });
-      if (!res.ok) throw new Error('Export denied');
-      const url = URL.createObjectURL(await res.blob()),
-        a = document.createElement('a');
-      a.href = url;
-      a.download = 'africore-receivables.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
   const organization = orgs.find((o) => o.id === org),
     writable =
       organization &&
@@ -450,6 +439,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
   function docForm() {
     return (
       <>
+        <Field label="Document number (optional)"><input name="number" maxLength={80} placeholder="Generated when left blank"/></Field>
         <Field label="Customer">
           <select name="customer_id" required>
             <option value="">Select a customer</option>
@@ -491,20 +481,20 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
           <Field label="Due date">
             <input required type="date" name="due_date" />
           </Field>
-          <Field label="Discount (minor units)">
+          <Field label={"Discount · "+documentCurrency}>
             <input
               type="number"
-              name="discount_minor"
+              name="discount_amount"
               min="0"
               defaultValue="0"
             />
           </Field>
-          <Field label="Tax (basis points; 1600 = 16%)">
+          <Field label="Tax rate (%)">
             <input
               type="number"
-              name="tax_bps"
+              name="tax_percent"
               min="0"
-              max="10000"
+              max="100" step="0.01"
               defaultValue="0"
             />
           </Field>
@@ -644,7 +634,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
               </div>
             ))}
             <p className="muted">
-              Issued invoices, less allocated payments. Draft and void invoices
+              Issued invoices, less allocated payments and credit notes. Draft and void invoices
               excluded.
             </p>
           </section>
@@ -1002,6 +992,10 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                   serviceIds={market.catalog?.services.filter((s:any)=>s.status==='active').map((s:any)=>s.id)||[]}
                 />
               )}
+              {tab==='Customers'&&<CustomerTools api={call} org={org} environment={environment} writable={writable} onChanged={load}/>}
+              {['Cash Flow','Reports'].includes(tab)&&<FinancialOverview api={call} scope={org+'\0'+environment}/>}
+              {tab==='Invoices'&&<div className="finance-toolbar" aria-label="Invoice views">{[['all','All invoices'],['draft','Drafts'],['outstanding','Outstanding'],['overdue','Overdue'],['paid','Paid'],['credited','Credited']].map(([value,label])=><button key={value} className="secondary-button" aria-pressed={invoiceFilter===value} onClick={()=>{setOffset(0);setInvoiceFilter(value);}}>{label}</button>)}</div>}
+              {['Payments','Reconciliation'].includes(tab)&&<PaymentCentre key={org+environment+tab} api={call} scope={org+'\0'+environment} writable={writable} admin={['owner','admin'].includes(organization?.role)} reconcile={tab==='Reconciliation'}/>}
               {['Cash Flow','Expenses'].includes(tab)&&<MoneyTools api={call} scope={org+'\0'+environment} cashFlow={tab==='Cash Flow'} writable={['owner','admin','finance'].includes(organization?.role)}/>}
               {operationsTabs.includes(tab) && (
                 <OperationsWorkspace
@@ -1019,12 +1013,8 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                   Loading your records…
                 </div>
               )}
-              {['Overview', 'Cash Flow', 'Reports'].includes(tab) && (
+              {tab==='Overview' && (
                 <>
-                  {tab !== 'Overview' && (
-                    <DateRange from={reportFilters.from} to={reportFilters.to} onApply={(from,to)=>{setLoaded(null);setReportFilters({from,to,currency:documentCurrency});}}><Field label="Currency"><select value={documentCurrency} onChange={e=>setDocumentCurrency(e.target.value)}>{['KES','USD','EUR','GBP','UGX','TZS','RWF'].map(c=><option key={c}>{c}</option>)}</select></Field><button type="button" className="button" onClick={exportReport}>Export CSV <Icon name="down"/></button></DateRange>
-
-                  )}
                   {metricView()}
                 </>
               )}
@@ -1132,10 +1122,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                                       )}
                                     {tab === 'Invoices' && (
                                       <button
-                                        onClick={() => {
-                                          setSelected(r);
-                                          setTimeout(() => window.print(), 100);
-                                        }}
+                                        onClick={async () => {try{const fresh=await call('/records/invoices/'+r.id);setSelected(fresh);setTimeout(()=>window.print(),100);}catch(e){setError((e as Error).message);}}}
                                       >
                                         Print / PDF
                                       </button>
@@ -1509,6 +1496,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                     ) : (
                       <pre>{JSON.stringify(selected, null, 2)}</pre>
                     )}
+                    {['invoices','customers','orders'].includes(selected.kind)&&<RecordFinanceDetails key={org+environment+selected.id} row={selected} api={call} writable={writable} onChanged={async()=>{const scope=viewScope;await load();try{const fresh=await call('/records/'+selected.kind+'/'+selected.id);if(currentScope.current===scope)setSelected(fresh);}catch(e){if(currentScope.current===scope)setError((e as Error).message);}}}/>}
                     {selected.kind === 'customers' && writable && (
                       <form
                         onSubmit={async (e) => {
@@ -1601,7 +1589,7 @@ function LineItemsInput({ currency }: { currency: string }) {
           items.map((i) => ({
             description: i.description,
             quantity: i.quantity,
-            unit_price_minor: Math.round(i.price * multiplier),
+            unit_price_minor: (()=>{try{return parseMoney(String(i.price),currency);}catch{return 0;}})(),
           })),
         )}
       />
@@ -1634,7 +1622,7 @@ function LineItemsInput({ currency }: { currency: string }) {
               max={100000000}
               step={1 / multiplier}
               value={item.price}
-              onChange={(e) => change(index, 'price', e.target.value)}
+              onChange={(e) => {try{parseMoney(e.target.value,currency);e.target.setCustomValidity('');}catch(error){e.target.setCustomValidity((error as Error).message);}change(index, 'price', e.target.value);}}
             />
           </Field>
           <button

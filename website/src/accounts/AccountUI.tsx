@@ -1,3 +1,4 @@
+import {parseMoney} from '../../../src/finance/money';
 import { type ReactNode } from "react";
 export const types = [
   {
@@ -29,16 +30,7 @@ export const money = (n: number, currency = "KES") =>
     Number(n || 0) / (["UGX", "RWF"].includes(currency) ? 1 : 100),
   );
 export const amount = (v: FormDataEntryValue | null, currency: string) => {
-  const scaled = Number(v) * (["UGX", "RWF"].includes(currency) ? 1 : 100);
-  if (
-    !Number.isSafeInteger(Math.round(scaled)) ||
-    scaled <= 0 ||
-    Math.abs(scaled - Math.round(scaled)) > 0.000001
-  )
-    throw new Error(
-      "Enter a positive amount using the currency’s supported decimal places.",
-    );
-  return Math.round(scaled);
+  const value=parseMoney(String(v||''),currency);if(value<=0)throw new Error('Enter a positive amount.');return value;
 };
 export const today = (timezone = "Africa/Nairobi") =>
   new Intl.DateTimeFormat("en-CA", {

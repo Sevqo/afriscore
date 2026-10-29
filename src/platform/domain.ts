@@ -1,3 +1,4 @@
+import {basisPoints,sumMinor,exactNumber} from '../finance/money';
 import { z } from 'zod';
 export const currencySchema = z.enum([
   'KES',
@@ -15,6 +16,7 @@ export const itemSchema = z.object({
 });
 export const documentSchema = z.object({
   customer_id: z.string().uuid(),
+  number: z.string().trim().min(1).max(80).optional(),
   order_id: z.string().uuid().optional(),
   currency: currencySchema.default('KES'),
   items: z.array(itemSchema).min(1).max(100),
@@ -27,10 +29,7 @@ export const documentSchema = z.object({
   payment_instructions: z.string().max(3000).default(''),
 });
 export function totals(doc: z.infer<typeof documentSchema>) {
-  const subtotal_minor = doc.items.reduce(
-    (s, i) => s + i.quantity * i.unit_price_minor,
-    0,
-  );
+  const subtotal_minor = sumMinor(doc.items.map(i=>exactNumber(BigInt(i.quantity)*BigInt(i.unit_price_minor))));
   if (
     !Number.isSafeInteger(subtotal_minor) ||
     doc.discount_minor > subtotal_minor
@@ -38,9 +37,7 @@ export function totals(doc: z.infer<typeof documentSchema>) {
     throw Object.assign(new Error('Invalid total or discount'), {
       status: 400,
     });
-  const tax_minor = Math.round(
-    ((subtotal_minor - doc.discount_minor) * doc.tax_bps) / 10000,
-  );
+  const tax_minor = basisPoints(subtotal_minor-doc.discount_minor,doc.tax_bps);
   const total_minor = subtotal_minor - doc.discount_minor + tax_minor;
   if (
     !Number.isSafeInteger(total_minor) ||

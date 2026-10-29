@@ -91,7 +91,7 @@ export const guides: Record<string, Guide> = {
       "A payment event and allocation connected to the right business record.",
     limit:
       sandbox +
-      " Settlement—the provider’s transfer or release of funds—is separate from confirmation and matching.",
+      " Daraja sandbox STK initiation/status contracts are implemented but await authorized credentials and external acceptance. Live collection, C2B, refunds and reversals through Daraja remain disabled. Settlement is separate from confirmation and matching.",
     related: [
       "/products/reconciliation",
       "/solutions/social-commerce",
@@ -132,7 +132,7 @@ export const guides: Record<string, Guide> = {
       ],
       [
         "Match the records",
-        "Allocate the eligible payment to its corresponding request and document.",
+        "Review provider references and allocate eligible confirmed evidence to one or more open invoices in the same currency.",
       ],
       [
         "Review exceptions",
@@ -166,7 +166,7 @@ export const guides: Record<string, Guide> = {
       ],
       [
         "Can I correct a mistake?",
-        "Use review/correction workflows. Original events stay in history; reversals require review.",
+        "Review unresolved evidence and record a reason for allocations. Confirmed simulator returns append adjustments; original events remain retained. Unlinked reversal reports still require review.",
       ],
       [
         "How is a payment verified?",
@@ -189,14 +189,14 @@ export const guides: Record<string, Guide> = {
         "Add customer, line items, currency, payment terms and due date.",
       ],
       ["Issue and share", "Issue the draft, then print or save a PDF."],
-      ["Track payments", "Review confirmed full or partial allocations."],
+      ["Track payments", "Review full or partial allocations, credit notes and retained return adjustments."],
       [
         "Follow up",
-        "Prioritize outstanding and overdue balances and supported in-app reminders.",
+        "Filter drafts, outstanding, overdue, paid and credited invoices. Record a collection follow-up without sending unconfigured customer email.",
       ],
     ],
     example:
-      "A fictional contractor invoices KSh 250,000 with 30-day terms. A confirmed KSh 100,000 payment leaves KSh 150,000 receivable. After the due date, that unpaid balance is overdue.",
+      "A fictional contractor invoices KSh 50,000. A confirmed test payment of KSh 30,000 leaves KSh 20,000 owed; a second KSh 20,000 settles the invoice. A credit note reduces debt without recording an incoming payment. After the due date, that unpaid balance is overdue.",
     outcome: "A clear amount owed, due date and history for each customer.",
     limit:
       "Ordinary AfriCore invoices are not automatically KRA-validated eTIMS invoices. External email/messaging delivery is not configured. " +
@@ -241,11 +241,11 @@ export const guides: Record<string, Guide> = {
       ],
       [
         "Compare movement",
-        "Review inflows, outflows, outstanding and overdue balances.",
+        "Compare collections less confirmed returns with effective recorded expenses, outstanding invoices and aging, using 7D through All or custom dates.",
       ],
       [
         "Plan with assumptions",
-        "Explore scenarios while checking what records are missing.",
+        "Record dated recurring obligations separately from paid expenses; handle an occurrence explicitly and retain its history.",
       ],
     ],
     example:

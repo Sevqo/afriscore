@@ -5,6 +5,7 @@ export type API = (
   suffix: string,
   method?: string,
   body?: unknown,
+  headers?:Record<string,string>,
 ) => Promise<any>;
 export type Action = (fn: () => Promise<any>, message?: string) => Promise<any>;
 export const factor = (currency: string) =>

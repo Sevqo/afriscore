@@ -1,3 +1,8 @@
+import {CustomerTools} from '../finance/CustomerTools';
+import {FinancialOverview} from '../finance/FinancialOverview';
+import {PaymentCentre} from '../finance/PaymentCentre';
+import {RecordFinanceDetails} from '../finance/RecordFinanceDetails';
+import {MoneyTools} from '../marketplace/MoneyTools';
 import { DateRange } from '../components/DateRange';
 import { InteractiveChart } from '../charts/InteractiveChart';
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -18,6 +23,7 @@ export function FocusedWorkspace({
   account: any;
 }) {
   const personal = w.kind === "personal";
+  const [selectedInvoice,setSelectedInvoice]=useState<any>(null);
   const [navigationOpen,setNavigationOpen]=useState(false);
   const items = personal
     ? [
@@ -67,10 +73,14 @@ export function FocusedWorkspace({
     [revision, setRevision] = useState(0),
     [key, setKey] = useState(""),
     [result, setResult] = useState("");
+  const creationKeys=useRef(new Map<string,string>());
   const generation = useRef(0),
     base = "/api/v1/organizations/" + w.id;
-  const call = (suffix: string, method = "GET", body?: unknown) =>
-    api(base + suffix, method, body, environment);
+  const call = (suffix:string,method='GET',body?:unknown,headers?:Record<string,string>)=>{
+    const intent=base+'\0'+environment+'\0'+suffix+'\0'+JSON.stringify(body),idempotent=method==='POST'&&(/^\/records\//.test(suffix)||suffix==='/expenses');
+    if(idempotent&&!creationKeys.current.has(intent))creationKeys.current.set(intent,crypto.randomUUID());
+    return api(base+suffix,method,body,environment,idempotent?{'Idempotency-Key':creationKeys.current.get(intent)!,...headers}:headers).then(result=>{if(idempotent)creationKeys.current.delete(intent);return result;});
+  };
   useEffect(() => {
     const change = () => {
       const t = decodeURIComponent(location.hash.slice(1));
@@ -80,6 +90,7 @@ export function FocusedWorkspace({
     return () => window.removeEventListener("hashchange", change);
   }, [personal]);
   useEffect(() => {
+    setSelectedInvoice(null);
     setKey("");
     setResult("");
   }, [w.id, environment,tab]);
@@ -282,7 +293,8 @@ export function FocusedWorkspace({
                 onChange={(e) => setEnvironment(e.target.value)}
               >
                 <option value="sandbox">Sandbox</option>
-                {personal && (
+                {selectedInvoice&&<Overlay onClose={()=>setSelectedInvoice(null)}><section className="service-detail print-invoice" role="dialog" aria-modal="true" aria-label="Invoice financial details"><h2>{selectedInvoice.reference}</h2><RecordFinanceDetails row={{...selectedInvoice,kind:'invoices'}} printDocument api={call} writable={['owner','admin','finance'].includes(w.role)} onChanged={()=>setRevision(v=>v+1)}/><button onClick={()=>setSelectedInvoice(null)}>Close</button></section></Overlay>}
+        {personal && (
                   <option value="production">Personal records</option>
                 )}
               </select>
@@ -343,6 +355,7 @@ export function FocusedWorkspace({
                 ])}
               </>
             )}
+            {tab==='Clients'&&<CustomerTools api={call} org={w.id} environment={environment} writable={['owner','admin','operations','finance'].includes(w.role)} onChanged={()=>setRevision(v=>v+1)}/>}
             {tab === "Clients" && (
               <>
                 <form
@@ -529,7 +542,7 @@ export function FocusedWorkspace({
                 </form>
                 {data.invoices?.map((i: any) => (
                   <article className="account-record" key={i.id}>
-                    <strong>{i.reference}</strong>
+                    <button className="quiet-button" onClick={()=>setSelectedInvoice(i)}>{i.reference} · View balances & actions</button>
                     <span>
                       {money(i.total_minor, i.currency)} · {i.status} · Due{" "}
                       {i.due_date}
@@ -553,6 +566,9 @@ export function FocusedWorkspace({
                 ))}
               </>
             )}
+            {tab==='Cash Flow'&&<FinancialOverview api={call} scope={w.id+environment}/>}
+            {tab==='Payment Records'&&<PaymentCentre api={call} scope={w.id+environment} writable={['owner','admin','finance'].includes(w.role)}/>}
+            {tab==='Cash Flow'&&<MoneyTools api={call} scope={w.id+environment} cashFlow writable={['owner','admin','finance'].includes(w.role)}/>}
             {tab === "Payment Records" && (
               <>
                 <p>

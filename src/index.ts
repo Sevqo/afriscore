@@ -1,3 +1,5 @@
+import {processFinancialSchedules} from './finance/schedules';
+import {processPaymentInbox} from './finance/provider-service';
 // IMPORTANT: keep `./config` as the very first import. It loads a local .env
 // file as a side effect, and the DB adapter (imported below via ./db) reads
 // process.env.DATABASE_URL at import time to choose SQLite vs PostgreSQL.
@@ -36,7 +38,7 @@ async function main(): Promise<void> {
   await prepareDatabase(process.env.AFRICORE_MIGRATIONS_MODE, {migrate, isPostgres, dbAll});
   const webhookTimer = setInterval(() => { Promise.all([deliverWebhooks(),deliverLegacyWebhooks()]).catch(()=>logger.error('webhook_worker_failed',{code:'delivery_failed'})); }, 10000);
   webhookTimer.unref();
-  const operationsTimer=setInterval(()=>{processOperations().catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);
+  const operationsTimer=setInterval(()=>{Promise.all([processOperations(),processPaymentInbox(),processFinancialSchedules()]).catch(()=>logger.error('stage2_worker_failed',{code:'execution_failed'}));},15000);
   operationsTimer.unref();
   const trustTimer=setInterval(()=>{processTrust().catch(()=>logger.error('trust_worker_failed',{code:'execution_failed'}));},15000);trustTimer.unref();
 

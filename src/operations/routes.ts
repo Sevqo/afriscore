@@ -1,3 +1,4 @@
+import {financialOperation} from '../finance/service';
 import { operationalSnapshot } from '../metrics';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -120,14 +121,7 @@ operations.get(
     res.json({ data: await list(a, 'expenses', p.limit, p.offset), ...p });
   }),
 );
-operations.post(
-  '/organizations/:org/expenses',
-  route(async (req, res) =>
-    res
-      .status(201)
-      .json(await addExpense(await access(req, 'finance'), req.body)),
-  ),
-);
+operations.post('/organizations/:org/expenses',route(async(req,res)=>{const a=await access(req,'finance');const run=()=>addExpense(a,req.body);res.status(201).json(req.headers['idempotency-key']?await financialOperation(a,'expense.create',key(req),req.body,run):await run());}));
 operations.get(
   '/organizations/:org/obligations',
   route(async (req, res) => {
@@ -144,7 +138,7 @@ operations.post(
     res.status(201).json(
       await atomic(a, () =>
         create(a, 'obligations', {
-          ...d,
+          ...d,anchor_day:d.anchor_day||Number(d.next_due_date.slice(8)),
           provenance: 'self_reported',
           classification: 'expected_obligation',
         }),

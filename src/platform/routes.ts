@@ -1,3 +1,6 @@
+import {requestInput} from '../finance/contracts';
+import {financialOperation,canonical} from '../finance/service';
+import {documentBalance} from '../finance/ledger';
 import { trustEvents } from '../trust/contracts';
 import {reserveWorkspaceCreation} from './workspace-limits';
 import {activate} from '../marketplace/engine';
@@ -60,9 +63,9 @@ platform.get('/organizations/:org/personal-summary',route(async(req,res)=>{
   const expenses=expenseRows.map(r=>JSON.parse(r.data));
   const superseded=new Set(expenses.map(r=>r.supersedes_id).filter(Boolean));
   const manual=sum(incomes.filter(r=>within(r.occurred_on)).map(r=>Number(r.amount_minor)));
-  const out=sum(expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)).filter(r=>r.currency===q.currency&&within(r.occurred_on)).map(r=>Number(r.amount_minor)));
+  const out=sum(expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)).filter(r=>r.status!=='archived'&&r.currency===q.currency&&within(r.occurred_on)).map(r=>Number(r.amount_minor)));
   const activity=new Map<string,{date:string;income:number;expenses:number;net:number}>();
-  for(const [rows,key] of [[incomes,'income'],[expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)),'expenses']] as const){for(const row of rows){if(row.currency!==q.currency||!within(row.occurred_on))continue;const point=activity.get(row.occurred_on)||{date:row.occurred_on,income:0,expenses:0,net:0};point[key]=sum([point[key],Number(row.amount_minor)]);point.net=point.income-point.expenses;activity.set(row.occurred_on,point);}}
+  for(const [rows,key] of [[incomes,'income'],[expenseRows.filter(r=>!superseded.has(r.id)).map(r=>JSON.parse(r.data)),'expenses']] as const){for(const row of rows){if(row.status==='archived'||row.currency!==q.currency||!within(row.occurred_on))continue;const point=activity.get(row.occurred_on)||{date:row.occurred_on,income:0,expenses:0,net:0};point[key]=sum([point[key],Number(row.amount_minor)]);point.net=point.income-point.expenses;activity.set(row.occurred_on,point);}}
   const invoices=(await dbAll("SELECT data FROM ac_records WHERE org_id=? AND environment=? AND kind='invoices'",[a.org,a.environment])).map(r=>JSON.parse(r.data));
   res.json({currency:q.currency,environment:a.environment,from:q.from||null,to:q.to||null,series:[...activity.values()].sort((a,b)=>a.date.localeCompare(b.date)),manual_income_minor:manual,recorded_expenses_minor:out,recorded_net_minor:manual-out,
     outstanding_invoices_minor:sum(invoices.filter(r=>r.currency===q.currency&&!['draft','voided','paid'].includes(r.status)).map(r=>Math.max(0,r.total_minor-r.paid_minor))),
@@ -322,14 +325,11 @@ platform.get(
       predicates.push('('+expressions.map(expression=>`LOWER(${expression}) LIKE ? ESCAPE '\\'`).join(' OR ')+')');
       params.push(...expressions.map(()=>'%'+q.toLowerCase().replace(/[\\%_]/g,'\\$&')+'%'));
     }
-    if (status) {
-      predicates.push(
-        isPostgres
-          ? "(data::jsonb ->> 'status')=?"
-          : "json_extract(data, '$.status')=?",
-      );
-      params.push(status);
-    }
+    if (kind==='invoices'&&['outstanding','overdue'].includes(status||'')) {
+      const statusExpr=isPostgres?"data::jsonb ->> 'status'":"json_extract(data,'$.status')";
+      predicates.push(statusExpr+" IN ('issued','partially_paid')");
+      if(status==='overdue'){predicates.push((isPostgres?"data::jsonb ->> 'due_date'":"json_extract(data,'$.due_date')")+'<?');params.push(now().slice(0,10));}
+    } else if(status){predicates.push(isPostgres?"(data::jsonb ->> 'status')=?":"json_extract(data,'$.status')=?");params.push(status);}
     const rows = await dbAll(
       'SELECT * FROM ac_records WHERE ' +
         predicates.join(' AND ') +
@@ -370,7 +370,7 @@ platform.post(
             : 'operations',
       );
     let d: any;
-    const created = await dbTransaction(async () => {
+    const createRecord = async () => {
       if (kind === 'customers')
         d = z
           .object({
@@ -383,7 +383,7 @@ platform.post(
           .parse(req.body);
       else if (kind === 'orders' || kind === 'invoices') {
         const parsed = documentSchema.parse(req.body);
-        await record(a, parsed.customer_id, 'customers');
+        const customer=await record(a, parsed.customer_id, 'customers');if(customer.status==='archived')fail(409,'Select an active customer');
         if (parsed.order_id) {
           if (kind !== 'invoices') fail(400, 'Only invoices may link orders');
           await dbRun('UPDATE ac_organizations SET name=name WHERE id=?', [
@@ -429,10 +429,11 @@ platform.post(
             [parsed.order_id, a.org, a.environment],
           );
         }
+        if(parsed.number){await dbRun('UPDATE ac_organizations SET name=name WHERE id=?',[a.org]);const existing=await dbAll('SELECT data FROM ac_records WHERE org_id=? AND environment=? AND kind=?',[a.org,a.environment,kind]);if(existing.some(r=>JSON.parse(r.data).reference===parsed.number))fail(409,'Document number already exists');}
         d = {
           ...parsed,
           ...totals(parsed),
-          reference:
+          reference:parsed.number ||
             (kind === 'orders' ? 'ORD' : 'INV') +
             '-' +
             randomUUID().slice(0, 12).toUpperCase(),
@@ -458,7 +459,8 @@ platform.post(
       const saved = await save(a, kind, d);
       if (kind === 'invoices') await enqueue(a, 'invoice.created', saved);
       return saved;
-    });
+    };
+    const created=req.headers['idempotency-key']?await financialOperation(a,'records.create:'+kind,String(req.headers['idempotency-key']),req.body,createRecord):await dbTransaction(createRecord);
     res.status(201).json(created);
   }),
 );
@@ -501,6 +503,7 @@ platform.patch(
           ...d,
           ...z
             .object({
+              status:z.enum(['active','archived']).optional(),
               name: z.string().trim().min(1).max(200).optional(),
               email: z.string().email().or(z.literal('')).optional(),
               phone: z.string().max(50).optional(),
@@ -569,10 +572,9 @@ platform.patch(
             "UPDATE ac_requests SET status='cancelled' WHERE document_id=? AND org_id=? AND environment=? AND status NOT IN ('paid','cancelled')",
             [d.id, a.org, a.environment],
           );
-        if (status === 'issued')
-          await enqueue(a, 'invoice.issued', { id: d.id });
       } else fail(405, 'Unsupported update');
       await update(a, d.id, result);
+      if(result.status&&result.status!==d.status)await enqueue(a,(kind==='invoices'?'invoice.':'order.')+(result.status==='awaiting_payment'?'confirmed':result.status),{id:d.id});
       await audit(a.org, a.actor, kind + '.updated', d.id);
       return result;
     });
@@ -583,7 +585,7 @@ platform.post(
   '/organizations/:org/payment-requests',
   route(async (req, res) => {
     const a = await access(req, 'finance'),
-      d = z.object({ document_id: z.string().uuid() }).parse(req.body),
+      d = requestInput.parse(req.body),
       idempotency = z
         .string()
         .min(8)
@@ -596,7 +598,8 @@ platform.post(
         [a.org, a.environment, idempotency],
       );
       if (previous) {
-        if (previous.document_id !== d.document_id)
+        const input=await dbGet('SELECT fingerprint FROM ac_finance_operations WHERE org_id=? AND environment=? AND operation=? AND idempotency_key=?',[a.org,a.environment,'payment_request.input',idempotency]);if(input&&input.fingerprint!==hash(canonical(d)))fail(409,'Idempotency key conflicts with original payment request');
+        if (previous.document_id !== d.document_id || (d.amount_minor!==undefined&&Number(previous.amount_minor)!==d.amount_minor))
           fail(409, 'Idempotency key already used with different input');
         return {
           status: 200,
@@ -641,10 +644,12 @@ platform.post(
         )
           fail(409, 'Collect against the linked invoice');
       }
+      const balance=await documentBalance(a,doc.id);
       const id = randomUUID(),
         token = secret(),
-        amount = doc.total_minor - doc.paid_minor,
-        expires = new Date(Date.now() + 86400000).toISOString();
+        amount = d.amount_minor??balance.outstanding_minor,
+        expires = new Date(Date.now() + d.expires_in_hours*3600000).toISOString();
+      if(amount<=0||amount>balance.outstanding_minor)fail(409,'Payment request exceeds the open balance');
       await dbRun(
         'INSERT INTO ac_requests(id,org_id,environment,document_id,amount_minor,currency,status,checkout_hash,idempotency_key,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
         [
@@ -661,6 +666,7 @@ platform.post(
           now(),
         ],
       );
+      await dbRun('INSERT INTO ac_finance_operations(org_id,environment,operation,idempotency_key,fingerprint,response,created_at) VALUES (?,?,?,?,?,?,?)',[a.org,a.environment,'payment_request.input',idempotency,hash(canonical(d)),JSON.stringify({id}),now()]);
       await enqueue(a, 'payment.pending', { request_id: id });
       await audit(a.org, a.actor, 'payment_request.created', id);
       return {
@@ -764,7 +770,8 @@ platform.post(
       .object({
         request_id: z.string().uuid(),
         reference: z.string().min(1).max(200),
-        status: z.enum(['pending', 'succeeded', 'failed', 'reversed']),
+        status: z.enum(['pending', 'succeeded', 'failed', 'reversed','refunded']),
+        occurred_at:z.string().datetime().optional(),related_reference:z.string().min(1).max(200).optional(),
         amount_minor: z.number().int().positive().max(100000000000),
         currency: currencySchema,
       })
@@ -798,7 +805,7 @@ platform.get(
     const a = await access(req);
     res.json({
       allocations: await dbAll(
-        'SELECT * FROM ac_allocations WHERE org_id=? AND environment=? ORDER BY created_at DESC LIMIT 100',
+        'SELECT * FROM ac_effective_allocations WHERE org_id=? AND environment=? ORDER BY created_at DESC LIMIT 100',
         [a.org, a.environment],
       ),
       exceptions: await dbAll(
@@ -887,6 +894,7 @@ platform.get(
     const from = z.string().date().optional().parse(req.query.from),
       to = z.string().date().optional().parse(req.query.to),
       currency = currencySchema.default('KES').parse(req.query.currency);
+    if(from&&to&&from>to)fail(400,'Invalid date range');
     const customer = z.string().uuid().optional().parse(req.query.customer_id);
     const invoices = rows
       .filter((r) => r.kind === 'invoices')
@@ -899,9 +907,11 @@ platform.get(
           (!to || r.issue_date <= to),
       );
     const events = await dbAll(
-      "SELECT * FROM ac_events WHERE org_id=? AND environment=? AND status='succeeded' AND currency=?",
+      "SELECT e.*,COALESCE(d.provider_reference,e.provider_ref) AS provider_ref FROM ac_financial_events e LEFT JOIN ac_payment_event_details d ON d.event_id=e.id WHERE e.org_id=? AND e.environment=? AND e.status='succeeded' AND e.currency=?",
       [a.org, a.environment, currency],
     );
+    const {financialSnapshot}=await import('../operations/intelligence');
+    const snapshot=await financialSnapshot(a,{currency,range:'all',...(from?{from}:{}),...(to?{to}:{})});
     const selectedEvents = events.filter(
       (e) =>
         (!from || e.created_at.slice(0, 10) >= from) &&
@@ -929,7 +939,7 @@ platform.get(
                 : days <= 90
                   ? 'days_61_90'
                   : 'days_over_90';
-      aging[key] += i.total_minor - i.paid_minor;
+      aging[key] += Math.max(0,i.total_minor - i.paid_minor-(i.credited_minor||0));
     }
     const imported = rows
       .filter((r) => r.kind === 'transactions')
@@ -947,16 +957,16 @@ platform.get(
     const report = {
       currency,
       environment: a.environment,
-      confirmed_inflows_minor: inflows,
-      recorded_outflows_minor: outflows,
-      net_recorded_movement_minor: inflows - outflows,
+      confirmed_inflows_minor: snapshot.totals.confirmed_inflows_minor,
+      recorded_outflows_minor: snapshot.totals.recorded_outflows_minor,
+      net_recorded_movement_minor: snapshot.totals.net_movement_minor,
       outstanding_minor: open.reduce(
-        (s, i) => s + i.total_minor - i.paid_minor,
+        (s, i) => s + Math.max(0,i.total_minor - i.paid_minor-(i.credited_minor||0)),
         0,
       ),
       overdue_minor: open
         .filter((i) => i.due_date < now().slice(0, 10))
-        .reduce((s, i) => s + i.total_minor - i.paid_minor, 0),
+        .reduce((s, i) => s + Math.max(0,i.total_minor - i.paid_minor-(i.credited_minor||0)), 0),
       aging,
       invoices,
       events: selectedEvents,

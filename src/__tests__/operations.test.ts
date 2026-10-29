@@ -834,6 +834,7 @@ test('historical customer delays require sufficient fully settled invoices', asy
       addDays(today, -10) + 'T09:00:00Z',
       invoice.data.id,
     ]);
+    await dbRun('UPDATE ac_payment_event_details SET occurred_at=? WHERE event_id IN (SELECT id FROM ac_events WHERE request_id=?)',[addDays(today,-10)+'T09:00:00Z',payment.data.id]);
     await dbRun('UPDATE ac_events SET created_at=? WHERE request_id=?', [
       addDays(today, -10) + 'T09:00:00Z',
       payment.data.id,

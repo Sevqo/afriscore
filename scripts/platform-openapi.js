@@ -1,3 +1,4 @@
+const finance = require('node:fs').readFileSync('src/finance/routes.ts','utf8');
 const fs = require('node:fs');
 const source = fs.readFileSync('src/platform/routes.ts', 'utf8');
 const auth = fs.readFileSync('src/platform/auth.ts', 'utf8');
@@ -41,8 +42,10 @@ for (const name of trustSchemaNames)
     target: 'openapi-3.0',
     unrepresentable: 'any',
   });
+const financialContracts=require('../dist/finance/contracts');for(const [name,schema] of Object.entries(financialContracts))schemas['finance_'+name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
 const paths = {};
 const operations = [
+  ...finance.matchAll(/finance\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...source.matchAll(/platform\.(get|post|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage2.matchAll(/operations\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage3.matchAll(/trust\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),

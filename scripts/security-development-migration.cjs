@@ -4,6 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {parseEnv}=require('node:util');
 const websocket=process.argv.includes('--websocket');
 const marketplace=process.argv.includes('--marketplace');
+const finance=process.argv.includes('--finance');
 const driver=websocket?require('../.tmp/security/neon-runtime/node_modules/@neondatabase/serverless'):require('pg');
 if(websocket){driver.neonConfig.webSocketConstructor=WebSocket;driver.neonConfig.useSecureWebSocket=true;}
 const {Client}=driver;
@@ -17,6 +18,9 @@ async function main(){
  if(!keyText||keyText.length<32)throw Error('Existing encryption key required');
  for(const parameter of ['sslmode','sslrootcert','sslcert','sslkey','channel_binding'])url.searchParams.delete(parameter);
  const client=new Client({connectionString:url.href,ssl:{rejectUnauthorized:true},connectionTimeoutMillis:15000,query_timeout:60000});
+ // Transport event diagnostics can contain connection details; the awaited query
+ // still fails and the outer handler emits only the sanitized maintenance stage.
+ client.on('error',()=>{});
  stage='verified_tls_connection';await client.connect();
  try{
   stage='read_only_snapshot';await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -42,7 +46,7 @@ async function main(){
   const inventory={tables:snapshot.tables.length,rows:snapshot.tables.reduce((n,t)=>n+t.rows.length,0)};
   if(process.argv.includes('--apply')){
    stage='additive_migration';
-   // Only canonical reviewed 006 DDL is run, never the full bootstrap.
+   // Only canonical reviewed additive DDL is run, never the full bootstrap.
    const {securityStatements}=require('../dist/platform/security-statements');
    await client.query('BEGIN');
    try{
@@ -52,6 +56,12 @@ async function main(){
      const query=(sql,params=[])=>{let n=0;return client.query(sql.replace(/\?/g,()=>'$'+(++n)),params);};
      await migrateMarketplace({isPostgres:true,dbTransaction:fn=>fn(),dbGet:async(sql,params)=>(await query(sql,params)).rows[0],dbAll:async(sql,params)=>(await query(sql,params)).rows,dbRun:async(sql,params)=>({changes:(await query(sql,params)).rowCount}),dbExec:sql=>query(sql)});
     }
+    if(finance){
+     if(!(await client.query('SELECT version FROM platform_migrations WHERE version=$1',['007-service-marketplace'])).rows.length)throw Error('Marketplace foundation required');
+     const {migrateFinance}=require('../dist/finance/schema');
+     const query=(sql,params=[])=>{let n=0;return client.query(sql.replace(/\?/g,()=>'$'+(++n)),params);};
+     await migrateFinance({isPostgres:true,dbTransaction:fn=>fn(),dbGet:async(sql,params)=>(await query(sql,params)).rows[0],dbAll:async(sql,params)=>(await query(sql,params)).rows,dbRun:async(sql,params)=>({changes:(await query(sql,params)).rowCount}),dbExec:sql=>query(sql)});
+    }
     for(const table of ['ac_approval_bindings','ac_legacy_deliveries']){
      await client.query('ALTER TABLE '+table+' ENABLE ROW LEVEL SECURITY');
      await client.query('REVOKE ALL ON '+table+' FROM PUBLIC');
@@ -60,7 +70,7 @@ async function main(){
     await client.query('COMMIT');
    }catch(error){await client.query('ROLLBACK');throw error;}
   }
-  const target=marketplace?'007-service-marketplace':'006-security-hardening';
+  const target=finance?'008-financial-operations':marketplace?'007-service-marketplace':'006-security-hardening';
   const after=await client.query('SELECT version FROM public.platform_migrations WHERE version=$1',[target]);
   const summary={branch:snapshot.branch,backup:path.basename(file),encryptedReadbackVerified:true,inventory,migration:target,migrationApplied:after.rows.length===1,fullRestoreTested:false};
   fs.writeFileSync('.tmp/security/development-migration-result.json',JSON.stringify(summary,null,2));

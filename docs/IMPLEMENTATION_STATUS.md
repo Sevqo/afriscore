@@ -160,3 +160,6 @@ The latest remediation source, tests, residual gates and release state are docum
 
 ## Milestone 1 continuation — 29 October 2026
 Application-quality/security changes are documented in MILESTONE_1_REPORT.md and ACCOUNT_SECURITY_CAPABILITIES.md. The full master specification remains PRODUCT_MASTER_PLAN.md, but later product expansion is held for Milestone 1 review. This frontend-only continuation preserves server routes, migrations, identity mappings and financial/provider controls. Capability limits and the deployment record must be read separately from implementation claims.
+
+## Milestone 2 financial operations — 29 October 2026
+See MILESTONE_2_REPORT.md and MILESTONE_2_ARCHITECTURE.md for implementation, exact checks, migration/deployment outcome and provider readiness. Migration 008 preserves historical evidence and adds credits, allocation adjustments, idempotency, provider attempts and obligation occurrences. Invoicing/Expenses remain independently usable. Daraja is externally unverified and disabled; no live financial authorization is claimed. The owner-approved Milestone 2 plan supersedes the prior milestone-order hold; Milestone 3 remains held for review.

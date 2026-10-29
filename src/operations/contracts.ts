@@ -13,6 +13,8 @@ export const expenseSchema = z
     transaction_id: z.string().max(100).optional(),
     obligation_id: z.string().uuid().optional(),
     supersedes_id: z.string().uuid().optional(),
+    supplier:z.string().max(200).default(''),notes:z.string().max(3000).default(''),
+    status:z.enum(['recorded','archived']).default('recorded'),
   })
   .strict();
 export const obligationSchema = z
@@ -22,10 +24,16 @@ export const obligationSchema = z
     currency: currencySchema.default('KES'),
     next_due_date: z.string().date(),
     recurrence: z.enum(['once', 'weekly', 'monthly', 'quarterly', 'yearly']),
+    anchor_day:z.number().int().min(1).max(31).optional(),
+    category:z.enum(['stock','rent','payroll','utilities','delivery','other']).default('other'),
+    supplier:z.string().max(200).default(''),
+    timezone:z.string().max(100).default('Africa/Nairobi').refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Invalid timezone'),
+    reminder_days:z.number().int().min(0).max(30).default(3),
     status: z.enum(['active', 'paused', 'completed', 'cancelled']).default('active'),
   })
   .strict();
 export const analyticsQuery = z.object({
+  range:z.enum(['all']).optional(),
   currency: currencySchema.default('KES'),
   from: z.string().date().optional(),
   to: z.string().date().optional(),

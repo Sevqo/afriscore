@@ -23,6 +23,8 @@ export async function checkServiceAccess(req:Request,a:Access){
  if(meter==='verification_api'&&(await entitlement(a,'verification_api'))?.status!=='active')meter=undefined;
  if(meter==='blockchain'&&(await entitlement(a,'blockchain'))?.status!=='active')meter=undefined;
  if(meter==='expenses'&&(await entitlement(a,'expenses'))?.status!=='active')meter='cash_flow';
+ if(meter==='expenses'&&req.body?.supersedes_id)meter=undefined;
+ if(meter==='cash_flow'&&req.body?.supersedes_id)meter=undefined;
  if(meter==='cash_flow'&&req.method==='PATCH')meter=undefined;
  if(meter==='fulfillment'&&req.route.path!=='/organizations/:org/shipments')meter=undefined;
  if(meter==='protected_payments'&&req.route.path!=='/organizations/:org/protected-sales')meter=undefined;
@@ -34,7 +36,7 @@ export async function checkServiceAccess(req:Request,a:Access){
 }
 export async function withServiceRequest(req:Request,res:Response,fn:()=>Promise<any>){
  if(!req.params.org)return fn();
- const externalReads=new Set(['/organizations/:org/assistant','/organizations/:org/webhooks/process','/organizations/:org/trust/verify','/organizations/:org/verification']);
+ const externalReads=new Set(['/organizations/:org/payment-requests/:id/daraja','/organizations/:org/payment-attempts/:id/refresh','/organizations/:org/assistant','/organizations/:org/webhooks/process','/organizations/:org/trust/verify','/organizations/:org/verification']);
  const atomicWrite=!['GET','HEAD'].includes(req.method)&&!externalReads.has(req.route?.path);
  const context:Context={},original=res.json;let captured:any,hasResponse=false;
  res.json=function(body:any){captured=body;hasResponse=true;return res;};

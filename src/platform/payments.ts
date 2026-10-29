@@ -1,3 +1,5 @@
+import {documentBalance,refreshDocument} from '../finance/ledger';
+import {sumMinor} from '../finance/money';
 import { capture } from '../operations/events';
 import {pinnedWebhookFetch} from '../services/webhook-http';
 import { createHmac, randomUUID } from 'node:crypto';
@@ -32,6 +34,7 @@ export async function save(
     [id, a.org, a.environment, kind, JSON.stringify(data), now(), now()],
   );
   await audit(a.org, a.actor, kind + '.created', id);
+  if(['customers','orders'].includes(kind))await enqueue(a,kind.slice(0,-1)+'.created',{id,customer_id:data.customer_id});
   return { ...data, id, kind };
 }
 export async function update(a: Access, id: string, data: any) {
@@ -64,13 +67,14 @@ export async function enqueue(a: Access, type: string, data: any, captureEvent =
 }
 export interface ProviderResult {
   reference: string;
-  status: 'succeeded' | 'failed' | 'pending' | 'reversed';
+  status: 'succeeded' | 'failed' | 'pending' | 'reversed' | 'refunded';
+  provider?: string; account_id?: string; occurred_at?: string; related_reference?: string; time_basis?:'provider_occurrence'|'observed_confirmation';
   amount_minor: number;
   currency: string;
 }
 export interface PaymentProvider {
   initiate(request: any, scenario: string): Promise<ProviderResult>;
-  lookup(reference: string): Promise<ProviderResult | undefined>;
+  lookup(reference: string, scope?: Access): Promise<ProviderResult | undefined>;
   health(): { available: boolean; mode: string };
 }
 export const sandboxProvider: PaymentProvider = {
@@ -102,10 +106,11 @@ export const sandboxProvider: PaymentProvider = {
       currency: request.currency,
     };
   },
-  async lookup(reference) {
+  async lookup(reference, scope) {
+    if(!scope||scope.environment!=='sandbox')return undefined;
     return dbGet(
-      'SELECT provider_ref AS reference,status,amount_minor,currency FROM ac_events WHERE provider_ref=? AND environment=?',
-      [reference, 'sandbox'],
+      "SELECT d.provider_reference AS reference,e.status,e.amount_minor,e.currency FROM ac_events e JOIN ac_payment_event_details d ON d.event_id=e.id WHERE d.provider_reference=? AND d.provider='sandbox' AND e.org_id=? AND e.environment=?",
+      [reference, scope.org, scope.environment],
     );
   },
   health() {
@@ -152,12 +157,16 @@ export async function processProviderResult(
       role: 'system',
       api: false,
     };
-    const previous = await dbGet(
-      'SELECT * FROM ac_events WHERE environment=? AND provider_ref=?',
-      [a.environment, result.reference],
-    );
+    if(!Number.isSafeInteger(result.amount_minor)||result.amount_minor<=0||result.amount_minor>100000000000)fail(400,'Invalid provider amount');
+    const occurred=result.occurred_at||now();if(!Number.isFinite(Date.parse(occurred))||Date.parse(occurred)>Date.now()+300000)fail(400,'Invalid provider occurrence time');
+    const provider=result.provider||'sandbox',accountId=[a.environment,result.account_id||a.org].join(':');
+    const scopedReference='financial:'+hash(JSON.stringify([provider,accountId,result.reference]));
+    let previous=await dbGet('SELECT * FROM ac_events WHERE environment=? AND provider_ref=?',[a.environment,scopedReference]);
+    if(!previous){const legacy=await dbGet('SELECT * FROM ac_events WHERE environment=? AND provider_ref=?',[a.environment,result.reference]);if(legacy?.org_id===a.org&&legacy?.request_id===request.id)previous=legacy;}
+
     if (previous) {
       if(previous.org_id!==request.org_id||previous.request_id!==request.id||previous.currency!==result.currency||Number(previous.amount_minor)!==result.amount_minor||previous.status!==result.status)fail(409,'Provider reference conflicts with its original authoritative event');
+      const detail=await dbGet('SELECT occurred_at FROM ac_payment_event_details WHERE event_id=?',[previous.id]);if(result.occurred_at&&detail&&detail.occurred_at!==result.occurred_at)fail(409,'Provider occurrence conflicts with original event');
       return { duplicate: true, event_id: previous.id };
     }
     const eventId = randomUUID();
@@ -168,13 +177,26 @@ export async function processProviderResult(
         a.org,
         a.environment,
         request.id,
-        result.reference,
+        scopedReference,
         result.status,
         result.amount_minor,
         result.currency,
         now(),
       ],
     );
+    let related:any;
+    if(result.related_reference){related=await dbGet('SELECT e.* FROM ac_events e LEFT JOIN ac_payment_event_details d ON d.event_id=e.id WHERE e.org_id=? AND e.environment=? AND e.request_id=? AND e.status=? AND (d.provider_reference=? OR e.provider_ref=?) AND (d.event_id IS NULL OR (d.provider=? AND d.account_id=?))',[a.org,a.environment,request.id,'succeeded',result.related_reference,result.related_reference,provider,accountId]);if(!related||related.request_id!==request.id||related.currency!==result.currency)fail(409,'Reversal must identify the original confirmed payment');}
+    await dbRun('INSERT INTO ac_payment_event_details(event_id,provider,account_id,provider_reference,occurred_at,time_basis,related_event_id) VALUES (?,?,?,?,?,?,?)',[eventId,provider,accountId,result.reference,occurred,result.time_basis||'provider_occurrence',related?.id||null]);
+    if(['reversed','refunded'].includes(result.status)&&related){
+      const earlier=await dbAll("SELECT e.amount_minor FROM ac_events e JOIN ac_payment_event_details d ON d.event_id=e.id WHERE d.related_event_id=? AND e.id<>? AND e.status IN ('reversed','refunded')",[related.id,eventId]);
+      const returned=sumMinor(earlier.map(r=>r.amount_minor));if(returned+result.amount_minor>Number(related.amount_minor))fail(409,'Return exceeds original confirmed payment');
+      if(result.status==='reversed'&&result.amount_minor!==Number(related.amount_minor))fail(409,'A full reversal must equal the original payment');
+      const rows=await dbAll('SELECT document_id,SUM(amount_minor) AS amount_minor FROM ac_effective_allocations WHERE event_id=? AND org_id=? AND environment=? GROUP BY document_id ORDER BY document_id',[related.id,a.org,a.environment]);
+      const allocated=sumMinor(rows.map(r=>r.amount_minor));let remaining=Math.max(0,result.amount_minor-(Number(related.amount_minor)-returned-allocated));
+      for(const row of rows){const amount=Math.min(remaining,Number(row.amount_minor));if(amount<=0)continue;await dbRun('INSERT INTO ac_allocation_changes(id,org_id,environment,event_id,document_id,amount_minor,reason,occurred_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)',[randomUUID(),a.org,a.environment,related.id,row.document_id,-amount,result.status+':'+eventId,occurred,now()]);remaining-=amount;await refreshDocument(a,row.document_id);}
+      for(const [account,debit,credit] of [['provider_collections',0,result.amount_minor],['receivables',Math.max(0,result.amount_minor-(Number(related.amount_minor)-returned-allocated)),0],['unallocated_collections',Math.min(result.amount_minor,Number(related.amount_minor)-returned-allocated),0]] as const){if(!debit&&!credit)continue;await dbRun('INSERT INTO ac_journal(id,org_id,environment,event_id,account,debit_minor,credit_minor,currency,created_at) VALUES (?,?,?,?,?,?,?,?,?)',[randomUUID(),a.org,a.environment,eventId,account,debit,credit,result.currency,now()]);}
+      await dbRun('UPDATE ac_requests SET status=? WHERE id=?',[result.status,request.id]);await audit(a.org,a.actor,'payment.'+result.status,eventId);await enqueue(a,'payment.'+result.status,{event_id:eventId,request_id:request.id,related_event_id:related.id,amount_minor:result.amount_minor,currency:result.currency});return {event_id:eventId,status:result.status,reconciliation:result.status};
+    }
     await dbRun('UPDATE ac_organizations SET name=name WHERE id=?', [a.org]);
     await dbRun(
       'UPDATE ac_records SET updated_at=updated_at WHERE id=? AND org_id=?',
@@ -187,12 +209,13 @@ export async function processProviderResult(
       [doc.id, a.org],
     );
     const allocations = await dbGet(
-      'SELECT COALESCE(SUM(amount_minor),0) AS total FROM ac_allocations WHERE document_id=? AND org_id=? AND environment=?',
+      'SELECT COALESCE(SUM(amount_minor),0) AS total FROM ac_effective_allocations WHERE document_id=? AND org_id=? AND environment=?',
       [doc.id, a.org, a.environment],
     );
     const paid = Number(allocations.total);
+    const balance=await documentBalance(a,doc.id);
     let exception: string | undefined;
-    if (result.status === 'reversed') exception = 'reversal_requires_review';
+    if (['reversed','refunded'].includes(result.status)) exception = 'reversal_requires_review';
     else if (
       ['cancelled', 'expired'].includes(request.status) ||
       request.expires_at < now()
@@ -202,7 +225,7 @@ export async function processProviderResult(
       exception = 'cancelled_order';
     else if (result.currency !== request.currency)
       exception = 'currency_mismatch';
-    else if (result.amount_minor > doc.total_minor - paid)
+    else if (result.amount_minor > balance.outstanding_minor || result.amount_minor > Number(request.amount_minor))
       exception = 'amount_mismatch';
     else if (
       result.status === 'succeeded' &&
@@ -260,18 +283,18 @@ export async function processProviderResult(
         );
       }
       const status =
-        paid + result.amount_minor === doc.total_minor
+        paid + result.amount_minor + balance.credited_minor === doc.total_minor
           ? 'paid'
           : 'partially_paid';
       await update(a, doc.id, {
         ...doc,
         status,
-        paid_minor: paid + result.amount_minor,
+        paid_minor: paid + result.amount_minor,credited_minor:balance.credited_minor,
         ...(doc.kind === 'orders' ? { payment_status: status } : {}),
       });
       if (doc.order_id) {
         const order = await record(a, doc.order_id, 'orders');
-        await update(a, order.id, { ...order, payment_status: status });
+        await update(a, order.id, { ...order, payment_status: status,paid_minor:paid+result.amount_minor,credited_minor:balance.credited_minor });
       }
       await dbRun('UPDATE ac_requests SET status=? WHERE id=?', [
         status,
@@ -285,7 +308,7 @@ export async function processProviderResult(
       });
       if (status === 'paid' && doc.kind === 'invoices')
         await enqueue(a, 'invoice.paid', { id: doc.id });
-    } else if (request.status !== 'paid' && result.status === 'failed') {
+    } else if (!['paid','partially_paid','reversed','refunded'].includes(request.status) && result.status === 'failed') {
       await dbRun("UPDATE ac_requests SET status='failed' WHERE id=?", [
         request.id,
       ]);
