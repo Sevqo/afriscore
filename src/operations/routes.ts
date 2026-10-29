@@ -97,6 +97,7 @@ operations.post(
       input = forecastSchema.parse(req.body),
       result = await forecast(a, input);
     await atomic(a, async () => {
+      await create(a,'forecast_snapshots',{forecast:result,configuration:input,captured_at:now(),created_by:a.actor});
       await audit(a.org, a.actor, 'forecast.generated');
       await emit(
         a,

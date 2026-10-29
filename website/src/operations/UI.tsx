@@ -159,7 +159,8 @@ export async function request(
   method = 'GET',
   body?: unknown,
   environment = 'sandbox',
+  headers?:Record<string,string>,
 ) {
-  return api('/api/v1'+path,method,body,environment,method==='POST'?{'Idempotency-Key':crypto.randomUUID()}:{});
+  return api('/api/v1'+path,method,body,environment,method==='POST'?{'Idempotency-Key':crypto.randomUUID(),...headers}:headers);
 
 }

@@ -53,6 +53,9 @@ export const forecastSchema = z
   })
   .strict();
 export const automationTemplates = [
+ {id:'obligation_due',name:'Upcoming obligation reminder',trigger:'schedule',category:'cash_flow'},
+ {id:'credential_expiry',name:'Credential expiry reminder',trigger:'schedule',category:'security'},
+ {id:'integration_failed',name:'Failed integration notification',trigger:'integration.sync_failed',category:'integrations'},
   {
     id: 'invoice_due_soon',
     name: 'Invoice due soon',
@@ -132,8 +135,10 @@ export const automationSchema = z
       .object({
         frequency: z.enum(['daily', 'weekly']).default('daily'),
         hour: z.number().int().min(0).max(23).default(9),
+        timezone:z.string().max(100).default('Africa/Nairobi').refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Invalid timezone'),
       })
-      .default({ frequency: 'daily', hour: 9 }),
+      .default({ frequency: 'daily', hour: 9, timezone:'Africa/Nairobi' }),
+    delay_minutes:z.number().int().min(0).max(10080).default(0),
     action: z.literal('in_app_notification').default('in_app_notification'),
   })
   .strict();
@@ -204,12 +209,12 @@ export const disputeSchema = z
   .strict();
 export const assistantInput = z
   .object({
-    question: z.string().trim().min(3).max(1500),
+    question: z.string().trim().min(3).max(1500).refine(v=>!(/\bsk-[A-Za-z0-9_-]{20,}|postgres(?:ql)?:\/\/|-----BEGIN [A-Z ]*PRIVATE KEY/.test(v)),'Remove credentials and private keys before asking a question'),
     currency: z
       .enum(['KES', 'USD', 'EUR', 'GBP', 'UGX', 'TZS', 'RWF'])
       .default('KES'),
     tool: z
-      .enum(['financial_summary', 'receivables', 'forecast', 'reconciliation'])
+      .enum(['auto','financial_summary', 'receivables', 'forecast', 'reconciliation','expenses','obligations','documentation'])
       .default('financial_summary'),
     horizon: z
       .union([z.literal(7), z.literal(30), z.literal(60), z.literal(90)])
@@ -220,3 +225,8 @@ export const assistantInput = z
     consent_to_provider: z.boolean().default(false),
   })
   .strict();
+
+export const workflowEditInput=z.object({expected_version:z.number().int().positive(),configuration:automationSchema}).strict();
+export const workflowControlInput=z.object({action:z.enum(['cancel','retry']),reason:z.string().trim().min(10).max(500)}).strict();
+export const feedbackInput=z.object({rating:z.enum(['helpful','not_helpful'])}).strict();
+export const approvalCancelInput=z.object({reason:z.string().trim().min(5).max(500)}).strict();

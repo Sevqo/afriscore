@@ -1,4 +1,5 @@
-import {basisPoints,nextOccurrence,sumMinor} from '../finance/money';
+import {now} from '../platform/crypto';
+import {basisPoints,nextOccurrence,sumMinor,ratioMinor} from '../finance/money';
 import {
   expenseSchema,
   obligationSchema,
@@ -196,7 +197,7 @@ export async function financialSnapshot(
   const balances = issued.map((i) => {
     const paid = allocations
       .filter((p) => p.document_id === i.id && p.created_at.slice(0, 10) <= to)
-      .reduce((s, p) => s + Number(p.amount_minor), 0);
+      .reduce((s, p) => sumMinor([s,p.amount_minor]), 0);
     return {
       ...i,
       paid_minor: paid,
@@ -393,6 +394,9 @@ export async function financialSnapshot(
     environment: a.environment,
     period: { from, to },
     as_of: to,
+    refreshed_at:now(),
+    metric_metadata:Object.fromEntries(['confirmed_inflows_minor','recorded_outflows_minor','net_movement_minor','outstanding_minor','overdue_minor'].map(key=>[key,{currency:query.currency,period:{from,to},source:'authorized_canonical_records',calculation:key==='net_movement_minor'?'confirmed inflows less linked returns and recorded outflows':key==='outstanding_minor'?'issued invoice value less effective allocations and credits as of period end':'See shared metric definitions',completeness:'Covered records only; consult quality notices',refreshed_at:now()}])),
+    expense_categories:[...new Set(moneyExpenses.map(e=>e.category||'other'))].map(category=>({category,amount_minor:sum(moneyExpenses.filter(e=>(e.category||'other')===category),'amount_minor'),currency:query.currency,classification:'merchant_recorded'})),
     definitions: {
       confirmed_inflows:
         'Provider-confirmed collections less linked, confirmed returns in the selected occurrence period. Sandbox provider results are simulations.',
@@ -405,6 +409,7 @@ export async function financialSnapshot(
     },
     totals: {
       confirmed_inflows_minor: sum(confirmed, 'amount_minor')-sum(returns,'amount_minor'),
+      merchant_imported_inflows_minor:sum(transactions.filter(t=>t.type==='inflow'&&t.currency===query.currency&&inPeriod(t.occurred_at)),'amount_minor'),
       gross_confirmed_inflows_minor:sum(confirmed,'amount_minor'),returned_minor:sum(returns,'amount_minor'),
       recorded_outflows_minor: outflows,
       net_movement_minor: sum(confirmed, 'amount_minor') -sum(returns,'amount_minor')- outflows,
@@ -548,14 +553,8 @@ export async function forecast(a: Access, input: unknown, asOf = day()) {
       e.created_at.slice(0, 10) <= asOf,
   );
   const enough = snapshot.quality.history_days >= 30 && nonInvoice.length >= 5;
-  const baseline = enough
-    ? Math.round(
-        ((sum(nonInvoice, 'amount_minor') /
-          Math.min(90, Math.max(1, snapshot.quality.history_days))) *
-          defaults.collection) /
-          10000,
-      )
-    : 0;
+  const returnedNonInvoice=snapshot.inputs.events.filter(e=>['refunded','reversed'].includes(e.status)&&e.related_event_id&&nonInvoice.some(n=>n.id===e.related_event_id)&&e.created_at.slice(0,10)>=snapshot.period.from&&e.created_at.slice(0,10)<=asOf);
+  const baseline = enough?ratioMinor(Math.max(0,sum(nonInvoice,'amount_minor')-sum(returnedNonInvoice,'amount_minor')),defaults.collection,Math.min(90,Math.max(1,snapshot.quality.history_days))*10000):0;
   // Historical expense baseline excludes recurring categories to avoid counting rent etc twice.
   const coveredCategories = new Set(
     snapshot.inputs.obligations.map((o) => o.id),
@@ -563,16 +562,7 @@ export async function forecast(a: Access, input: unknown, asOf = day()) {
   const irregular = snapshot.inputs.expenses.filter(
     (e) => !coveredCategories.has(e.obligation_id),
   );
-  const outflowBaseline =
-    snapshot.quality.history_days >= 30
-      ? Math.round(
-          (((sum(irregular, 'amount_minor') +
-            sum(snapshot.inputs.imported_outflows, 'amount_minor')) /
-            Math.min(90, Math.max(1, snapshot.quality.history_days))) *
-            defaults.outflow) /
-            10000,
-        )
-      : 0;
+  const outflowBaseline = snapshot.quality.history_days>=30?ratioMinor(sum(irregular,'amount_minor')+sum(snapshot.inputs.imported_outflows,'amount_minor'),defaults.outflow,Math.min(90,Math.max(1,snapshot.quality.history_days))*10000):0;
   let cumulative = 0;
   for (const p of points) {
     p.inflow_minor += baseline;
@@ -595,7 +585,7 @@ export async function forecast(a: Access, input: unknown, asOf = day()) {
     confidence:
       snapshot.quality.history_days >= 30 &&
       snapshot.customers.filter((c) => !c.limited_data).length
-        ? 'moderate'
+        ? 'history_available'
         : 'limited_data',
     confidence_interval: null,
     uncertainty:

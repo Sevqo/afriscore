@@ -200,7 +200,7 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
   {
     label: 'Build & connect',
     icon: 'code',
-    items: ['Connect', 'Integrations', 'Developers', 'Engineering'],
+    items: ['Connect', 'Data', 'Integrations', 'Developers', 'Engineering'],
   },
   { label: 'Administration', icon: 'settings', items: ['Team', 'Settings'] },
 ];

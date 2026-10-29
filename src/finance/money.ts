@@ -25,3 +25,5 @@ export function nextOccurrence(date:string, recurrence:string, anchorDay=Number(
 }
 
 export function parsePercent(value:string){if(!/^\d{1,3}(?:\.\d{1,2})?$/.test(value))throw new Error('Use a percentage with up to two decimal places');const [whole,fraction='']=value.split('.'),bps=Number(whole)*100+Number(fraction.padEnd(2,'0'));if(bps>10000)throw new Error('Tax rate must be between 0 and 100 percent');return bps;}
+
+export function ratioMinor(amount:number,numerator:number,denominator:number){if(!Number.isSafeInteger(amount)||!Number.isSafeInteger(numerator)||!Number.isSafeInteger(denominator)||amount<0||numerator<0||denominator<=0)throw new Error('Invalid monetary ratio');const d=BigInt(denominator);return exactNumber((BigInt(amount)*BigInt(numerator)+d/2n)/d);}

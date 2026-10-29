@@ -1,3 +1,6 @@
+import {ForecastEvaluation} from './ForecastEvaluation';
+import {IntelligenceAlerts} from './IntelligenceAlerts';
+import {DataPlatformView} from './DataPlatformView';
 import { Icon } from '../components/Icon';
 import { protectedQueries } from '../lib/query-cache';
 import { useEffect, useRef, useState } from 'react';
@@ -18,6 +21,7 @@ import {
 import { ConnectView, RiskView, EngineeringView } from './OtherViews';
 import { Provenance, request, type API, type Action } from './UI';
 export const operationsTabs = [
+  'Data',
   'Intelligence',
   'Forecasts',
   'Assistant',
@@ -56,8 +60,8 @@ export function OperationsWorkspace({
     [detail, setDetail] = useState<any>(null),
     [query, setQuery] = useState(''),
     [dates,setDates] = useState({from:'',to:''});
-  const api: API = (suffix, method = 'GET', body) =>
-      request(base + suffix, method, body, environment),
+  const api: API = (suffix, method = 'GET', body, headers) =>
+      request(base + suffix, method, body, environment,headers),
     finance = ['owner', 'admin', 'finance'].includes(role),
     operations = ['owner', 'admin', 'finance', 'operations'].includes(role),
     admin = ['owner', 'admin'].includes(role);
@@ -195,6 +199,8 @@ export function OperationsWorkspace({
           Loading authorized records…
         </div>
       )}
+      {section==='Intelligence'&&<IntelligenceAlerts api={api} writable={finance}/>}
+      {section==='Data'&&<DataPlatformView api={api} writable={finance}/>}
       {section === 'Intelligence' && (
         <IntelligenceView
           data={data}
@@ -210,6 +216,7 @@ export function OperationsWorkspace({
               onDates={(from,to)=>setDates({from,to})}
         />
       )}
+      {section==='Forecasts'&&<ForecastEvaluation api={api}/>}
       {section === 'Forecasts' && (
         <ForecastView
           data={data}

@@ -1,3 +1,5 @@
+import {DataPlatformView} from '../operations/DataPlatformView';
+import {AssistantView} from '../operations/AssistantView';
 import {CustomerTools} from '../finance/CustomerTools';
 import {FinancialOverview} from '../finance/FinancialOverview';
 import {PaymentCentre} from '../finance/PaymentCentre';
@@ -29,6 +31,7 @@ export function FocusedWorkspace({
     ? [
         "Overview",
         ...marketTabs,
+        "Assistant",
         "Income",
         "Expenses",
         "Invoices",
@@ -42,6 +45,8 @@ export function FocusedWorkspace({
     : [
         "Overview",
         ...marketTabs,
+        "Assistant",
+        "Data",
         "My Applications",
         "API Keys",
         "API Explorer",
@@ -310,7 +315,7 @@ export function FocusedWorkspace({
         <h2>{tab}</h2>
         <Alert error={error} />
         {busy && <p role="status">Updating workspace…</p>}
-        {marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>
+        {marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>{tab==='Data'&&<DataPlatformView key={w.id+environment} api={call} writable={['owner','admin','finance'].includes(w.role)}/>} {tab==='Assistant'&&<AssistantView key={w.id+environment} api={call} currency={currency}/>}
         {personal && (
           <>
             {['Overview','Cash Flow','Reports'].includes(tab)&&<DateRange from={from} to={to} onApply={(start,end)=>{setFrom(start);setTo(end);}}><Field label="Currency"><Currency value={currency} onChange={(e:any)=>setCurrency(e.target.value)}/></Field></DateRange>}

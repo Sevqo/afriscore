@@ -1,3 +1,4 @@
+import {connectedRouteKinds} from '../operations/connected-metadata';
 import {financeRouteKinds} from '../finance/metadata';
 /** Explicit route metadata. New routes remain denied until reviewed here. */
 import {marketplaceRouteKinds} from '../marketplace/metadata';
@@ -344,7 +345,7 @@ export const workspaceRouteKinds:Record<string,readonly string[]>={
 };
 export function workspaceRouteAllowed(method:string,route:string,kind:string,recordKind?:string){
  const key=(method==='HEAD'?'GET':method)+' '+route;
- const allowed=workspaceRouteKinds[key]||marketplaceRouteKinds[key]||financeRouteKinds[key];if(!allowed?.includes(kind))return false;
+ const allowed=workspaceRouteKinds[key]||marketplaceRouteKinds[key]||financeRouteKinds[key]||connectedRouteKinds[key];if(!allowed?.includes(kind))return false;
  if(route.includes('/records/:kind')){if(kind==='personal')return ['customers','invoices','transactions'].includes(recordKind||'');if(kind==='developer')return ['applications','customers','orders','invoices','transactions'].includes(recordKind||'');}
  return true;
 }

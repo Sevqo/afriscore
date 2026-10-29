@@ -7,6 +7,7 @@ import { emit } from './events';
 import { notify } from './automation';
 import {requireServices,checkLimits,recordUsage} from '../marketplace/engine';
 export const connectorCatalog = [
+ {provider:'daraja_sandbox',category:'payments',capabilities:['canonical_payment_evidence_via_pay'],authentication:'existing_pay_configuration',sync_frequency:'authenticated_status_query',direction:'provider_to_canonical_payments',production_available:false,documentation:'/products/pay',limitation:'Uses the Milestone 2 adapter; not a second connector or live collection capability.'},
   {
     provider: 'sandbox_accounting',
     category: 'accounting',

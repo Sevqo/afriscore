@@ -1,4 +1,4 @@
-import { automationTemplates, automationSchema } from './contracts';
+import { automationTemplates, automationSchema,workflowEditInput } from './contracts';
 export { automationTemplates, automationSchema } from './contracts';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
@@ -6,7 +6,7 @@ import { dbAll, dbGet, dbRun } from '../db';
 import { Access, audit, fail } from '../platform/auth';
 import { permitted } from '../platform/domain';
 import { now,hash } from '../platform/crypto';
-import { all, atomic, change, create, day, get, legacy } from './store';
+import { all, atomic, change, create, day, addDays, get, legacy } from './store';
 import { emit } from './events';
 import {requireServices,checkLimits,recordUsage} from '../marketplace/engine';
 
@@ -59,14 +59,13 @@ export async function notify(
 export async function createAutomation(a: Access, input: unknown) {
   const d = automationSchema.parse(input);
   if (a.api) fail(403, 'A member must own an automation');
-  return atomic(a, () =>
-    create(a, 'automations', { ...d, created_by: a.actor }),
-  );
+  return atomic(a, async()=>{const w=await create(a,'automations',{...d,created_by:a.actor});await saveWorkflowVersion(a,w);return w;});
 }
 export async function setAutomation(a: Access, id: string, enabled: boolean) {
   return atomic(a, async () => {
     const w = await get(a, id, 'automations');
     const result = await change(a, w, { enabled });
+    await saveWorkflowVersion(a,result);
     await audit(
       a.org,
       a.actor,
@@ -115,18 +114,18 @@ async function candidates(a: Access, w: any, at: Date) {
   if (template.trigger !== 'schedule')
     return (
       await dbAll(
-        'SELECT * FROM ac2_events WHERE org_id=? AND environment=? AND event_type=? AND occurred_at>=? ORDER BY occurred_at LIMIT 100',
-        [a.org, a.environment, template.trigger, w.created_at],
+        'SELECT e.* FROM ac2_events e WHERE e.org_id=? AND e.environment=? AND e.event_type=? AND e.occurred_at>=? AND NOT EXISTS (SELECT 1 FROM ac2_runs r WHERE r.org_id=e.org_id AND r.environment=e.environment AND r.workflow_id=? AND r.trigger_key=e.id) ORDER BY e.occurred_at,e.id LIMIT 100',
+        [a.org, a.environment, template.trigger, w.created_at,w.id],
       )
     ).map((e) => ({
       key: e.id,
       resource_id: e.resource_id,
       payload: JSON.parse(e.payload),
     }));
-  const today = day(at),
+  const today = new Intl.DateTimeFormat('en-CA',{timeZone:w.schedule.timezone||'Africa/Nairobi'}).format(at),
     hour = Number(
       new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Africa/Nairobi',
+        timeZone: w.schedule.timezone||'Africa/Nairobi',
         hour: 'numeric',
         hourCycle: 'h23',
       }).format(at),
@@ -152,8 +151,8 @@ async function candidates(a: Access, w: any, at: Date) {
       .filter(
         (i) =>
           i.currency === w.conditions.currency &&
-          !['draft', 'voided', 'paid'].includes(i.status) &&
-          i.total_minor - i.paid_minor >= w.conditions.minimum_minor &&
+          !['draft', 'voided', 'paid','credited'].includes(i.status) &&
+          i.total_minor - i.paid_minor-(i.credited_minor||0) >= w.conditions.minimum_minor &&
           (w.template === 'invoice_due_soon'
             ? i.due_date >= today &&
               i.due_date <=
@@ -171,10 +170,12 @@ async function candidates(a: Access, w: any, at: Date) {
           id: i.id,
           reference: i.reference,
           currency: i.currency,
-          amount_minor: i.total_minor - i.paid_minor,
+          amount_minor: i.total_minor - i.paid_minor-(i.credited_minor||0),
         },
       }));
   }
+  if(w.template==='obligation_due')return (await all(a,'obligations')).filter(o=>o.status==='active'&&o.currency===w.conditions.currency&&o.amount_minor>=w.conditions.minimum_minor&&o.next_due_date<=addDays(today,w.conditions.days_before_due)).map(o=>({key:key+':'+o.id,resource_id:o.id,payload:{id:o.id,currency:o.currency,amount_minor:o.amount_minor}}));
+  if(w.template==='credential_expiry')return (await dbAll("SELECT id,valid_until FROM ac3_credentials WHERE org_id=? AND environment=? AND status='active' AND valid_until<=? AND valid_until>?",[a.org,a.environment,addDays(today,w.conditions.days_before_due)+'T23:59:59.999Z',at.toISOString()])).map(c=>({key:key+':'+c.id,resource_id:c.id,payload:{id:c.id}}));
   return [{ key, resource_id: undefined, payload: {} }];
 }
 export async function runAutomations(a: Access, at = new Date()) {
@@ -217,20 +218,23 @@ export async function runAutomations(a: Access, at = new Date()) {
         )
           continue;
         if (queued >= 50) break;
+        await saveWorkflowVersion(a,w);
+        const runId=randomUUID();
         const result = await dbRun(
           'INSERT INTO ac2_runs(id,org_id,environment,workflow_id,trigger_key,status,next_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(org_id,environment,workflow_id,trigger_key) DO NOTHING',
           [
-            randomUUID(),
+            runId,
             a.org,
             a.environment,
             w.id,
             trigger.key,
             'pending',
-            at.toISOString(),
+            new Date(at.getTime()+(w.delay_minutes||0)*60000).toISOString(),
             at.toISOString(),
             at.toISOString(),
           ],
         );
+        if(result.changes)await dbRun('INSERT INTO ac_workflow_run_versions(run_id,workflow_id,version) VALUES (?,?,?)',[runId,w.id,w.version]);
         queued += result.changes;
       }
     }
@@ -240,7 +244,12 @@ export async function runAutomations(a: Access, at = new Date()) {
     );
     for (const run of runs) {
       const w = await get(a, run.workflow_id, 'automations');
-      if (!w.enabled) {
+      const binding=await dbGet('SELECT version FROM ac_workflow_run_versions WHERE run_id=?',[run.id]);
+      const member=await dbGet('SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',[a.org,w.created_by]);
+      const resourceId=run.trigger_key.split(':').at(-1);
+      const invoice=['invoice_due_soon','invoice_overdue','customer_follow_up'].includes(w.template)?await dbGet("SELECT data FROM ac_records WHERE id=? AND org_id=? AND environment=? AND kind='invoices'",[resourceId,a.org,a.environment]):null;
+      const currentInvoice=invoice?JSON.parse(invoice.data):null;
+      if ((['invoice_due_soon','invoice_overdue','customer_follow_up'].includes(w.template)&&!currentInvoice)||!w.enabled||!member||!permitted(member.role,'finance')||(binding&&Number(binding.version)!==w.version)||(currentInvoice&&(['draft','voided','paid','credited'].includes(currentInvoice.status)||currentInvoice.currency!==w.conditions.currency||currentInvoice.total_minor-currentInvoice.paid_minor-(currentInvoice.credited_minor||0)<=0||currentInvoice.total_minor-currentInvoice.paid_minor-(currentInvoice.credited_minor||0)<w.conditions.minimum_minor))) {
         await dbRun(
           "UPDATE ac2_runs SET status='cancelled',updated_at=? WHERE id=?",
           [now(), run.id],
@@ -279,7 +288,7 @@ export async function runAutomations(a: Access, at = new Date()) {
             summary.totals.outstanding_minor +
             '. Coverage limits apply; this is not profit or a bank balance.';
         }
-        await notify(a, {
+        const delivery=await notify(a, {
           category: template.category,
           title: template.name,
           body,
@@ -293,13 +302,15 @@ export async function runAutomations(a: Access, at = new Date()) {
             JSON.stringify({
               action: 'in_app_notification',
               external_messages_sent: 0,
+              notifications_created:delivery.inserted,
+              delivery_status:delivery.inserted?'created':'suppressed_by_preferences_or_cap',
             }),
             now(),
             run.id,
           ],
         );
         await audit(a.org, w.created_by, 'automation.succeeded', run.id);
-        await recordUsage(a,'automations','workflow:'+run.id,1,'workflow_completed');
+        if(delivery.inserted)await recordUsage(a,'automations','workflow:'+run.id,1,'workflow_completed');
       } catch (error) {
         const attempts = run.attempts + 1;
         await dbRun(
@@ -476,3 +487,6 @@ export async function requireApproval(
   await audit(a.org,a.actor,'approval.consumed',approval.id);
   return approval;
 }
+
+export async function saveWorkflowVersion(a:Access,w:any){await dbRun('INSERT INTO ac_workflow_versions(workflow_id,version,org_id,environment,actor,configuration,created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(workflow_id,version) DO NOTHING',[w.id,w.version,a.org,a.environment,a.actor,JSON.stringify(w),now()]);}
+export async function editAutomation(a:Access,id:string,input:unknown){const d=workflowEditInput.parse(input);if(a.api)fail(403,'A human member must own a workflow change');return atomic(a,async()=>{const w=await get(a,id,'automations');if(w.version!==d.expected_version)fail(409,'Workflow changed; reload before editing');await saveWorkflowVersion(a,w);const result=await change(a,w,d.configuration);await saveWorkflowVersion(a,result);await audit(a.org,a.actor,'automation.version_updated',id);return result;});}

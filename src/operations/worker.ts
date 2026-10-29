@@ -1,3 +1,4 @@
+import {purgeExpiredConversations,processIntelligencePolicy} from './connected-worker';
 import { dbAll,dbGet } from '../db';
 import { runAutomations } from './automation';
 import { all } from './store';
@@ -9,8 +10,9 @@ export async function processOperations() {
   if (busy) return { busy: true };
   busy = true;
   try {
+    await purgeExpiredConversations();
     const orgs = await dbAll(
-      'SELECT id FROM ac_organizations ORDER BY created_at',
+      "SELECT o.id FROM ac_organizations o LEFT JOIN ac_workspaces w ON w.id=o.id WHERE w.status IS NULL OR w.status='active' ORDER BY o.created_at",
     );
     let processed = 0,
       failed = 0;
@@ -25,6 +27,7 @@ export async function processOperations() {
         };
         try {
           const enabled=async(service:string)=>!!await dbGet("SELECT e.service_id FROM ac_service_entitlements e JOIN ac_services s ON s.id=e.service_id WHERE e.org_id=? AND e.environment=? AND e.service_id=? AND e.status='active' AND s.enabled=1",[a.org,a.environment,service]);
+          if(await enabled('intelligence'))await processIntelligencePolicy(a);
           if(await enabled('automations'))await runAutomations(a);
           for (const c of (await enabled('connect')?await all(a, 'connectors'):[]).filter(
             (c) =>

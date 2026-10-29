@@ -334,6 +334,8 @@ export async function uploadDocument(a: Access, input: any) {
     fail(400, 'Invalid JPEG');
   const doc = await put(a, 'document', {
     ...d,
+    scan_status:'not_malware_scanned',
+    file_validation:'bounded_type_and_signature_checks_only',
     sha256: createHash('sha256').update(b).digest('hex'),
     retention_until: new Date(Date.now() + 365 * 86400000).toISOString(),
   });

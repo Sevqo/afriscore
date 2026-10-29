@@ -1,10 +1,11 @@
+import {WorkflowDetail,RunControl} from './WorkflowDetail';
+import {parseMoney} from '../../../src/finance/money';
 import { DataTable } from '../components/DataTable';
 import {
   Field,
   Form,
   Provenance,
   Empty,
-  factor,
   type API,
   type Action,
 } from './UI';
@@ -32,12 +33,11 @@ export function AutomationView({
                   name: d.name,
                   template: d.template,
                   enabled: d.enabled === 'on',
-                  schedule: { frequency: d.frequency, hour: Number(d.hour) },
+                  schedule: { frequency: d.frequency, hour: Number(d.hour),timezone:d.timezone },
+                  delay_minutes:Number(d.delay||0),
                   conditions: {
                     currency,
-                    minimum_minor: Math.round(
-                      Number(d.minimum || 0) * factor(currency),
-                    ),
+                    minimum_minor: parseMoney(d.minimum||'0',currency),
                     days_before_due: Number(d.days || 3),
                   },
                 }),
@@ -65,7 +65,8 @@ export function AutomationView({
                 <option value="weekly">Weekly</option>
               </select>
             </Field>
-            <Field label="Hour (Africa/Nairobi)">
+            <Field label="Timezone"><input name="timezone" required defaultValue="Africa/Nairobi"/></Field><Field label="Delay minutes"><input name="delay" type="number" min={0} max={10080} defaultValue={0}/></Field>
+            <Field label="Hour">
               <input
                 name="hour"
                 type="number"
@@ -103,7 +104,7 @@ export function AutomationView({
             data.data.map((w: any) => (
               <div className="list-row" key={w.id}>
                 <div>
-                  <b>{w.name}</b>
+                  <b>{w.name}</b><WorkflowDetail workflow={w} api={api} action={action} currency={currency}/>
                   <p>
                     {w.template} · {w.schedule.frequency} ·{' '}
                     {w.enabled ? 'Enabled' : 'Paused'}
@@ -147,7 +148,7 @@ export function AutomationView({
                 <th>Run</th>
                 <th>Status</th>
                 <th>Attempts</th>
-                <th>Created</th>
+                <th>Created</th><th>Controls</th>
               </tr>
             </thead>
             <tbody>
@@ -160,7 +161,7 @@ export function AutomationView({
                     {new Date(r.created_at).toLocaleString('en-KE', {
                       timeZone: 'Africa/Nairobi',
                     })}
-                  </td>
+                  </td><td><RunControl run={r} api={api} action={action}/></td>
                 </tr>
               ))}
             </tbody>
@@ -361,6 +362,7 @@ export function ApprovalView({
                   })}
                 </p>
               </div>
+              {a.status==='pending'&&<details><summary>Cancel this request</summary><Form submit={d=>action(()=>api('/approvals/'+a.id+'/cancel','POST',{reason:d.reason}),'Approval request cancelled.')}><Field label="Cancellation reason"><input name="reason" required minLength={5} maxLength={500}/></Field><button className="quiet-button">Cancel request</button></Form></details>}
               {a.status === 'pending' && admin && (
                 <Form
                   className="approval-form"

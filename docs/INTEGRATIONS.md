@@ -11,3 +11,8 @@ Applications own scoped org/environment API credentials stored as hashes and sho
 
 ## Stage 2 connector registry
 sandbox_accounting, sandbox_store and sandbox_courier have deterministic manual sync, status/history, disconnect/reconnect, normalization version, 12/hour organization cap and three-attempt exponential retry. Accounting/store batches require explicit user import, use stable deduplication IDs and remain sandbox_simulated/unverified. Courier samples cannot mark a shipment provider-verified. Bank/M-Pesa/eTIMS production entries are unavailable with no fake success. Existing CSV import remains member-authorized. Live adapters need OAuth/credentials, source permissions, field mapping, callback authentication and provider tests.
+
+
+## Connected platform continuation
+See [CONNECTED_PLATFORM_ARCHITECTURE.md](CONNECTED_PLATFORM_ARCHITECTURE.md) and [CONNECTED_PLATFORM_REPORT.md](CONNECTED_PLATFORM_REPORT.md) for the owner-approved Milestone 3 extensions and current verification/operational boundaries. Historical readiness statements above describe their original release; retain the documented financial, consent, issuer and privacy invariants.
+

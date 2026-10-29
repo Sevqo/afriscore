@@ -1,160 +1,18 @@
-import { useState } from 'react';
-import { Field, Form, Provenance, money, type API } from './UI';
-export function AssistantView({
-  api,
-  currency,
-}: {
-  api: API;
-  currency: string;
-}) {
-  const [result, setResult] = useState<any>(null),
-    [question, setQuestion] = useState(''),
-    [history, setHistory] = useState<any[]>([]);
-  return (
-    <>
-      <section className="panel assistant-intro">
-        <h2>Understand your records. Keep control.</h2>
-        <p>
-          The assistant explains one authorized data tool at a time. It cannot
-          move money, change invoices or send messages. Review the minimized
-          evidence before allowing AI processing.
-        </p>
-        <div className="assistant-prompts">
-          {[
-            'Which invoices should I follow up on?',
-            'Summarize my payment activity.',
-            'What if my customer pays late?',
-          ].map((q) => (
-            <button key={q} onClick={() => setQuestion(q)}>
-              {q}
-            </button>
-          ))}
-        </div>
-      </section>
-      <Form
-        submit={async (d) => {
-          const r = await api('/assistant', 'POST', {
-            question: d.question,
-            tool: d.tool,
-            currency,
-            horizon: Number(d.horizon),
-            scenario: d.scenario,
-            consent_to_provider: d.consent === 'on',
-          });
-          setResult(r);
-          setHistory((h) => [...h, { question: d.question, ...r }]);
-        }}
-      >
-        <Field label="Question">
-          <textarea
-            name="question"
-            required
-            minLength={3}
-            maxLength={1500}
-            rows={3}
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-          />
-        </Field>
-        <Field label="Authorized data tool">
-          <select name="tool">
-            <option value="financial_summary">Financial summary</option>
-            <option value="receivables">Receivables</option>
-            <option value="forecast">Forecast</option>
-            <option value="reconciliation">Reconciliation</option>
-          </select>
-        </Field>
-        <div className="form-grid">
-          <Field label="Forecast horizon">
-            <select name="horizon">
-              {[7, 30, 60, 90].map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Forecast scenario">
-            <select name="scenario">
-              {['expected', 'optimistic', 'conservative'].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <label className="checkbox-field">
-          <input type="checkbox" name="consent" />
-          Allow sending my question and minimized numeric evidence to the
-          configured AI provider.
-        </label>
-        <button className="button">Review evidence / ask assistant</button>
-      </Form>
-      {result && (
-        <section className="panel assistant-answer">
-          <Provenance label={result.classification || result.status} />
-          <h2>
-            {result.status === 'answered'
-              ? 'Assistant explanation'
-              : 'Computed evidence'}
-          </h2>
-          <p className="assistant-text">
-            {result.explanation || result.message}
-          </p>
-          <EvidenceSummary evidence={result.evidence} currency={currency} />
-          <p className="muted">
-            No action was executed. Review AI explanations against the
-            calculation evidence.
-          </p>
-        </section>
-      )}
-      {history.length > 1 && (
-        <details className="panel">
-          <summary>Earlier questions in this browser session</summary>
-          {history.slice(0, -1).map((r, i) => (
-            <p key={i}>
-              {r.question} · {r.status}
-            </p>
-          ))}
-        </details>
-      )}
-    </>
-  );
+import {useEffect,useRef,useState} from 'react';
+import {Field,money,type API} from './UI';
+import {isDemo} from '../demo/transport';
+import './assistant.css';
+export function AssistantView({api,currency}:{api:API;currency:string}){
+ const [conversations,setConversations]=useState<any[]>([]),[selected,setSelected]=useState(''),[messages,setMessages]=useState<any[]>([]),[question,setQuestion]=useState(''),[tool,setTool]=useState('auto'),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[usage,setUsage]=useState<any>(null);
+ const gate=useRef(0),keys=useRef(new Map<string,string>()),alive=useRef(true);useEffect(()=>{alive.current=true;if(!isDemo())api('/assistant/conversations').then(r=>{if(alive.current)setConversations(r.data);}).catch(e=>{if(alive.current)setError(e.message);});return()=>{alive.current=false;gate.current++;};},[]);
+ async function open(id:string){const version=++gate.current;setSelected(id);setMessages([]);setError('');try{const r=await api('/assistant/conversations/'+id+'/messages');if(alive.current&&version===gate.current)setMessages(r.data);}catch(e){if(alive.current&&version===gate.current)setError((e as Error).message);}}
+ async function send(){if(question.trim().length<3||busy)return;const version=++gate.current;setBusy(true);setError('');setNotice('');try{const id=selected||(await api('/assistant/conversations','POST',{})).id;if(!alive.current||version!==gate.current)return;setSelected(id);const input={question:question.trim(),currency,tool,consent_to_provider:consent},intent=JSON.stringify([id,input]);if(!keys.current.has(intent))keys.current.set(intent,crypto.randomUUID());await api('/assistant/conversations/'+id+'/messages','POST',input,{'Idempotency-Key':keys.current.get(intent)!});if(!alive.current||version!==gate.current)return;const r=await api('/assistant/conversations/'+id+'/messages');if(!alive.current||version!==gate.current)return;setMessages(r.data);setQuestion('');setConsent(false);keys.current.delete(intent);const c=await api('/assistant/conversations');if(alive.current&&version===gate.current)setConversations(c.data);}catch(e){if(alive.current&&version===gate.current)setError((e as Error).message);}finally{if(alive.current&&version===gate.current)setBusy(false);}}
+ if(isDemo())return <section className="panel"><h2>Private assistant conversations</h2><p>Sign in to use private conversation history and inspect your authorized records. This browser demo does not call an AI provider.</p></section>;
+ return <section className="assistant-chat"><header><h2>Ask about your authorized records</h2><p>Computed evidence is authoritative. AI explanations are optional, may be wrong, and cannot execute actions.</p><div className="assistant-controls"><Field label="Conversation"><select value={selected} disabled={busy} onChange={e=>e.target.value?open(e.target.value):(setSelected(''),setMessages([]))}><option value="">New conversation</option>{conversations.map(c=><option key={c.id} value={c.id}>{new Date(c.created_at).toLocaleString()}</option>)}</select></Field><button className="quiet-button" disabled={busy} onClick={async()=>{try{setUsage(await api('/assistant/usage'));}catch(e){setError((e as Error).message);}}}>Usage & privacy</button>{selected&&<button className="quiet-button" disabled={busy} onClick={async()=>{try{await api('/assistant/conversations/'+selected,'DELETE');setSelected('');setMessages([]);setConversations(c=>c.filter(r=>r.id!==selected));setNotice('Conversation archived. It is no longer accessible.');}catch(e){setError((e as Error).message);}}}>Archive conversation</button>}</div></header>
+ {usage&&<aside className="panel"><p>History is encrypted, private to your member account and expires after 30 days. Earlier messages are not automatically sent to the model. Backup retention may differ.</p><p>{usage.cost_policy}</p>{usage.data.map((u:any,i:number)=><p key={i}>{u.model} · {u.status} · {u.requests} requests · {u.input_tokens||0} input / {u.output_tokens||0} output tokens</p>)}</aside>}
+ {error&&<p role="alert" className="alert error">{error}</p>}{notice&&<p role="status">{notice}</p>}
+ <div className="assistant-thread" aria-label="Conversation messages" aria-live="polite">{!messages.length&&<p className="muted">Choose a suggested question or write your own. Review evidence first, then explicitly allow an external explanation if wanted.</p>}{messages.map(m=><article key={m.id} className="assistant-turn"><div className="chat-question"><span>You</span><p>{m.content.question}</p></div><div className="chat-answer"><span>AfriCore · {m.status.replaceAll('_',' ')}</span><p className="assistant-text">{m.content.result?.explanation||m.content.result?.message||m.content.message||'Request is pending. Refresh this conversation to inspect the saved result; do not start a second charge.'}</p><EvidenceSummary evidence={m.content.result?.evidence} currency={currency}/>{m.content.result?.sources?.map((s:any)=><a key={s.href+s.label} href={s.href}>{s.label}</a>)}<p className="muted">No action was executed. Verify generated explanations against the source evidence.</p><div className="assistant-controls"><button className="quiet-button" disabled={busy} onClick={()=>{setQuestion(m.content.question);setConsent(false);}}>Use question again</button><button className="quiet-button" onClick={async()=>{try{await navigator.clipboard.writeText(m.content.result?.explanation||JSON.stringify(m.content.result?.evidence||{}));setNotice('Response copied.');}catch{setNotice('Copy is unavailable in this browser.');}}}>Copy</button>{['helpful','not_helpful'].map(r=><button key={r} aria-pressed={m.feedback===r} className="quiet-button" onClick={async()=>{try{await api('/assistant/conversations/'+selected+'/messages/'+m.id+'/feedback','POST',{rating:r});setMessages(v=>v.map(x=>x.id===m.id?{...x,feedback:r}:x));}catch(e){setError((e as Error).message);}}}>{r==='helpful'?'Helpful':'Needs improvement'}</button>)}</div></div></article>)}</div>
+ <div className="assistant-prompts">{['Which invoices are overdue?','What were my recorded expenses?','What bills are coming up?','Explain API authorization errors.'].map(q=><button className="secondary-button" disabled={busy} key={q} onClick={()=>setQuestion(q)}>{q}</button>)}</div>
+ <form className="assistant-composer" onSubmit={e=>{e.preventDefault();void send();}}><Field label="Question"><textarea required minLength={3} maxLength={1500} rows={3} value={question} onChange={e=>setQuestion(e.target.value)} disabled={busy}/></Field><Field label="Authorized tool"><select value={tool} onChange={e=>setTool(e.target.value)} disabled={busy}>{[['auto','Choose from question'],['financial_summary','Financial summary'],['receivables','Receivables'],['expenses','Recorded expenses'],['obligations','Upcoming bills'],['forecast','Forecast'],['reconciliation','Reconciliation'],['documentation','API documentation']].map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></Field><label className="checkbox-field"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} disabled={busy}/>Allow this question and minimized evidence to be sent to the configured AI provider. Do not include secrets or third-party personal data.</label><div className="assistant-controls"><button className="button" disabled={busy||question.trim().length<3}>{busy?'Preparing response…':consent?'Ask with AI explanation':'Review computed evidence'}</button>{busy&&<button type="button" className="quiet-button" onClick={()=>{gate.current++;setBusy(false);setNotice('Stopped waiting. The server request may still complete and use its reserved budget. Reopen this conversation to inspect the result.');}}>Stop waiting</button>}</div></form></section>;
 }
-function EvidenceSummary({
-  evidence,
-  currency,
-}: {
-  evidence: any;
-  currency: string;
-}) {
-  if (!evidence) return null;
-  const metrics =
-    evidence.metrics ||
-    Object.fromEntries(
-      Object.entries(evidence).filter(([key]) => key.endsWith('_minor')),
-    );
-  return (
-    <div className="assistant-evidence">
-      <h3>Supporting calculation evidence</h3>
-      <p>
-        {evidence.period?.from} – {evidence.period?.to} · {currency}
-      </p>
-      {Object.entries(metrics).map(([key, value]) => (
-        <div className="list-row" key={key}>
-          <span>{key.replaceAll('_minor', '').replaceAll('_', ' ')}</span>
-          <b>
-            {value === null ? 'Not available' : money(Number(value), currency)}
-          </b>
-        </div>
-      ))}
-      {evidence.quality?.missing_expense_data && (
-        <p>Expense coverage is incomplete.</p>
-      )}
-      {evidence.starting_balance_minor === null && (
-        <p>No starting bank balance was supplied.</p>
-      )}
-      {evidence.invoices && (
-        <p>{evidence.invoices.length} open invoices in the evidence.</p>
-      )}
-      <p className="muted">{evidence.classification?.replaceAll('_', ' ')}</p>
-    </div>
-  );
-}
+function EvidenceSummary({evidence,currency}:{evidence:any;currency:string}){if(!evidence)return null;const metrics=evidence.metrics||Object.fromEntries(Object.entries(evidence).filter(([key])=>key.endsWith('_minor')));return <details className="assistant-evidence" open><summary>Calculation evidence · {evidence.currency||currency}</summary>{evidence.period&&<p>{evidence.period.from} – {evidence.period.to}</p>}{Object.entries(metrics).map(([key,value])=><div className="list-row" key={key}><span>{key.replaceAll('_minor','').replaceAll('_',' ')}</span><strong>{value===null?'Unavailable':money(Number(value),evidence.currency||currency)}</strong></div>)}{evidence.invoices&&<p>{evidence.invoices.length} open invoices in the bounded evidence.</p>}{evidence.items?.map((o:any)=><p key={o.id}>{o.due_on} · {money(o.amount_minor,o.currency)} · Planned obligation</p>)}{evidence.facts?.map((f:string)=><p key={f}>{f}</p>)}<p>{evidence.classification?.replaceAll('_',' ')}</p>{evidence.quality?.limited_history&&<p>Limited history; source coverage is incomplete.</p>}</details>;}

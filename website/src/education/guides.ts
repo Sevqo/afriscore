@@ -309,7 +309,7 @@ export const guides: Record<string, Guide> = {
       "A fictional supplier compares a conservative scenario that delays collections with its expected scenario. The difference shows the assumptions’ effect, not a probability that any customer will pay.",
     outcome: "Explainable indicators and labelled planning scenarios.",
     limit:
-      "AI explanations require configuration, consent and provider availability, and remain read-only. Forecasts are not bank balances, credit decisions or statistical guarantees.",
+      "AI explanations require configuration, consent and provider availability, and remain read-only. Private conversation history expires after 30 days and is not automatically sent to the model. Forecasts are saved for later evaluation; they are not bank balances, credit decisions or statistical guarantees.",
     related: [
       "/products/cash-flow",
       "/products/invoicing",
@@ -739,7 +739,7 @@ Object.assign(guides, {
         "Supply permitted records",
         "Import a supported CSV or use an available sandbox connector.",
       ],
-      ["Inspect the run", "Review errors, retries and freshness."],
+      ["Inspect the run", "Review source mappings, errors, duplicate/conflict decisions and freshness."],
       [
         "Use structured records",
         "Data normalizes them while preserving provenance.",

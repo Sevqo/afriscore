@@ -8,3 +8,8 @@ The default organization quota is 50 requests/day (AFRICORE_AI_DAILY_REQUEST_LIM
 Local setup on 2026-10-25 created a key using the OpenAI Platform secure flow and saved it only to ignored .env. One synthetic live request returned HTTP 429 credit_balance_exhausted. Therefore real model output is not verified; fixture-provider tests validate the adapter boundary, minimization and error handling. Add credits/authorized project billing before retrying. An initial unused key from interrupted setup needs manual revocation in Platform.
 
 The chosen local model is gpt-5-mini; deployment model choice is explicit. Confirm current model availability and privacy/retention settings before use. Sources: https://developers.openai.com/api/docs/guides/text and https://developers.openai.com/api/docs/models/gpt-5-mini . Internal Kai remains a separate read-only documentation search foundation, without code execution or issue access.
+
+
+## Connected platform continuation
+See [CONNECTED_PLATFORM_ARCHITECTURE.md](CONNECTED_PLATFORM_ARCHITECTURE.md) and [CONNECTED_PLATFORM_REPORT.md](CONNECTED_PLATFORM_REPORT.md) for the owner-approved Milestone 3 extensions and current verification/operational boundaries. Historical readiness statements above describe their original release; retain the documented financial, consent, issuer and privacy invariants.
+

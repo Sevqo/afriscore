@@ -36,7 +36,7 @@ export async function checkServiceAccess(req:Request,a:Access){
 }
 export async function withServiceRequest(req:Request,res:Response,fn:()=>Promise<any>){
  if(!req.params.org)return fn();
- const externalReads=new Set(['/organizations/:org/payment-requests/:id/daraja','/organizations/:org/payment-attempts/:id/refresh','/organizations/:org/assistant','/organizations/:org/webhooks/process','/organizations/:org/trust/verify','/organizations/:org/verification']);
+ const externalReads=new Set(['/organizations/:org/assistant/conversations/:id/messages','/organizations/:org/payment-requests/:id/daraja','/organizations/:org/payment-attempts/:id/refresh','/organizations/:org/assistant','/organizations/:org/webhooks/process','/organizations/:org/trust/verify','/organizations/:org/verification']);
  const atomicWrite=!['GET','HEAD'].includes(req.method)&&!externalReads.has(req.route?.path);
  const context:Context={},original=res.json;let captured:any,hasResponse=false;
  res.json=function(body:any){captured=body;hasResponse=true;return res;};

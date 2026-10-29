@@ -18,7 +18,7 @@ export async function definitions(){return (await dbAll('SELECT * FROM ac_servic
 export async function workspaceKind(org:string){return (await dbGet('SELECT kind FROM ac_workspaces WHERE id=?',[org]))?.kind||'business';}
 export async function entitlement(a:Pick<Access,'org'|'environment'>,id:string){return dbGet('SELECT * FROM ac_service_entitlements WHERE org_id=? AND environment=? AND service_id=?',[a.org,a.environment,id]);}
 export function setupReady(id:string){
- if(id==='assistant')return !!process.env.OPENAI_API_KEY&&!!process.env.AFRICORE_AI_MODEL&&process.env.AFRICORE_AI_DISABLED!=='true';
+ if(id==='assistant')return true; // Private history/computed evidence work without an external provider; each explanation has a separate runtime gate.
  if(id==='webhooks')return !!(process.env.AFRISCORE_WEBHOOK_ALLOWED_HOSTS||'').split(',').find(h=>h.trim()&&h.trim()!=='disabled.invalid');
  return true;
 }

@@ -398,7 +398,7 @@ export function ForecastView({
               definition="No opening bank balance is assumed."
             />
             <MetricDefinition
-              label="Confidence"
+              label="Data sufficiency"
               value={data.confidence.replaceAll('_', ' ')}
               definition={data.uncertainty}
             />

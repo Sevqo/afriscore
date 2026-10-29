@@ -4,6 +4,7 @@ import { dbAll, dbGet, dbRun, dbTransaction } from '../db';
 import { Access, audit, fail } from '../platform/auth';
 import { now } from '../platform/crypto';
 export const kinds = [
+  'forecast_snapshots',
   'expenses',
   'obligations',
   'automations',

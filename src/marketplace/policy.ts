@@ -1,3 +1,4 @@
+import {connectedPolicies} from '../operations/connected-metadata';
 import {financePolicies} from '../finance/metadata';
 /** Exact declared Express route metadata; unknown optional routes fail closed. */
 import {marketplaceRouteKinds} from './metadata';
@@ -39,5 +40,5 @@ export function policyFor(method:string,route:string,kind?:string):ServicePolicy
   const services:Record<string,string[]>={customers:['customers','invoicing','orders'],orders:['orders'],invoices:['invoicing'],transactions:['payments','reconciliation'],applications:['developer_api'],integrations:['connect']};
   return services[kind||'']?{services:method==='GET'&&kind==='orders'?['orders','fulfillment','protected_payments']:services[kind!],meter:method==='POST'&&kind==='customers'?'customers':method==='POST'&&kind==='orders'?'orders':method==='PATCH'&&kind==='invoices'?'invoicing':undefined}:undefined;
  }
- return servicePolicies[(method==='HEAD'?'GET':method)+' '+route]||financePolicies[(method==='HEAD'?'GET':method)+' '+route];
+ return servicePolicies[(method==='HEAD'?'GET':method)+' '+route]||financePolicies[(method==='HEAD'?'GET':method)+' '+route]||connectedPolicies[(method==='HEAD'?'GET':method)+' '+route];
 }

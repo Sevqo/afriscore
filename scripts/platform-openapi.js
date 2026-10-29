@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const source = fs.readFileSync('src/platform/routes.ts', 'utf8');
 const auth = fs.readFileSync('src/platform/auth.ts', 'utf8');
 const stage2 = fs.readFileSync('src/operations/routes.ts', 'utf8');
+const connected=fs.readFileSync('src/operations/connected-routes.ts','utf8');
 const stage3 = fs.readFileSync('src/trust/routes.ts', 'utf8');
 const marketplace = fs.readFileSync('src/marketplace/routes.ts', 'utf8');
 const { z } = require('zod');
@@ -17,6 +18,7 @@ const schemaNames = [
   'saleSchema',
   'disputeSchema',
   'assistantInput',
+  'workflowEditInput','workflowControlInput','feedbackInput','approvalCancelInput',
 ];
 const trustContracts = require('../dist/trust/contracts');
 const trustSchemaNames = [
@@ -43,8 +45,10 @@ for (const name of trustSchemaNames)
     unrepresentable: 'any',
   });
 const financialContracts=require('../dist/finance/contracts');for(const [name,schema] of Object.entries(financialContracts))schemas['finance_'+name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
+for(const [name,schema] of Object.entries({dataImportInput:require('../dist/operations/data-platform').dataImportInput,alertPolicy:require('../dist/operations/alerts').alertPolicy}))schemas[name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
 const paths = {};
 const operations = [
+  ...connected.matchAll(/connected\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...finance.matchAll(/finance\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...source.matchAll(/platform\.(get|post|patch|delete)\s*\(\s*'([^']+)'/g),
   ...stage2.matchAll(/operations\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
@@ -107,7 +111,7 @@ for (const op of operations) {
         ? [{}]
         : [{ session: [] }, { managedSession: [] }, ...(!isAuth?[{ apiKey: [] }]:[])],
   };
-  if (['post', 'patch'].includes(method))
+  if (['post', 'patch','put','delete'].includes(method))
     operation.requestBody = {
       required: true,
       content: {
@@ -120,6 +124,15 @@ for (const op of operations) {
         },
       },
     };
+  if(method==='post'&&(/\/messages$/.test(path)||/\/data\/imports$/.test(path)||/\/automation-runs\//.test(path)||/\/approvals\/.*\/cancel$/.test(path)))parameters.push({name:'Idempotency-Key',in:'header',required:true,schema:{type:'string',minLength:8,maxLength:150}});
+  if(path.includes('/assistant/')||(method!=='get'&&(path.endsWith('/data/imports')||path.endsWith('/configuration')||path.includes('/automation-runs/')||/\/approvals\/.*\/cancel$/.test(path))))operation.security=[{session:[]},{managedSession:[]}];
+  if(method==='post'&&path.endsWith('/messages'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/assistantInput'};
+  if(method==='post'&&path.endsWith('/data/imports'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/dataImportInput'};
+  if(method==='put'&&path.endsWith('/alerts/policy'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/alertPolicy'};
+  if(method==='put'&&path.endsWith('/configuration'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/workflowEditInput'};
+  if(method==='post'&&path.includes('/automation-runs/')&&path.endsWith('/control'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/workflowControlInput'};
+  if(method==='post'&&path.endsWith('/feedback'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/feedbackInput'};
+  if(method==='post'&&path.includes('/approvals/')&&path.endsWith('/cancel'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/approvalCancelInput'};
   const schemaName = path.includes('/trust/')
     ? path.endsWith('/passport')
       ? 'trust_passportInput'

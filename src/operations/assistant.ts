@@ -1,8 +1,9 @@
+import {sumMinor} from '../finance/money';
 import { assistantInput } from './contracts';
 export { assistantInput } from './contracts';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { dbGet, dbRun, dbTransaction, isPostgres } from '../db';
+import { dbAll, dbGet, dbRun, dbTransaction, isPostgres } from '../db';
 import { Access, audit, fail } from '../platform/auth';
 import { now } from '../platform/crypto';
 import {reserve,finishReservation} from '../marketplace/engine';
@@ -87,6 +88,8 @@ export async function assistantEvidence(
   tool: z.infer<typeof assistantInput>['tool'],
   input: z.infer<typeof assistantInput>,
 ) {
+  if(tool==='auto'){tool=/invoice|overdue|owe/i.test(input.question)?'receivables':/forecast|late|next month/i.test(input.question)?'forecast':/expense|spend/i.test(input.question)?'expenses':/bill|obligation/i.test(input.question)?'obligations':/reconcil/i.test(input.question)?'reconciliation':/api|webhook|documentation|integration error/i.test(input.question)?'documentation':'financial_summary';}
+  if(tool==='documentation')return {tool,classification:'curated_product_documentation',facts:['Workspace API keys require explicit scopes and current membership.','HTTP 401 means authentication was not accepted; 403 means the requested capability is not authorized.','Webhooks use the configured signed delivery mechanism and bounded retries.','Provider imports are not payment confirmation.'],documentation:'/docs',actions_executed:false};
   if (tool === 'forecast') {
     const f = await forecast(a, {
       currency: input.currency,
@@ -108,6 +111,8 @@ export async function assistantEvidence(
     };
   }
   const snapshot = await financialSnapshot(a, { currency: input.currency });
+  if(tool==='expenses')return {tool,currency:input.currency,classification:'merchant_records_and_derived_metrics',period:snapshot.period,recorded_outflows_minor:snapshot.totals.recorded_outflows_minor,series:snapshot.series.map(p=>({date:p.date,recorded_outflows_minor:p.recorded_outflows_minor})),quality:snapshot.quality};
+  if(tool==='obligations')return {tool,currency:input.currency,classification:'planned_obligations_not_paid_expenses',items:snapshot.inputs.obligations.slice(0,25).map(o=>({id:o.id,due_on:o.next_due_date,amount_minor:o.amount_minor,currency:o.currency,recurrence:o.recurrence})),quality:snapshot.quality};
   if (tool === 'receivables')
     return {
       tool,
@@ -138,13 +143,15 @@ export async function assistantEvidence(
       unreconciled_count: snapshot.quality.unreconciled_count,
       unallocated_confirmations: snapshot.quality.unallocated_confirmations,
     };
+  const personal=await dbGet("SELECT id FROM ac_workspaces WHERE id=? AND kind='personal'",[a.org]);
+  const personalIncome=personal?await dbAll('SELECT amount_minor FROM ac_personal_income WHERE workspace_id=? AND environment=? AND currency=? AND occurred_on>=? AND occurred_on<=?',[a.org,a.environment,input.currency,snapshot.period.from,snapshot.period.to]):[];
   return {
     tool,
     currency: input.currency,
     environment: a.environment,
     classification: 'derived_metrics',
     period: snapshot.period,
-    metrics: snapshot.totals,
+    metrics: {...snapshot.totals,...(personal?{recorded_personal_income_minor:sumMinor(personalIncome.map(r=>r.amount_minor))}:{})},
     definitions: snapshot.definitions,
     quality: snapshot.quality,
   };
@@ -155,6 +162,7 @@ export async function askAssistant(
   provider: ExplanationProvider = openAIProvider,
 ) {
   const d = assistantInput.parse(input);
+  if(/\bsk-[A-Za-z0-9_-]{20,}|postgres(?:ql)?:\/\/|-----BEGIN [A-Z ]*PRIVATE KEY/.test(d.question))fail(400,'Remove credentials and private keys before asking a question');
   await audit(a.org, a.actor, 'assistant.tool.' + d.tool);
   const evidence = await assistantEvidence(a, d.tool, d);
   const model = process.env.AFRICORE_AI_MODEL;
@@ -206,6 +214,10 @@ export async function askAssistant(
     const userUsage=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE actor=? AND created_at>=?',[a.actor,since]);
     const daily=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE created_at>=?',[since]);
     const monthly=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE created_at>=?',[month]);
+    const modelUsage=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE model=? AND created_at>=?',[model,since]);
+    const workspaceMonth=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE org_id=? AND created_at>=?',[a.org,month]);
+    const userMonth=await dbGet('SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE actor=? AND created_at>=?',[a.actor,month]);
+    if(Number(modelUsage.total)>=bounded('AFRICORE_AI_MODEL_DAILY_REQUEST_LIMIT',5)||Number(workspaceMonth.total)>=bounded('AFRICORE_AI_WORKSPACE_MONTHLY_LIMIT',100)||Number(userMonth.total)>=bounded('AFRICORE_AI_USER_MONTHLY_LIMIT',100))fail(429,'Model or monthly identity/workspace AI quota reached');
     const pending=await dbGet("SELECT COUNT(*) AS total FROM ac2_ai_usage WHERE status='pending' AND created_at>=?",[new Date(Date.now()-60000).toISOString()]);
     if(Number(userUsage.total)>=bounded('AFRICORE_AI_USER_DAILY_LIMIT',20))fail(429,'Identity AI quota reached');
     if(Number(daily.total)>=bounded('AFRICORE_AI_DAILY_BUDGET_USD',5)||Number(monthly.total)>=bounded('AFRICORE_AI_MONTHLY_BUDGET_USD',25))fail(429,'Platform AI budget reached');

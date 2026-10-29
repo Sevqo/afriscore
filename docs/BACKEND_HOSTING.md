@@ -8,4 +8,4 @@ Render Free sleeps after 15 minutes without inbound traffic, can restart, and ha
 
 Always-on compute is a later separately approved cost decision. No Redis, extra database, paid background worker or persistent disk is created here. Existing unrelated Render services remain untouched.
 
-Hosted startup uses AFRICORE_MIGRATIONS_MODE=verify: require all five recorded schema versions and core tables using SELECT only. Apply reviewed migrations separately before changing this mode. This avoids repeating legacy ALTER/RLS DDL and locking existing data during each hosting restart. Local default remains migrate.
+Hosted startup uses AFRICORE_MIGRATIONS_MODE=verify: require all nine recorded schema versions and core tables using SELECT only. Apply reviewed migrations separately before changing this mode. This avoids repeating legacy ALTER/RLS DDL and locking existing data during each hosting restart. Local default remains migrate.

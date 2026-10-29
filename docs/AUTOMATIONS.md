@@ -8,3 +8,8 @@ All delivered actions are in-app notifications. No email, SMS, WhatsApp, custome
 Approvals require a human requester, a different assigned owner/admin, a reason, matching organization/environment/resource/action and 24-hour expiry. Decisions do not execute actions. Protected release and dispute resolution revalidate approver membership when consumed. Expired/rejected/revoked approval cannot authorize execution. Other approval categories are recorded review workflows; existing invoice/reconciliation/connector operations are not all wired to mandatory approval consumption. Do not claim universal two-person controls.
 
 Single API instance remains the deployment boundary. Database locking/dedupe reduces duplicates, but distributed worker leases and shared rate limiting must be verified before horizontal scaling. Notification retention/purge and external alerting remain operator work.
+
+
+## Connected platform continuation
+See [CONNECTED_PLATFORM_ARCHITECTURE.md](CONNECTED_PLATFORM_ARCHITECTURE.md) and [CONNECTED_PLATFORM_REPORT.md](CONNECTED_PLATFORM_REPORT.md) for the owner-approved Milestone 3 extensions and current verification/operational boundaries. Historical readiness statements above describe their original release; retain the documented financial, consent, issuer and privacy invariants.
+

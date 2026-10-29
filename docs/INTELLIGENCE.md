@@ -10,3 +10,8 @@ Receivables use issued invoice balances and as-of allocations, aging buckets, ov
 Quality surfaces history days, freshness, source coverage, missing expenses and unallocated payments. No fabricated opening balance, margin or profitability is shown. Reports and forecasts should be reviewed against source records. Imported sample connector data remains explicitly sandbox and unverified.
 
 The workspace provides charts with tabular alternatives, expense categories, obligations, payer behavior and drill-down source IDs. It is a bounded first implementation: full cohort analytics, accounting-grade profitability, custom report builders and cross-currency conversion remain deferred. Large-workspace aggregation/caching and database pagination need performance qualification before scale.
+
+
+## Connected platform continuation
+See [CONNECTED_PLATFORM_ARCHITECTURE.md](CONNECTED_PLATFORM_ARCHITECTURE.md) and [CONNECTED_PLATFORM_REPORT.md](CONNECTED_PLATFORM_REPORT.md) for the owner-approved Milestone 3 extensions and current verification/operational boundaries. Historical readiness statements above describe their original release; retain the documented financial, consent, issuer and privacy invariants.
+

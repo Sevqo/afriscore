@@ -1,3 +1,4 @@
+import {DataPlatformView} from './DataPlatformView';
 import { Field, Form, Provenance, Empty, type API, type Action } from './UI';
 export function ConnectView({
   data,
@@ -14,6 +15,7 @@ export function ConnectView({
 }) {
   return (
     <>
+      <DataPlatformView api={api} writable={admin}/>
       <section className="panel">
         <h2>Available connector adapters</h2>
         <div className="connector-catalog">

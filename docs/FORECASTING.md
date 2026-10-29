@@ -8,3 +8,8 @@ Expected assumes 90% collection, optimistic 100%, conservative 65% plus 14 days.
 Responses include daily inflows/outflows/cumulative movement, projected totals, source IDs, assumptions, coverage warnings and scenario bounds. Starting balance is null because no verified bank balance exists. Confidence intervals are null: scenarios are not statistical confidence intervals. Net movement cannot be interpreted as money available, guaranteed revenue, financing eligibility or financial advice. No AI model computes these amounts.
 
 Reproduce with fixed date fixtures in stage2.test.ts. Compare scenarios and invoice dates/allocations rather than validating a forecast against invented outcomes. Backtesting, calibrated uncertainty and richer seasonal models remain future work.
+
+
+## Connected platform continuation
+See [CONNECTED_PLATFORM_ARCHITECTURE.md](CONNECTED_PLATFORM_ARCHITECTURE.md) and [CONNECTED_PLATFORM_REPORT.md](CONNECTED_PLATFORM_REPORT.md) for the owner-approved Milestone 3 extensions and current verification/operational boundaries. Historical readiness statements above describe their original release; retain the documented financial, consent, issuer and privacy invariants.
+

@@ -8,3 +8,8 @@ A business requests a named counterparty relationship. Only a different authoriz
 Evidence Coverage Index v1 is deliberately a coverage indicator: profile, payment, order, shipment and relationship categories each carry20%. Present active evidence yields that category's20%; absent data yields no coverage contribution, not a negative judgment. Source-verified counts remain separately visible. Snapshot records preserve version/inputs. This is not a loan-default probability, credit score, profitability estimate or guarantee of behavior. Do not use it for financing approval. AFriCore Capital remains deferred.
 
 Initial abuse controls include membership checks, source scoping/hash dedupe, approved issuer types, signature/status checks, no levels2/3 without real sources, self-confirmation denial and correction review. Independent identity deduplication, collusion graph analysis and live source integrations remain open. External institutional authority cannot be fabricated to make the demo appear stronger.
+
+
+## Connected platform continuation
+See [CONNECTED_PLATFORM_ARCHITECTURE.md](CONNECTED_PLATFORM_ARCHITECTURE.md) and [CONNECTED_PLATFORM_REPORT.md](CONNECTED_PLATFORM_REPORT.md) for the owner-approved Milestone 3 extensions and current verification/operational boundaries. Historical readiness statements above describe their original release; retain the documented financial, consent, issuer and privacy invariants.
+

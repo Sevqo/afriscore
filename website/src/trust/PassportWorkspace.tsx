@@ -1,3 +1,4 @@
+import {TrustAssessment} from './TrustAssessment';
 import { Icon } from '../components/Icon';
 import { useEffect, useState } from 'react';
 import { Field, Form, Provenance, request, Timeline } from '../operations/UI';
@@ -264,7 +265,7 @@ export function PassportWorkspace({
       ) : (
         <>
           {tab === 'Overview' && (
-            <>
+            <><TrustAssessment api={api}/>
               <section className="passport-card">
                 <span className="eyebrow">
                   AFRICORE BUSINESS PASSPORT · SANDBOX BETA
@@ -436,7 +437,7 @@ export function PassportWorkspace({
                       )
                     }
                   >
-                    <h3>Attach a supporting document</h3>
+                    <h3>Attach a supporting document</h3><p>Files receive type, signature and size checks and encrypted private storage. Malware scanning is not configured. A document upload is not independent verification.</p>
                     <Field label="Pending review ID">
                       <input name="review_id" required />
                     </Field>
