@@ -63,4 +63,10 @@ Outstanding dependencies: funded/approved AI runtime configuration and real answ
 
 ## Release outcome
 
-Pending deployment of the tested source and post-release verification.
+Source commit c3b10786f5cacde48d8fc627557e7d0718c27a4b is pushed to main, authored as Cyprian Kiprop <cypriankiprop41@gmail.com>. [GitHub CI run 40876809362](https://github.com/Sevqo/afriscore/actions/runs/40876809362) completed successfully. Render service srv-dbgcrl6c6qcc73f1hi50 displays Deploy succeeded / Live for that exact source, manually deployed on 29 October 2026. [Backend Live screenshot](evidence/connected-platform/backend-live.jpg).
+
+Read-only preservation checks after migration confirm all original IDs remain: seven users, nine workspaces, nine memberships, three identity links and nine organizations. Scoped and legacy financial tables checked had zero records before and after in this approved development database. These checks establish count/ID preservation, not an independent byte-for-byte audit of every field. Sanitized evidence is included alongside this report.
+
+Cloudflare dry-run passed, reading 181 assets. The actual frontend publish was not executed: automatic approval review failed because the account usage limit prevented review from completing. The failure explicitly stated this was not a safety determination and prohibited bypass. Frontend therefore remains on its prior release; no new Cloudflare version or hosted frontend asset match is claimed. Final managed-auth/new-endpoint hosted smoke checks remain pending. The backend/frontend release is not yet fully verified or accepted.
+
+Next steps: resolve the approval-review availability, publish the already-tested frontend to the existing Worker, verify its asset hash against the build, run read-only managed-identity checks across workspace kinds and new service boundaries, then record the Cloudflare version and final hosted results. No provider secret needs to be uploaded while the reused key is credit-exhausted. No paid upgrade or Milestone 4 work was initiated.

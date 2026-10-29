@@ -1,0 +1,83 @@
+{
+  "approvedDevelopmentOnly": true,
+  "checks": [
+    {
+      "table": "ac_users",
+      "before": 7,
+      "after": 7,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_workspaces",
+      "before": 9,
+      "after": 9,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_memberships",
+      "before": 9,
+      "after": 9,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_identity_links",
+      "before": 3,
+      "after": 3,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_organizations",
+      "before": 9,
+      "after": 9,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_records",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_events",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_allocations",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ac_journal",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "businesses",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "transactions",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "invoices",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    },
+    {
+      "table": "ledger",
+      "before": 0,
+      "after": 0,
+      "originalIdentitiesPresent": true
+    }
+  ]
+}
