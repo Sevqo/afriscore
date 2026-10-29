@@ -44,9 +44,10 @@ COPY website/package.json website/package-lock.json ./
 RUN npm ci
 COPY website ./
 COPY dashboard/shared /app/dashboard/shared
-# The browser and backend share only this pure, local password policy.
+# Pure shared browser/backend contracts; no server credentials or DB modules.
 COPY src/platform/password-strength.ts /app/src/platform/password-strength.ts
 COPY src/marketplace/catalog.ts /app/src/marketplace/catalog.ts
+COPY src/finance/money.ts /app/src/finance/money.ts
 RUN npm run build
 
 # --- Production dependencies only ------------------------------------------
