@@ -1,4 +1,5 @@
 import {connected} from './operations/connected-routes';
+import {appRoutes} from './apps/routes';
 import {finance} from './finance/routes';
 // First import on purpose: src/config.ts loads a local .env before ./db is
 // imported below, and the DB adapter snapshots DATABASE_URL at import time.
@@ -83,6 +84,7 @@ export function createApp() {
   app.use(developerRequestLog);
   app.use('/api/v1',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
   app.use('/api/v1', sameOrigin, connected);
+  app.use('/api/v1', sameOrigin, appRoutes);
   app.use('/api/v1', sameOrigin, finance);
   app.use('/api/v1', sameOrigin, platform);
   app.use('/api/v1',sameOrigin,marketplace);

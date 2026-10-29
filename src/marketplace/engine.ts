@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {activationSource,activeAppSources,type ActivationSource} from './activation-sources';
 import {z} from 'zod';
 import {dbAll,dbGet,dbRun,dbTransaction} from '../db/adapter';
 import type {Access} from '../platform/auth';
@@ -31,7 +32,7 @@ export async function catalogFor(a:Access){
  const defs=all.filter(s=>s.kinds.includes(kind));
  return {workspace_id:a.org,environment:a.environment,kind,collection_enabled:false,currency:'KES',services:defs.map(s=>{const e=entitlements.find(e=>e.service_id===s.id);const row=prices.find(p=>p.id===e?.price_id)||prices.find(p=>p.service_id===s.id&&JSON.parse(p.data).effective_at<=stamp()&&(!JSON.parse(p.data).expires_at||JSON.parse(p.data).expires_at>stamp()));return {...s,status:!s.enabled?'unavailable':e?.status||'available',entitlement:e?{status:e.status,favorite:!!e.favorite,position:e.position,activated_at:e.activated_at,updated_at:e.updated_at}:null,price:row?JSON.parse(row.data):null,setup_ready:setupReady(s.id)};}),foundation:['Identity','Workspaces','Account security','Team access','Basic reporting and exports','Account notifications','Audit history','Service discovery','Usage & Billing']};
 }
-export async function activate(a:Access,id:string,input:unknown={}){
+export async function activate(a:Access,id:string,input:unknown={},source:ActivationSource={type:'direct',id:'direct'}){
  if(a.api||!['owner','admin'].includes(a.role))reject(403,'A workspace owner or admin must manage services');
  const d=z.object({confirm_price_version:z.string().max(60).optional()}).strict().parse(input);
  return dbTransaction(async()=>{
@@ -44,7 +45,7 @@ export async function activate(a:Access,id:string,input:unknown={}){
   for(const dep of s.dependencies)if((await entitlement(a,dep))?.status!=='active')reject(409,'Activate the disclosed dependency first: '+dep);
   const current=await entitlement(a,id);
   if(current?.status==='suspended')reject(403,'Service is suspended; request an access review');
-  if(current?.status==='active'&&setupReady(id))return {service_id:id,status:'active',existing:true};
+  if(current?.status==='active'&&setupReady(id)){await activationSource(a,id,source);for(const dependency of s.dependencies)await activationSource(a,dependency,source.type==='app'?source:{type:'direct',id:'dependency:'+id});return {service_id:id,status:'active',existing:true};}
   const price=current&&current.status!=='disabled'?await dbGet('SELECT * FROM ac_service_prices WHERE id=?',[current.price_id]):await eligiblePrice(id);
   const p:Price=JSON.parse(price.data);
   if(p.model!=='free'&&!Number((await dbGet('SELECT verified FROM ac_users WHERE id=?',[a.actor]))?.verified))reject(403,'Verify your email before activating a non-free estimate plan');
@@ -52,6 +53,8 @@ export async function activate(a:Access,id:string,input:unknown={}){
   const status=setupReady(id)?'active':'requires_setup',at=stamp();
   await dbRun('INSERT INTO ac_service_entitlements(org_id,environment,service_id,status,price_id,activated_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(org_id,environment,service_id) DO UPDATE SET status=excluded.status,price_id=excluded.price_id,activated_at=excluded.activated_at,updated_at=excluded.updated_at',[a.org,a.environment,id,status,price.id,at,at]);
   await history(a,id,'activated',{status,price_version:p.version,charging_enabled:false});
+  await activationSource(a,id,source);
+  for(const dependency of s.dependencies)await activationSource(a,dependency,source.type==='app'?source:{type:'direct',id:'dependency:'+id});
   return {service_id:id,status,existing:!!current,charging_enabled:false};
  });
 }
@@ -61,6 +64,7 @@ export async function deactivate(a:Access,id:string,input:unknown){
  return dbTransaction(async()=>{
   await lockWorkspace(a.org);await currentManager(a);const e=await entitlement(a,id);if(!e)reject(404,'Service was not activated');
   if(e.status==='suspended')reject(403,'Suspension requires an internal access review');
+  if((await activeAppSources(a,id)).length)reject(409,'An installed app still requires this service. Review its uninstall options first.');
   const dependents=(await definitions()).filter(s=>s.dependencies.includes(id));
   for(const s of dependents)if((await entitlement(a,s.id))?.status==='active')reject(409,'Deactivate dependent service first: '+s.name);
   const pending=await dbGet("SELECT COUNT(*) AS total FROM ac_usage_reservations WHERE org_id=? AND environment=? AND service_id=? AND status='reserved'",[a.org,a.environment,id]);
@@ -72,6 +76,8 @@ export async function deactivate(a:Access,id:string,input:unknown){
   }
   await dbRun("UPDATE ac_service_entitlements SET status='disabled',updated_at=? WHERE org_id=? AND environment=? AND service_id=?",[stamp(),a.org,a.environment,id]);
   await history(a,id,'deactivated',{history_retained:true,provider_disconnected:false,collection_enabled:false});
+  await dbRun("DELETE FROM ac_service_activation_sources WHERE org_id=? AND environment=? AND service_id=? AND source_type='direct'",[a.org,a.environment,id]);
+  await dbRun("DELETE FROM ac_service_activation_sources WHERE org_id=? AND environment=? AND source_type='direct' AND source_id=?",[a.org,a.environment,'dependency:'+id]);
   return {status:'disabled',history_retained:true,message:'New service operations stopped. Authorized historical reads and exports remain available. No external subscription or collection was started.'};
  });
 }

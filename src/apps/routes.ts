@@ -1,0 +1,14 @@
+import {Router} from 'express';
+import {z} from 'zod';
+import {access,route,fail} from '../platform/auth';
+import {dbAll} from '../db/adapter';
+import {appsFor,installationPreview,installApp,uninstallPreview,uninstallApp,appPreferences} from './installations';
+export const appRoutes=Router();
+const key=(value:unknown)=>z.string().min(8).max(200).parse(value);
+appRoutes.get('/organizations/:org/apps',route(async(req,res)=>res.json(await appsFor(await access(req)))));
+appRoutes.get('/organizations/:org/apps/:app/installation-preview',route(async(req,res)=>{const a=await access(req,'admin');if(a.api)fail(403,'Human administrator required');const optional=z.string().max(600).default('').parse(req.query.optional).split(',').filter(Boolean);res.json(await installationPreview(a,String(req.params.app),optional));}));
+appRoutes.post('/organizations/:org/apps/:app/install',route(async(req,res)=>res.json(await installApp(await access(req,'admin'),String(req.params.app),req.body,key(req.headers['idempotency-key'])))));
+appRoutes.get('/organizations/:org/apps/:app/uninstallation-preview',route(async(req,res)=>res.json(await uninstallPreview(await access(req,'admin'),String(req.params.app)))));
+appRoutes.post('/organizations/:org/apps/:app/uninstall',route(async(req,res)=>res.json(await uninstallApp(await access(req,'admin'),String(req.params.app),req.body,key(req.headers['idempotency-key'])))));
+appRoutes.patch('/organizations/:org/apps/:app/preferences',route(async(req,res)=>res.json(await appPreferences(await access(req,'admin'),String(req.params.app),req.body))));
+appRoutes.get('/organizations/:org/apps/:app/history',route(async(req,res)=>{const a=await access(req,'admin');res.json({data:await dbAll('SELECT id,app_id,actor,action,data,created_at FROM ac_app_history WHERE org_id=? AND environment=? AND app_id=? ORDER BY created_at DESC,id DESC LIMIT 100',[a.org,a.environment,String(req.params.app)])});}));
