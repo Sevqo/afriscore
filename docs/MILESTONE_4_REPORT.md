@@ -44,7 +44,7 @@ Selected service context survives public discovery, existing identity resolution
 
 Native labels, fieldsets/radios, keyboard controls, visible status messages, touch floors, responsive panels and existing focus/reduced-motion rules are preserved. This is practical accessibility work, not a full WCAG certification. All pages are prerendered with unique metadata, canonical/social URLs, factual WebPage structured data and a sitemap using the existing hosted origin. A generated public-path manifest makes unknown edge pages and missing assets return 404 without changing authenticated capability/API fences.
 
-Route splitting reduced the main public entry from approximately 524 kB / 146 kB gzip to approximately 273 kB / 81 kB gzip in the measured builds. Exact final assets may differ slightly after content edits. Workspace, buyer and public trust code load on their destinations. This is a bundle measurement, not a measured field Core Web Vitals/Safari/slow-network acceptance result.
+Route splitting reduced the main public entry from approximately 524 kB / 146 kB gzip to approximately 279 kB / 83 kB gzip in the measured builds. Exact final assets may differ slightly after content edits. Workspace, buyer and public trust code load on their destinations. This is a bundle measurement, not a measured field Core Web Vitals/Safari/slow-network acceptance result.
 
 ## Executed verification
 
@@ -62,7 +62,11 @@ Screenshots and sanitized evidence are in docs/evidence/public-learning. No pre-
 
 ## Deployment
 
-Release publication and final asset/route verification are recorded here after deployment. Backend APIs remain on the verified Milestone 3 release c3b1078; this milestone changes public/UI/gateway behavior and requires no Neon migration. The earlier frontend approval-review availability failure is historical; publishing must still be verified, not inferred from a dry run.
+Source release 4cc59a4ac76a1e567b45d673cc4c8c8384494040 is pushed to main, authored as Cyprian Kiprop <cypriankiprop41@gmail.com>. [CI run 40907702589](https://github.com/Sevqo/afriscore/actions/runs/40907702589) completed successfully. Cloudflare Worker africore-web is published as version 81d4fce6-77c0-4994-b131-2c2b5ea7ce7d at https://africore-web.cypriankiprop41.workers.dev . All 67 public paths returned 200 with expected title and canonical; four unknown-page/asset checks returned 404. Published entry /assets/index-BE7rxfbb.js matches the local build exactly (SHA-256 ee710ea90d5374e6fe10d6ef5f4ade08cbe42e09ed9912bfa1e7e5a3f924896b). Final entry size is 279.09 kB / 82.97 kB gzip. Five edge tests passed, including public 404 behavior; the deployment dry run also passed.
+
+Hosted managed-access checks were repeated successfully after publication. The actual published Learn page was opened and captured at desktop/mobile widths; no browser runtime errors were observed. See [live desktop](evidence/public-learning/learn-live-desktop.jpg), [live mobile](evidence/public-learning/learn-live-mobile.jpg), [public route/asset checks](evidence/public-learning/hosted-public.json), [managed-access checks](evidence/public-learning/hosted-smoke.json) and [responsive samples](evidence/public-learning/responsive.json).
+
+Backend APIs remain on the verified live Milestone 3 release c3b1078; public/UI/gateway changes require no Neon migration. Publishing this build also resolves the earlier Milestone 3 frontend publication hold. The approval-review availability failure is historical; no paid plan or secret change was needed. The final evidence commit is documentation-only and does not change deployed assets.
 
 ## Remaining qualification
 
