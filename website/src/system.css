@@ -2021,3 +2021,9 @@ td.numeric {
 .service-explainer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:24px;margin:28px 0}
 .service-explainer-copy{display:grid;gap:12px}.service-explainer-copy h2,.service-explainer-copy p{margin:0}.service-explainer-copy p{font-size:16px;line-height:1.65;max-width:66ch}.service-explainer .media-container{margin:0;width:100%}.service-diagram-caption{grid-column:1/-1;font-size:13px;margin:0;max-width:80ch}
 @media(max-width:767px){.service-explainer{grid-template-columns:1fr;gap:14px;margin:22px 0}.service-explainer-copy p{font-size:15px}}
+/* Shared operational controls: preserve readable labels and mobile tap targets. */
+:is(.business-shell,.focused-account,.account-entry,.auth-panel) :is(.button,.secondary-button,.quiet-button,button){border-radius:var(--radius-button,8px)}
+:is(.business-shell,.focused-account,.account-entry) .button{background:var(--accent);color:var(--ink,#161616);text-decoration:none}
+:is(.business-shell,.focused-account,.account-entry) :is(button,.button,.secondary-button,.quiet-button):disabled{opacity:.55;cursor:not-allowed}
+:is(.business-shell,.focused-account,.account-entry) :is(button,input,select,summary,a):focus-visible{outline:2px solid var(--accent-text);outline-offset:3px}
+@media(max-width:767px){:is(.business-shell,.focused-account,.account-entry,.auth-panel) :is(button,.button,.secondary-button,.quiet-button){min-height:44px;font-size:14px}:is(.business-shell,.focused-account,.account-entry,.auth-panel) :is(input,select,textarea){font-size:16px;min-height:44px}}

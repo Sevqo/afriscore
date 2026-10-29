@@ -44,7 +44,10 @@ export async function managedSignOut(all = false) {
   }
   const client = await managedClient();
   if (client) {
-    if (all) await client.revokeSessions();
+    if (all) {
+      const result = await client.revokeSessions();
+      if (result.error) throw new Error(result.error.message || 'Provider session revocation failed. Application access was revoked; retry provider sign out.');
+    }
     else {
       const response = await fetch("/api/auth/signout", {
         method: "POST",
@@ -56,7 +59,8 @@ export async function managedSignOut(all = false) {
       });
       if (!response.ok) throw new Error("Session revocation failed");
     }
-    await client.signOut();
+    const result = await client.signOut();
+    if (result.error) throw new Error(result.error.message || 'Provider sign out failed');
   } else if (!all)
     await fetch("/api/auth/signout", {
       method: "POST",
