@@ -59,4 +59,17 @@ Local artifacts (ignored, synthetic apart from the owner's supplied before image
 
 ## Deployment
 
-Pending final release publication and public asset verification; exact commit and Worker version will be appended below. Backend behavior and schema are unchanged, so the existing Render backend is retained. A frontend rollback can redeploy the previous Worker version without modifying data. Major product expansion remains held for review.
+Published and verified on 29 October 2026 at 08:50 EAT. Backend behavior and schema are unchanged, so the existing Render backend is retained. A frontend rollback can redeploy the previous Worker version without modifying data. Major product expansion remains held for review.
+
+
+### Verified release record
+
+- Implementation commit: [d4a964ba28da73ab599c0855793157406da1144e](https://github.com/Sevqo/afriscore/commit/d4a964ba28da73ab599c0855793157406da1144e), pushed to main with author email cypriankiprop41@gmail.com. Connected GitHub profile and Cloudflare OAuth account match that address.
+- [All five GitHub CI jobs passed](https://github.com/Sevqo/afriscore/actions/runs/40825415459): SQLite, PostgreSQL, type/lint/startup/gateway, website/content and local EVM/independent verification.
+- Existing Cloudflare Worker africore-web version **2e3a6adf-8e03-40a4-9332-4ae28d3d7dca** is deployed. [Open AfriCore](https://africore-web.cypriankiprop41.workers.dev).
+- Published main script: /assets/index-CAKwGQEi.js; CSS: /assets/index-Dlz8P9yU.css. Public asset readback confirms mobile usage cards, password confirmation, session controls and usage overview.
+- Public root and account route return 200; auth configuration 200; anonymous account API 401; public internal service administration 404. These are route/asset/security-boundary checks, not authenticated provider mutations.
+- Existing Render backend and Neon configuration/schema/data were retained. No auth-provider migration, database DDL, secret rotation, financial operation or owner-account security change was performed.
+- Ignored live evidence: .tmp/quality/deployment.log, live-before.json and live-after.json. The disposable PostgreSQL instance was stopped after its passing suite.
+
+This release is ready for review with the acceptance limits above. Real managed-account/device acceptance and complete historical account notifications/activity remain open; do not report them as completed or start later product expansion without review.
