@@ -55,4 +55,14 @@ Milestone 3 remains on hold for review.
 
 ## Release outcome
 
-Deployment verification pending while the tested source release is committed.
+Source implementation: [353d614](https://github.com/Sevqo/afriscore/commit/353d61483326b17306732c8a9940b533e24ac604). The initial Render build identified a missing Docker COPY for the shared money module; corrected and released as [183d4d4](https://github.com/Sevqo/afriscore/commit/183d4d47a52c2d3481d9828d11fc0dc151b9d6fb). Both commits were pushed to main with author email cypriankiprop41@gmail.com. The old backend stayed live during the failed build.
+
+Render reports **Deploy succeeded / Live** for 183d4d4 (1m05s), serving the existing backend at https://africore-api.onrender.com. [Deployment screenshot](evidence/milestone2/render-deployed.jpg). Cloudflare Worker africore-web version **bffce182-f889-4b8b-9be0-0e78b84326fa** is deployed at https://africore-web.cypriankiprop41.workers.dev. Public HTML and JavaScript returned 200; the deployed entry asset's SHA-256 matches the tested local build.
+
+[GitHub CI run 40856643021](https://github.com/Sevqo/afriscore/actions/runs/40856643021) completed successfully on release commit 183d4d4: SQLite, PostgreSQL, website build, type/lint/startup/gateway, and local EVM/independent verification jobs all passed.
+
+Read-only hosted smoke checks using the existing synthetic Neon managed identity passed after frontend deployment: Personal/Business/Developer financial summaries each returned 200; provider readiness returned 200 with Daraja disabled; health and PostgreSQL readiness returned 200. No real funds moved. [Sanitized hosted checks](evidence/milestone2/hosted-smoke.json) and [asset verification](evidence/milestone2/assets-live.json).
+
+A comparison against the encrypted pre-migration snapshot confirmed all original IDs remain: seven users, nine workspaces, nine memberships, three managed identity links and nine organization scopes. Existing workspace record/payment/allocation/journal counts were zero before and after; local synthetic financial scenarios were not inserted into hosted workspaces. [Sanitized preservation counts](evidence/milestone2/preservation.json). Existing legacy financial data and earlier trust evidence were not deleted or migrated by this release.
+
+The final report/evidence commit is documentation-only; deployed application source remains 183d4d4. No paid hosting changes, production-branch migration, new auth provider or live payment activation occurred.

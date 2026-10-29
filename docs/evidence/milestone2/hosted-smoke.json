@@ -1,0 +1,30 @@
+{
+  "managedIdentity": true,
+  "checks": [
+    {
+      "kind": "personal",
+      "financial_summary": 200
+    },
+    {
+      "kind": "business",
+      "financial_summary": 200
+    },
+    {
+      "provider_readiness": 200,
+      "daraja_disabled": true
+    },
+    {
+      "kind": "developer",
+      "financial_summary": 200
+    },
+    {
+      "path": "/v1/health",
+      "status": 200
+    },
+    {
+      "path": "/v1/readiness",
+      "status": 200
+    }
+  ],
+  "realFundsMoved": false
+}
