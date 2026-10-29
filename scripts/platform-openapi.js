@@ -46,8 +46,12 @@ for (const name of trustSchemaNames)
   });
 const financialContracts=require('../dist/finance/contracts');for(const [name,schema] of Object.entries(financialContracts))schemas['finance_'+name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
 for(const [name,schema] of Object.entries({dataImportInput:require('../dist/operations/data-platform').dataImportInput,alertPolicy:require('../dist/operations/alerts').alertPolicy}))schemas[name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
+for(const [name,schema]of Object.entries(require('../dist/inventory/contracts')))schemas['inventory_'+name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
+for(const [name,schema] of Object.entries({app_installInput:require('../dist/apps/installations').installInput,app_uninstallInput:require('../dist/apps/installations').uninstallInput,crm_entryInput:require('../dist/operations/crm').crmEntryInput,analytics_savedReportInput:require('../dist/operations/business-analytics').savedReportInput,sales_documentInput:require('../dist/platform/domain').documentSchema}))schemas[name]=z.toJSONSchema(schema,{target:'openapi-3.0',unrepresentable:'any'});
 const paths = {};
 const operations = [
+ ...fs.readFileSync('src/apps/routes.ts','utf8').matchAll(/appRoutes\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
+ ...fs.readFileSync('src/operations/business-routes.ts','utf8').matchAll(/business\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...connected.matchAll(/connected\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...finance.matchAll(/finance\.(get|post|put|patch|delete)\s*\(\s*'([^']+)'/g),
   ...source.matchAll(/platform\.(get|post|patch|delete)\s*\(\s*'([^']+)'/g),
@@ -78,7 +82,7 @@ for (const op of operations) {
         default: 'sandbox',
       },
     });
-  if (path.endsWith('/payment-requests') && method === 'post')
+  if (path.endsWith('/payment-requests') && method === 'post'||['post','put','patch'].includes(method)&&(/\/apps\/[^/]+\/(?:install|uninstall)$/.test(path)||/\/products(?:\/\{id\})?$/.test(path)||/\/inventory\/(?:warehouses(?:\/\{id\}\/locations)?|movements|incoming(?:\/\{id\}\/action)?)$/.test(path)||/\/crm\/(?:entries(?:\/\{id\})?|customers\/\{id\})$/.test(path)||/\/sales\/quotations(?:\/\{id\}(?:\/action)?)?$/.test(path)))
     parameters.push({
       name: 'Idempotency-Key',
       in: 'header',
@@ -133,6 +137,9 @@ for (const op of operations) {
   if(method==='post'&&path.includes('/automation-runs/')&&path.endsWith('/control'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/workflowControlInput'};
   if(method==='post'&&path.endsWith('/feedback'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/feedbackInput'};
   if(method==='post'&&path.includes('/approvals/')&&path.endsWith('/cancel'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/approvalCancelInput'};
+  if(path.includes('/apps/')&&method!=='get'||path.endsWith('/business/workflows/{id}/test'))operation.security=[{session:[]},{managedSession:[]}];
+  const businessSchema=method==='post'?(path.endsWith('/install')?'app_installInput':path.endsWith('/uninstall')?'app_uninstallInput':path.endsWith('/products')?'inventory_productInput':path.endsWith('/inventory/warehouses')?'inventory_warehouseInput':path.endsWith('/locations')?'inventory_locationInput':path.endsWith('/inventory/movements')?'inventory_movementInput':path.endsWith('/inventory/incoming')?'inventory_incomingInput':path.endsWith('/crm/entries')?'crm_entryInput':path.endsWith('/sales/quotations')?'sales_documentInput':path.endsWith('/business/saved-reports')?'analytics_savedReportInput':null):null;
+  if(businessSchema)operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/'+businessSchema};
   const schemaName = path.includes('/trust/')
     ? path.endsWith('/passport')
       ? 'trust_passportInput'

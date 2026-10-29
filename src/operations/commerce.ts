@@ -20,6 +20,8 @@ import { record, update, save } from '../platform/payments';
 import { atomic, change, create, day, get, all, minor } from './store';
 import { emit } from './events';
 import { notify, requireApproval } from './automation';
+import {quantityMilli} from '../inventory/quantity';
+import {dispatchShipmentStock} from '../inventory/service';
 
 const shipmentNext: Record<string, string[]> = {
   pending: ['processing', 'cancelled'],
@@ -52,16 +54,16 @@ export async function shipmentCreate(a: Access, input: unknown) {
       const line = order.items[item.item_index];
       if (
         !line ||
-        item.quantity +
+        quantityMilli(item.quantity) +
           previous.reduce(
             (s, p) =>
               s +
               p.items
                 .filter((i: any) => i.item_index === item.item_index)
-                .reduce((n: number, i: any) => n + i.quantity, 0),
+                .reduce((n: number, i: any) => n + quantityMilli(i.quantity), 0),
             0,
           ) >
-          line.quantity
+          quantityMilli(line.quantity)
       )
         fail(400, 'Shipment quantity exceeds the remaining order quantity');
     }
@@ -124,6 +126,7 @@ export async function shipmentTransition(
     const s = await get(a, id, 'shipments');
     if (!shipmentNext[s.status]?.includes(d.status))
       fail(409, 'Invalid fulfillment transition');
+    if(d.status==='shipped')await dispatchShipmentStock(a,s);
     const result = await change(a, s, {
       status: d.status,
       delivery_assurance: 'seller_reported',
@@ -153,9 +156,9 @@ export async function shipmentTransition(
               sum +
               x.items
                 .filter((i: any) => i.item_index === index)
-                .reduce((n: number, i: any) => n + i.quantity, 0),
+                .reduce((n: number, i: any) => n + quantityMilli(i.quantity), 0),
             0,
-          ) >= line.quantity,
+          ) >= quantityMilli(line.quantity),
     );
     await update(a, order.id, {
       ...order,

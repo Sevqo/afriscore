@@ -1,3 +1,5 @@
+import {AppsWorkspace} from '../apps/AppsWorkspace';
+import {ProductCatalog} from '../apps/ProductCatalog';
 import {DataPlatformView} from '../operations/DataPlatformView';
 import {AssistantView} from '../operations/AssistantView';
 import {CustomerTools} from '../finance/CustomerTools';
@@ -30,6 +32,7 @@ export function FocusedWorkspace({
   const items = personal
     ? [
         "Overview",
+        "Apps",
         ...marketTabs,
         "Assistant",
         "Income",
@@ -44,6 +47,7 @@ export function FocusedWorkspace({
       ]
     : [
         "Overview",
+        "Products",
         ...marketTabs,
         "Assistant",
         "Data",
@@ -104,7 +108,7 @@ export function FocusedWorkspace({
     setBusy(true);
     setError("");
     setData({});
-    if(marketTabs.includes(tab)||!canReadServiceTab(market,tab)){setBusy(false);return;}
+    if(['Apps','Products'].includes(tab)||marketTabs.includes(tab)||!canReadServiceTab(market,tab)){setBusy(false);return;}
     const read=(needed:boolean,path:string)=>needed?call(path):Promise.resolve({data:[]});
     const has=(id:string)=>market.catalog?.services.some((s:any)=>s.id===id&&s.status==='active');
     const requests = personal
@@ -315,7 +319,7 @@ export function FocusedWorkspace({
         <h2>{tab}</h2>
         <Alert error={error} />
         {busy && <p role="status">Updating workspace…</p>}
-        {marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>{tab==='Data'&&<DataPlatformView key={w.id+environment} api={call} writable={['owner','admin','finance'].includes(w.role)}/>} {tab==='Assistant'&&<AssistantView key={w.id+environment} api={call} currency={currency}/>}
+        {tab==='Apps'&&personal?<AppsWorkspace api={call} scope={w.id+'\0'+environment} manager={['owner','admin'].includes(w.role)} navigate={tab=>setTab(({Customers:'Clients',Payments:'Payment Records',Reconciliation:'Payment Records'} as Record<string,string>)[tab]||tab)} services={market.catalog?.services||[]} onServicesChanged={market.reload}/>:tab==='Products'&&!personal?<ServiceGate market={market} tab={tab} navigate={setTab}><ProductCatalog api={call} scope={w.id+'\0'+environment}/></ServiceGate>:marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>{tab==='Data'&&<DataPlatformView key={w.id+environment} api={call} writable={['owner','admin','finance'].includes(w.role)}/>} {tab==='Assistant'&&<AssistantView key={w.id+environment} api={call} currency={currency}/>}
         {personal && (
           <>
             {['Overview','Cash Flow','Reports'].includes(tab)&&<DateRange from={from} to={to} onApply={(start,end)=>{setFrom(start);setTo(end);}}><Field label="Currency"><Currency value={currency} onChange={(e:any)=>setCurrency(e.target.value)}/></Field></DateRange>}

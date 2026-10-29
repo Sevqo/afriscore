@@ -5,6 +5,7 @@ import { Access, audit, fail } from '../platform/auth';
 import { now } from '../platform/crypto';
 export const kinds = [
   'forecast_snapshots',
+  'replenishment_suggestions',
   'expenses',
   'obligations',
   'automations',

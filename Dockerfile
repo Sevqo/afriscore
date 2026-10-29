@@ -47,6 +47,7 @@ COPY dashboard/shared /app/dashboard/shared
 # Pure shared browser/backend contracts; no server credentials or DB modules.
 COPY src/platform/password-strength.ts /app/src/platform/password-strength.ts
 COPY src/marketplace/catalog.ts /app/src/marketplace/catalog.ts
+COPY src/inventory/quantity.ts /app/src/inventory/quantity.ts
 COPY src/finance/money.ts /app/src/finance/money.ts
 RUN npm run build
 

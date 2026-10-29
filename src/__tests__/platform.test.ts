@@ -71,9 +71,11 @@ test('integer money, discounts, taxes and permissions', () => {
   assert.throws(() =>
     documentSchema.parse({
       ...d,
-      items: [{ description: 'A', quantity: 1.5, unit_price_minor: 10 }],
+      items: [{ description: 'A', quantity: 1.0001, unit_price_minor: 10 }],
     }),
   );
+  const fractional=documentSchema.parse({...d,discount_minor:0,tax_bps:0,items:[{description:'Measured service',quantity:1.125,unit_price_minor:101}]});
+  assert.equal(totals(fractional).subtotal_minor,114);
   assert.equal(permitted('viewer', 'finance'), false);
   assert.equal(permitted('operations', 'admin'), false);
   assert.equal(permitted('finance', 'finance'), true);

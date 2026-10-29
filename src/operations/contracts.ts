@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { currencySchema } from '../platform/domain';
+import { currencySchema,quantitySchema } from '../platform/domain';
 export const minor = z.number().int().min(1).max(100000000000);
 export const expenseSchema = z
   .object({
@@ -53,6 +53,9 @@ export const forecastSchema = z
   })
   .strict();
 export const automationTemplates = [
+ {id:'customer_onboarding',name:'Create customer onboarding task',trigger:'customer.created',category:'crm'},
+ {id:'stock_replenishment',name:'Prepare replenishment suggestion',trigger:'inventory.reorder_needed',category:'inventory'},
+ {id:'order_sync_review',name:'Review confirmed-order synchronization',trigger:'order.confirmed',category:'orders'},
  {id:'obligation_due',name:'Upcoming obligation reminder',trigger:'schedule',category:'cash_flow'},
  {id:'credential_expiry',name:'Credential expiry reminder',trigger:'schedule',category:'security'},
  {id:'integration_failed',name:'Failed integration notification',trigger:'integration.sync_failed',category:'integrations'},
@@ -117,6 +120,7 @@ export const automationTemplates = [
     category: 'payments',
   },
 ] as const;
+export function workflowAction(template:string){return template==='customer_onboarding'?'create_crm_follow_up':template==='stock_replenishment'?'replenishment_suggestion':'in_app_notification';}
 export const automationSchema = z
   .object({
     name: z.string().trim().min(1).max(100),
@@ -139,9 +143,9 @@ export const automationSchema = z
       })
       .default({ frequency: 'daily', hour: 9, timezone:'Africa/Nairobi' }),
     delay_minutes:z.number().int().min(0).max(10080).default(0),
-    action: z.literal('in_app_notification').default('in_app_notification'),
+    action: z.enum(['in_app_notification','create_crm_follow_up','replenishment_suggestion']).optional(),
   })
-  .strict();
+  .strict().superRefine((d,ctx)=>{if(['customer_onboarding','stock_replenishment','order_sync_review'].includes(d.template)&&d.conditions.minimum_minor!==0)ctx.addIssue({code:'custom',path:['conditions','minimum_minor'],message:'This event template has no monetary threshold; use zero'});if(d.action&&d.action!==workflowAction(d.template))ctx.addIssue({code:'custom',path:['action'],message:'The action must match its supported template'});});
 export const evidenceSchema = z
   .object({
     statement: z.string().trim().min(5).max(3000),
@@ -169,7 +173,7 @@ export const shipmentSchema = z
       .array(
         z.object({
           item_index: z.number().int().min(0).max(99),
-          quantity: z.number().int().positive().max(100000),
+          quantity: quantitySchema,
         }),
       )
       .min(1)

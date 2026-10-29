@@ -1,5 +1,6 @@
 import {connectedPolicies} from '../operations/connected-metadata';
 import {appPolicies} from '../apps/metadata';
+import {businessPolicies} from '../operations/business-metadata';
 import {financePolicies} from '../finance/metadata';
 /** Exact declared Express route metadata; unknown optional routes fail closed. */
 import {marketplaceRouteKinds} from './metadata';
@@ -38,8 +39,8 @@ servicePolicies['GET '+root+'/trust/credentials/:id/proof']={services:['blockcha
 bind(['credentials','verification_api'],['POST /trust/verify']);
 export function policyFor(method:string,route:string,kind?:string):ServicePolicy|undefined{
  if(route===root+'/records/:kind'||route===root+'/records/:kind/:id'){
-  const services:Record<string,string[]>={customers:['customers','invoicing','orders'],orders:['orders'],invoices:['invoicing'],transactions:['payments','reconciliation'],applications:['developer_api'],integrations:['connect']};
+  const services:Record<string,string[]>={customers:['customers','invoicing','orders','crm','sales'],orders:['orders'],invoices:['invoicing'],transactions:['payments','reconciliation'],applications:['developer_api'],integrations:['connect']};
   return services[kind||'']?{services:method==='GET'&&kind==='orders'?['orders','fulfillment','protected_payments']:services[kind!],meter:method==='POST'&&kind==='customers'?'customers':method==='POST'&&kind==='orders'?'orders':method==='PATCH'&&kind==='invoices'?'invoicing':undefined}:undefined;
  }
- return servicePolicies[(method==='HEAD'?'GET':method)+' '+route]||financePolicies[(method==='HEAD'?'GET':method)+' '+route]||connectedPolicies[(method==='HEAD'?'GET':method)+' '+route]||appPolicies[(method==='HEAD'?'GET':method)+' '+route];
+ return servicePolicies[(method==='HEAD'?'GET':method)+' '+route]||financePolicies[(method==='HEAD'?'GET':method)+' '+route]||connectedPolicies[(method==='HEAD'?'GET':method)+' '+route]||appPolicies[(method==='HEAD'?'GET':method)+' '+route]||businessPolicies[(method==='HEAD'?'GET':method)+' '+route];
 }

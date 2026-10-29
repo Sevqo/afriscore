@@ -1,4 +1,5 @@
 import {basisPoints,sumMinor,exactNumber} from '../finance/money';
+import {quantityMilli} from '../inventory/quantity';
 import { z } from 'zod';
 export const currencySchema = z.enum([
   'KES',
@@ -9,10 +10,14 @@ export const currencySchema = z.enum([
   'TZS',
   'RWF',
 ]);
+export const quantitySchema=z.number().min(0.001).max(100000).refine(n=>{try{quantityMilli(n);return true;}catch{return false;}},'Use at most three decimal places');
 export const itemSchema = z.object({
   description: z.string().trim().min(1).max(500),
-  quantity: z.number().int().min(1).max(100000),
+  quantity: quantitySchema,
   unit_price_minor: z.number().int().min(0).max(10000000000),
+  product_id:z.string().uuid().optional(),
+  warehouse_id:z.string().uuid().optional(),
+  location_id:z.string().uuid().optional(),
 });
 export const documentSchema = z.object({
   customer_id: z.string().uuid(),
@@ -29,7 +34,7 @@ export const documentSchema = z.object({
   payment_instructions: z.string().max(3000).default(''),
 });
 export function totals(doc: z.infer<typeof documentSchema>) {
-  const subtotal_minor = sumMinor(doc.items.map(i=>exactNumber(BigInt(i.quantity)*BigInt(i.unit_price_minor))));
+  const subtotal_minor = sumMinor(doc.items.map(i=>exactNumber((BigInt(quantityMilli(i.quantity))*BigInt(i.unit_price_minor)+500n)/1000n)));
   if (
     !Number.isSafeInteger(subtotal_minor) ||
     doc.discount_minor > subtotal_minor

@@ -378,6 +378,7 @@ platform.post(
             type: z.enum(['individual', 'business']).default('individual'),
             email: z.string().email().or(z.literal('')).default(''),
             phone: z.string().max(50).default(''),
+            address:z.string().max(1000).default(''),
             notes: z.string().max(3000).default(''),
           })
           .parse(req.body);
@@ -507,6 +508,7 @@ platform.patch(
               name: z.string().trim().min(1).max(200).optional(),
               email: z.string().email().or(z.literal('')).optional(),
               phone: z.string().max(50).optional(),
+              address:z.string().max(1000).optional(),
               notes: z.string().max(3000).optional(),
             })
             .strict()
@@ -573,6 +575,7 @@ platform.patch(
             [d.id, a.org, a.environment],
           );
       } else fail(405, 'Unsupported update');
+      if(kind==='invoices'&&d.status==='draft'&&result.status==='issued'){const customer=await record(a,result.customer_id,'customers');result={...result,customer_snapshot:{id:customer.id,name:customer.name,email:customer.email||'',phone:customer.phone||'',address:customer.address||''}};}
       await update(a, d.id, result);
       if(result.status&&result.status!==d.status)await enqueue(a,(kind==='invoices'?'invoice.':'order.')+(result.status==='awaiting_payment'?'confirmed':result.status),{id:d.id});
       await audit(a.org, a.actor, kind + '.updated', d.id);

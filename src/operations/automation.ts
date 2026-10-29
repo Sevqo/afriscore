@@ -1,4 +1,5 @@
-import { automationTemplates, automationSchema,workflowEditInput } from './contracts';
+import { automationTemplates, automationSchema,workflowEditInput,workflowAction } from './contracts';
+import {movementInput} from '../inventory/contracts';
 export { automationTemplates, automationSchema } from './contracts';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
@@ -19,16 +20,20 @@ export async function notify(
     resource_id?: string;
     key: string;
     user_id?: string;
+    severity?:'informational'|'success'|'warning'|'action_required'|'approval_required'|'security';
+    capability?:'read'|'operations'|'finance';
+    action_data?:{app_id?:'finance'|'crm'|'inventory'|'sales'|'analytics'|'automations';section?:string;record_id?:string;approval_id?:string};
   },
 ) {
   const members = await dbAll(
-    'SELECT user_id FROM ac_memberships WHERE org_id=?' +
+    'SELECT user_id,role FROM ac_memberships WHERE org_id=?' +
       (input.user_id ? ' AND user_id=?' : ''),
     [a.org, ...(input.user_id ? [input.user_id] : [])],
   );
   const prefs = await all(a, 'notification_preferences');
   let inserted = 0;
   for (const member of members) {
+    if(!permitted(member.role,input.capability||'read'))continue;
     const pref = prefs.find((p) => p.user_id === member.user_id);
     if (pref?.paused || pref?.muted_categories?.includes(input.category))
       continue;
@@ -38,7 +43,7 @@ export async function notify(
     );
     if (Number(cap.total) >= 100) continue;
     const result = await dbRun(
-      'INSERT INTO ac2_notifications(id,org_id,environment,user_id,category,title,body,resource_id,dedupe_key,created_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(org_id,environment,user_id,dedupe_key) DO NOTHING',
+      'INSERT INTO ac2_notifications(id,org_id,environment,user_id,category,title,body,resource_id,dedupe_key,created_at,severity,action_data) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(org_id,environment,user_id,dedupe_key) DO NOTHING',
       [
         randomUUID(),
         a.org,
@@ -50,6 +55,8 @@ export async function notify(
         input.resource_id || null,
         input.key,
         now(),
+        input.severity||(input.category==='security'?'security':'informational'),
+        JSON.stringify(input.action_data||{}),
       ],
     );
     inserted += result.changes;
@@ -57,8 +64,9 @@ export async function notify(
   return { inserted };
 }
 export async function createAutomation(a: Access, input: unknown) {
-  const d = automationSchema.parse(input);
+  const parsed = automationSchema.parse(input),d={...parsed,action:parsed.action||workflowAction(parsed.template)};
   if (a.api) fail(403, 'A member must own an automation');
+  if(d.template==='customer_onboarding')await requireServices(a,['crm']);if(d.template==='stock_replenishment')await requireServices(a,['inventory']);
   return atomic(a, async()=>{const w=await create(a,'automations',{...d,created_by:a.actor});await saveWorkflowVersion(a,w);return w;});
 }
 export async function setAutomation(a: Access, id: string, enabled: boolean) {
@@ -94,9 +102,12 @@ export async function notificationPreferences(a: Access, input: unknown) {
             'automation_failures',
             'security',
             'team',
+            'inventory',
+            'crm',
+            'sales',
           ]),
         )
-        .max(11),
+        .max(16),
     })
     .strict()
     .parse(input);
@@ -288,29 +299,16 @@ export async function runAutomations(a: Access, at = new Date()) {
             summary.totals.outstanding_minor +
             '. Coverage limits apply; this is not profit or a bank balance.';
         }
-        const delivery=await notify(a, {
-          category: template.category,
-          title: template.name,
-          body,
-          resource_id: resource,
-          key: 'automation:' + run.id,
-          user_id: w.created_by,
-        });
-        await dbRun(
-          "UPDATE ac2_runs SET status='succeeded',attempts=attempts+1,result=?,updated_at=? WHERE id=?",
-          [
-            JSON.stringify({
-              action: 'in_app_notification',
-              external_messages_sent: 0,
-              notifications_created:delivery.inserted,
-              delivery_status:delivery.inserted?'created':'suppressed_by_preferences_or_cap',
-            }),
-            now(),
-            run.id,
-          ],
-        );
-        await audit(a.org, w.created_by, 'automation.succeeded', run.id);
-        if(delivery.inserted)await recordUsage(a,'automations','workflow:'+run.id,1,'workflow_completed');
+        let result:any,completedUnits=0;
+        if(workflowAction(w.template)==='in_app_notification'){
+         const delivery=await notify(a,{category:template.category,title:template.name,body,resource_id:resource,key:'automation:'+run.id,user_id:w.created_by});
+         completedUnits=delivery.inserted?1:0;result={action:'in_app_notification',external_messages_sent:0,notifications_created:delivery.inserted,delivery_status:delivery.inserted?'created':'suppressed_by_preferences_or_cap'};
+        }else{
+         const {executeBusinessWorkflow}=await import('./workflow-actions');result=await executeBusinessWorkflow({...a,actor:w.created_by,role:member.role,api:false},w,run);completedUnits=result.completed_units||0;
+        }
+        await dbRun("UPDATE ac2_runs SET status='succeeded',attempts=attempts+1,result=?,updated_at=? WHERE id=?",[JSON.stringify(result),now(),run.id]);
+        await audit(a.org,w.created_by,'automation.succeeded',run.id);
+        if(completedUnits)await recordUsage(a,'automations','workflow:'+run.id,1,'workflow_completed');
       } catch (error) {
         const attempts = run.attempts + 1;
         await dbRun(
@@ -343,7 +341,7 @@ export async function runAutomations(a: Access, at = new Date()) {
   });
 }
 async function approvalResourceHash(a:Access,id:string){
- const object=await dbGet('SELECT id,kind,data,version,updated_at FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[id,a.org,a.environment])||await dbGet('SELECT id,kind,data,updated_at FROM ac_records WHERE id=? AND org_id=? AND environment=?',[id,a.org,a.environment]);
+ const object=await dbGet('SELECT id,kind,data,version,updated_at FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[id,a.org,a.environment])||await dbGet('SELECT id,kind,data,updated_at FROM ac_records WHERE id=? AND org_id=? AND environment=?',[id,a.org,a.environment])||await dbGet("SELECT id,'products' AS kind,data,version,updated_at FROM ac_products WHERE id=? AND org_id=? AND environment=?",[id,a.org,a.environment])||await dbGet("SELECT id,'quotations' AS kind,data,version,updated_at FROM ac_sales_quotes WHERE id=? AND org_id=? AND environment=?",[id,a.org,a.environment]);
  if(!object)fail(404,'Approval resource not found');
  return hash(JSON.stringify([a.org,a.environment,object.id,object.kind,object.data,object.version??null,object.updated_at]));
 }
@@ -365,13 +363,18 @@ export async function requestApproval(a: Access, input: unknown) {
         'sensitive_integration_change',
         'invoice_adjustment',
         'manual_reconciliation',
+        'stock_adjustment',
+        'sales_discount',
       ]),
       resource_id: z.string().uuid(),
-      parameters:z.object({decision:z.enum(['release','refund']).optional()}).strict().default({}),
+      parameters:z.object({decision:z.enum(['release','refund']).optional(),movement:movementInput.omit({approval_id:true}).optional(),sales_discount:z.object({quote_version:z.number().int().positive(),discount_minor:z.number().int().min(0).max(1e11)}).strict().optional(),credit_note:z.object({amount_minor:z.number().int().positive().max(1e11),reason:z.string().min(5).max(1000),issued_on:z.string().date()}).strict().optional()}).strict().default({}),
     })
     .strict()
     .parse(input);
   if (d.approver === a.actor) fail(400, 'Choose a different approver');
+  if(d.action==='stock_adjustment'&&(!d.parameters.movement||d.parameters.movement.product_id!==d.resource_id||d.parameters.movement.kind!=='adjustment'||d.parameters.movement.quantity_milli>=0))fail(400,'Review the exact negative stock adjustment');
+  if(d.action==='sales_discount'&&!d.parameters.sales_discount)fail(400,'Review the exact quotation discount and version');
+  if(d.parameters.movement&&d.action!=='stock_adjustment'||d.parameters.sales_discount&&d.action!=='sales_discount'||d.parameters.credit_note&&d.action!=='invoice_adjustment'||d.parameters.decision&&d.action!=='dispute_resolution')fail(400,'Parameters do not match the approved operation');
   if(d.action==='dispute_resolution'&&!d.parameters.decision)fail(400,'Choose the exact dispute outcome before requesting review');
   const m = await dbGet(
     'SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',
@@ -390,14 +393,14 @@ export async function requestApproval(a: Access, input: unknown) {
   if (kind) await get(a, d.resource_id, kind);
   else {
     const object = await dbGet(
-      'SELECT id FROM ac_records WHERE id=? AND org_id=? AND environment=?',
+      d.action==='stock_adjustment'?'SELECT id FROM ac_products WHERE id=? AND org_id=? AND environment=?':d.action==='sales_discount'?'SELECT id FROM ac_sales_quotes WHERE id=? AND org_id=? AND environment=?':'SELECT id FROM ac_records WHERE id=? AND org_id=? AND environment=?',
       [d.resource_id, a.org, a.environment],
     );
     if (!object) fail(404, 'Resource not found');
   }
   const id = randomUUID();
   const resourceHash=await approvalResourceHash(a,d.resource_id);
-  const resourceRow=await dbGet('SELECT kind,data FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment])||await dbGet('SELECT kind,data FROM ac_records WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment]);
+  const resourceRow=await dbGet('SELECT kind,data FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment])||await dbGet('SELECT kind,data FROM ac_records WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment])||await dbGet("SELECT 'products' AS kind,data FROM ac_products WHERE id=? AND org_id=? AND environment=?",[d.resource_id,a.org,a.environment])||await dbGet("SELECT 'quotations' AS kind,data FROM ac_sales_quotes WHERE id=? AND org_id=? AND environment=?",[d.resource_id,a.org,a.environment]);
   const source=JSON.parse(resourceRow.data),summary=Object.fromEntries(['amount_minor','currency','buyer_name','recipient_org','state','status','description'].filter(key=>source[key]!==undefined).map(key=>[key,source[key]]));
   await dbRun(
     'INSERT INTO ac2_approvals(id,org_id,environment,requester,approver,action,resource_id,status,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
@@ -420,6 +423,8 @@ export async function requestApproval(a: Access, input: unknown) {
   await notify(a, {
     category: 'security',
     title: 'Approval requested',
+    severity:'approval_required',
+    action_data:{app_id:'automations',section:'Approvals',approval_id:id},
     body: 'Review the request before deciding. Self-approval is not permitted.',
     resource_id: id,
     key: id,
@@ -489,4 +494,11 @@ export async function requireApproval(
 }
 
 export async function saveWorkflowVersion(a:Access,w:any){await dbRun('INSERT INTO ac_workflow_versions(workflow_id,version,org_id,environment,actor,configuration,created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(workflow_id,version) DO NOTHING',[w.id,w.version,a.org,a.environment,a.actor,JSON.stringify(w),now()]);}
-export async function editAutomation(a:Access,id:string,input:unknown){const d=workflowEditInput.parse(input);if(a.api)fail(403,'A human member must own a workflow change');return atomic(a,async()=>{const w=await get(a,id,'automations');if(w.version!==d.expected_version)fail(409,'Workflow changed; reload before editing');await saveWorkflowVersion(a,w);const result=await change(a,w,d.configuration);await saveWorkflowVersion(a,result);await audit(a.org,a.actor,'automation.version_updated',id);return result;});}
+export async function editAutomation(a:Access,id:string,input:unknown){const d=workflowEditInput.parse(input);if(a.api)fail(403,'A human member must own a workflow change');return atomic(a,async()=>{const w=await get(a,id,'automations');if(w.version!==d.expected_version)fail(409,'Workflow changed; reload before editing');await saveWorkflowVersion(a,w);if(d.configuration.template==='customer_onboarding')await requireServices(a,['crm']);if(d.configuration.template==='stock_replenishment')await requireServices(a,['inventory']);const result=await change(a,w,{...d.configuration,action:workflowAction(d.configuration.template)});await saveWorkflowVersion(a,result);await audit(a.org,a.actor,'automation.version_updated',id);return result;});}
+
+/** Read-only execution plan: never queues or performs the supported action. */
+export async function previewAutomation(a:Access,id:string){
+ if(a.api)fail(403,'Human member required');await requireServices(a,['automations']);const w=await get(a,id,'automations'),member=await dbGet('SELECT role FROM ac_memberships WHERE org_id=? AND user_id=?',[a.org,w.created_by]);if(!member||!permitted(member.role,'finance'))fail(409,'Workflow owner no longer has the required authority');
+ const owner={...a,actor:w.created_by,role:member.role,api:false};if(w.template==='customer_onboarding')await requireServices(owner,['crm']);if(w.template==='stock_replenishment')await requireServices(owner,['inventory']);const template=automationTemplates.find(t=>t.id===w.template);if(!template)fail(409,'Unsupported workflow template');const matches=(await candidates(owner,w,new Date())).filter(t=>(!t.payload.currency||t.payload.currency===w.conditions.currency)&&(t.payload.amount_minor===undefined||t.payload.amount_minor>=w.conditions.minimum_minor));
+ return {workflow_id:w.id,version:w.version,enabled:w.enabled,trigger:template!.trigger,action:workflowAction(w.template),candidate_count:matches.length,candidate_limit:100,delay_minutes:w.delay_minutes||0,side_effects_performed:0,notice:'Plan only. No run, task, suggestion, notification, supplier order or payment was created. Execution rechecks the current configuration, source, permissions, limits and preferences.'};
+}

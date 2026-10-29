@@ -26,6 +26,8 @@ export async function creditInvoice(a:Access,id:string,input:unknown,key:string)
   const invoice=await documentBalance(a,id);if(invoice.kind!=='invoices'||!['issued','partially_paid','paid'].includes(invoice.status))fail(409,'Only an issued invoice can receive a credit note');
   if(d.issued_on<invoice.issue_date||d.issued_on>now().slice(0,10))fail(400,'Credit date must follow invoice issue and not be in the future');
   if(d.amount_minor>invoice.outstanding_minor)fail(409,'Credit exceeds the unpaid amount; paid amounts require an authorized refund');
+  const policy=await dbGet('SELECT configuration FROM ac_business_policies WHERE org_id=? AND environment=?',[a.org,a.environment]);
+  if(policy&&JSON.parse(policy.configuration).require_invoice_correction_approval){const {requireApproval}=await import('../operations/automation');await requireApproval(a,d.approval_id,'invoice_adjustment',id,{credit_note:{amount_minor:d.amount_minor,reason:d.reason,issued_on:d.issued_on}});}
   const credit={id:randomUUID(),reference:'CRN-'+randomUUID().slice(0,12).toUpperCase(),invoice_id:id,...d};
   await dbRun('INSERT INTO ac_credit_notes(id,org_id,environment,invoice_id,reference,amount_minor,reason,issued_on,actor,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',[credit.id,a.org,a.environment,id,credit.reference,d.amount_minor,d.reason,d.issued_on,a.actor,now()]);
   const refreshed=await refreshDocument(a,id);await dbRun("UPDATE ac_requests SET status='cancelled' WHERE document_id=? AND org_id=? AND environment=? AND status IN ('pending','failed')",[id,a.org,a.environment]);await audit(a.org,a.actor,'invoice.credited',credit.id);await enqueue(a,'invoice.credited',{id,credit_note_id:credit.id,amount_minor:d.amount_minor});

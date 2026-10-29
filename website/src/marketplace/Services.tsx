@@ -26,11 +26,11 @@ export type MarketplaceState=ReturnType<typeof useMarketplace>;
 const tabServices=(tab:string)=>['Customers','Clients'].includes(tab)?['customers','invoicing','orders']:[serviceForTab(tab)];
 export function favoriteTabs(m:MarketplaceState):string[]{return (m.catalog?.services||[]).filter((s:any)=>s.status==='active'&&s.entitlement?.favorite).sort((a:any,b:any)=>a.entitlement.position-b.entitlement.position||a.name.localeCompare(b.name)).flatMap((s:any)=>s.tabs.slice(0,1));}
 export function visibleServiceTab(m:MarketplaceState,tab:string){
- if(foundationTabs.includes(tab)||marketTabs.includes(tab))return true;
+ if(tab==='Apps'||foundationTabs.includes(tab)||marketTabs.includes(tab))return true;
  return !!m.catalog?.services.some((s:any)=>tabServices(tab).includes(s.id)&&s.status==='active');
 }
 export function canReadServiceTab(m:MarketplaceState,tab:string){
- if(foundationTabs.includes(tab)||marketTabs.includes(tab)||tab==='Engineering')return true;
+ if(tab==='Apps'||foundationTabs.includes(tab)||marketTabs.includes(tab)||tab==='Engineering')return true;
  return !!m.catalog?.services.some((s:any)=>tabServices(tab).includes(s.id)&&['active','disabled'].includes(s.status));
 }
 export function ServiceGate({market,tab,navigate,children}:{market:MarketplaceState;tab:string;navigate:(tab:string)=>void;children:ReactNode}){

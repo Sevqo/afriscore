@@ -29,6 +29,7 @@ export async function save(
   data: any,
   id: string = randomUUID(),
 ) {
+  if(['orders','invoices'].includes(kind)&&Array.isArray(data.items)){const {snapshotCatalogItems}=await import('../inventory/service');data={...data,items:await snapshotCatalogItems(a,data.items)};}
   await dbRun(
     'INSERT INTO ac_records(id,org_id,environment,kind,data,created_at,updated_at) VALUES (?,?,?,?,?,?,?)',
     [id, a.org, a.environment, kind, JSON.stringify(data), now(), now()],
@@ -38,10 +39,14 @@ export async function save(
   return { ...data, id, kind };
 }
 export async function update(a: Access, id: string, data: any) {
+ return dbTransaction(async()=>{
+  const before=await record(a,id);
   await dbRun(
     'UPDATE ac_records SET data=?,updated_at=? WHERE id=? AND org_id=? AND environment=?',
     [JSON.stringify(data), now(), id, a.org, a.environment],
   );
+  if(before.kind==='orders'){const {synchronizeOrder}=await import('../operations/sales');await synchronizeOrder(a,before,{...data,id,kind:'orders'});}
+ });
 }
 export async function enqueue(a: Access, type: string, data: any, captureEvent = true) {
   if(captureEvent) await capture(a,type,data);

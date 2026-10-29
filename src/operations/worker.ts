@@ -1,4 +1,5 @@
 import {purgeExpiredConversations,processIntelligencePolicy} from './connected-worker';
+import {processBusinessEvents} from './business-worker';
 import { dbAll,dbGet } from '../db';
 import { runAutomations } from './automation';
 import { all } from './store';
@@ -26,6 +27,7 @@ export async function processOperations() {
           api: false,
         };
         try {
+          await processBusinessEvents(a);
           const enabled=async(service:string)=>!!await dbGet("SELECT e.service_id FROM ac_service_entitlements e JOIN ac_services s ON s.id=e.service_id WHERE e.org_id=? AND e.environment=? AND e.service_id=? AND e.status='active' AND s.enabled=1",[a.org,a.environment,service]);
           if(await enabled('intelligence'))await processIntelligencePolicy(a);
           if(await enabled('automations'))await runAutomations(a);

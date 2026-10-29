@@ -171,7 +171,7 @@ operations.get(
     await access(req);
     res.json({
       data: automationTemplates,
-      available_actions: ['in_app_notification'],
+      available_actions: ['in_app_notification','create_crm_follow_up','replenishment_suggestion'],
       external_delivery: 'not_configured',
     });
   }),

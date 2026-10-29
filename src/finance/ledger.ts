@@ -18,6 +18,7 @@ export async function refreshDocument(a:Access,id:string){
  const status=['draft','voided','cancelled'].includes(d.status)?d.status:d.credited_minor===d.total_minor?'credited':d.outstanding_minor===0?'paid':d.paid_minor>0?'partially_paid':d.kind==='orders'?'awaiting_payment':'issued';
  const next={...d,status,...(d.kind==='orders'?{payment_status:status}:{} )};
  await dbRun('UPDATE ac_records SET data=?,updated_at=? WHERE id=? AND org_id=? AND environment=?',[JSON.stringify(next),new Date().toISOString(),id,a.org,a.environment]);
+ if(d.kind==='invoices'&&status==='paid'&&d.status!=='paid'){const {emit}=await import('../operations/events');await emit(a,'invoice.paid',{id,customer_id:d.customer_id,credited_minor:d.credited_minor,schema_version:1});}
  if(d.order_id){const order=await dbGet("SELECT data FROM ac_records WHERE id=? AND org_id=? AND environment=? AND kind='orders'",[d.order_id,a.org,a.environment]);if(order)await dbRun('UPDATE ac_records SET data=?,updated_at=? WHERE id=? AND org_id=? AND environment=?',[JSON.stringify({...JSON.parse(order.data),payment_status:status,paid_minor:d.paid_minor,credited_minor:d.credited_minor}),new Date().toISOString(),d.order_id,a.org,a.environment]);}
  return next;
 }

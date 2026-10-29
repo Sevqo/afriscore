@@ -89,8 +89,7 @@ export function AutomationView({
             </Field>
           </div>
           <p>
-            Action: notify the workflow owner in AfriCore. No customer message
-            or financial action is sent.
+            Action follows the selected supported template: notify the owner, create an assigned CRM follow-up, or prepare a replenishment suggestion for review. No customer message, supplier order or financial action is sent.
           </p>
           <label className="checkbox-field">
             <input type="checkbox" name="enabled" />

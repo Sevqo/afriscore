@@ -169,3 +169,7 @@ The owner approved Milestone 3 and reuse of the existing OpenAI key. See CONNECT
 
 ## Public learning continuation — 29 October 2026
 Milestone 4 is owner-authorized. See MILESTONE_4_REPORT.md, PUBLIC_LEARNING_ARCHITECTURE.md and PUBLIC_PRODUCT_CAPABILITIES.md for added public journeys, isolated exercises, browser-local learning, catalog-backed discovery, service-context handoff, route splitting, SEO and precise release qualification. No database migration, identity merge, paid upgrade or live financial/provider activation is part of this milestone.
+
+## Apps Wave 1 — local checkpoint, 30 October 2026
+
+The owner-authorized first six apps are in progress on `codex/business-apps-wave-1`. Registry/reviewed activation ownership, canonical CRM/stock/quotation/order-draft-invoice integration, exact approvals, saved reporting, durable event notifications and supported workflow actions are implemented locally with first-pass interfaces. Clean SQLite: 286 passed plus one PostgreSQL-only skip; local PostgreSQL: 287 passed. Affected suites after read-only workflow preview passed 15 per database. Website checks: 37 passed. Hosted migrations, final UI acceptance, deployment and main push are still outstanding; the existing Milestone 4 release remains live. Details and limitations: APPS_WAVE_1_ARCHITECTURE.md. No complete-wave or hosted claim is made.

@@ -1,5 +1,5 @@
 import {z} from 'zod';
-export const creditInput=z.object({amount_minor:z.number().int().positive().max(100000000000),reason:z.string().trim().min(5).max(1000),issued_on:z.string().date()}).strict();
+export const creditInput=z.object({amount_minor:z.number().int().positive().max(100000000000),reason:z.string().trim().min(5).max(1000),issued_on:z.string().date(),approval_id:z.string().uuid().optional()}).strict();
 export const allocationInput=z.object({allocations:z.array(z.object({document_id:z.string().uuid(),amount_minor:z.number().int().positive().max(100000000000)}).strict()).min(1).max(50),reason:z.string().trim().min(5).max(1000)}).strict();
 export const returnInput=z.object({type:z.enum(['refunded','reversed']),amount_minor:z.number().int().positive().max(100000000000),reason:z.string().trim().min(5).max(1000)}).strict();
 export const fulfillmentInput=z.object({action:z.enum(['fulfill','skip']),record_expense:z.boolean().default(false)}).strict();

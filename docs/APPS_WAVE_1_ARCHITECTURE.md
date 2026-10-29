@@ -25,3 +25,28 @@ Implement shared product/warehouse/immutable-stock/reservation and CRM/quotation
 ## Independently executed foundation checks
 
 Five isolated SQLite HTTP/integration tests pass: reviewed activation/idempotency/no install meter; direct/shared ownership and retained canonical customer reads after uninstall; changed review/price and cross-workspace/nonadministrator denial; dependency-safe preservation; Personal/Developer compatibility. TypeScript passed. Early fixture errors were corrected: Personal/Developer setup requires a name; explicit keep must establish direct ownership even when another app also uses the service. PostgreSQL and full-regression/release qualification remain required for the complete wave.
+
+## Connected business operations checkpoint — 30 October 2026
+
+Migration 011-connected-business-operations adds shared products, warehouses/locations, signed physical movements, incoming plans, order-line reservations, CRM relationship metadata, quotations, linked draft-invoice policy, actor-private saved reports, durable business-event receipts and notification action metadata. It is local only; neither 010 nor 011 has been applied to hosted Neon. No hosted release is claimed.
+
+Stock quantities use exact integer thousandths with explicit units; unit/box products remain integral. Reservation is separate from dispatch, partial shipment dispatch consumes only its matching reservation, returns are bounded by original physical dispatch and transfers post paired movements atomically. Reference cost does not establish valuation. Existing organization locks and durable idempotency serialize competing stock/order operations. Reviewed Sales installation prepares a canonical draft invoice through the policy owner's current authority; it never issues or collects automatically. Issued invoices capture customer/address and product snapshots. Existing allocations, provider evidence, credit/return ledgers and tax/minor-unit calculations remain authoritative.
+
+Business Finance/Sales installation review discloses the exact second-person approval requirement for issued-invoice credits. Significant stock adjustments and large sales discounts use the existing assigned, unexpired, exact-resource/version/parameter-bound approval mechanism. Personal Finance retains its simpler existing policy. No authentication migration, live provider activation, external messages, paid hosting or real-fund operation occurs.
+
+The existing event/worker engine now consumes canonical events with scoped receipts and preference-aware notifications. Supported new workflow actions create one assigned CRM follow-up or one review-only stock replenishment suggestion, using stable run identity. They do not create supplier orders. The workflow test endpoint is a read-only candidate plan; no run or action is created. Configurations remain versioned and retries bounded. Workers can pause when free hosting sleeps.
+
+## Interfaces and remaining release work
+
+First-pass local interfaces exist for the six apps, reviewed installation/uninstall, financial chart/aging/category composition, CRM pipeline/tasks/activity, Inventory operations, Sales quotations, Analytics source coverage/saved views, Automations and a polling notification bell. Business direct-service entry points and Personal Finance/Analytics launcher are being connected; Developer remains direct-service only. The approved screenshot supplies visual structure, never account records, amounts, a photo/avatar or future apps.
+
+This checkpoint is not full Wave 1 acceptance. Required work still includes complete contextual navigation/search/account controls; complete Personal/Developer browser journeys; richer product/warehouse/order editing and multi-line quotation allocation; usable second-person approval request/selection from the new operational forms; replenishment suggestion review; notification action targeting and all-kind coverage; full desktop/mobile journey and keyboard QA; additional inventory/location/transfer/incoming and authority-revocation tests; final contract/edge/chain checks; guarded encrypted-backup/readback migration on the approved development branch; backend then frontend deployment; hosted identity/data/asset verification; final report and main push. Existing live Milestone 4 deployment is unchanged.
+
+## Checkpoint verification
+
+- Clean SQLite complete run: 287 discovered, 286 passed, one PostgreSQL-only recovery test skipped, zero failures (`.tmp/connected/apps-full-sqlite-clean.log`).
+- PostgreSQL complete run on disposable local `africore_apps_wave1_test`: 287 passed, zero failures (`apps-full-postgres.log`).
+- After adding workflow read-only preview and rejecting unsupported monetary thresholds: affected installation/cross-app suites passed 15/15 on SQLite and 15/15 on PostgreSQL (`apps-final-targeted-*.log`).
+- Website build/content/chart/auth-cache checks: 37 passed at the preceding UI build; further interface changes require a final repeat. Lint/architecture and development configuration checks passed; API generator and OpenAPI validation passed before the final new endpoint and must be rechecked for release.
+- Synthetic local browser check at desktop 1440×1080 and mobile 390×844 confirmed connected Finance/CRM data, dark navigation, chart coverage labels and stacked CRM records without horizontal overflow. Found public-section padding inheritance and mobile multi-child cell alignment; fixes are local and final captures are pending. This is desktop browser emulation, not physical-phone acceptance.
+- Screenshots under docs/visual-qa/apps are explicitly in-progress synthetic evidence, not final before/after or hosted verification.

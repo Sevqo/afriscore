@@ -1,3 +1,9 @@
+import {CrmWorkspace} from './apps/CrmWorkspace';
+import {InventoryWorkspace} from './apps/InventoryWorkspace';
+import {SalesWorkspace} from './apps/SalesWorkspace';
+import {ProductCatalog} from './apps/ProductCatalog';
+import {NotificationBell} from './apps/NotificationBell';
+import {AppsWorkspace} from './apps/AppsWorkspace';
 import {CustomerTools} from './finance/CustomerTools';
 import {FinancialOverview} from './finance/FinancialOverview';
 import {parseMoney,parsePercent} from '../../src/finance/money';
@@ -164,7 +170,7 @@ const navigation: { label: string; icon: IconName; items: string[] }[] = [
   {
     label: 'Workspace',
     icon: 'grid',
-    items: ['Overview', ...marketTabs, 'Customers', 'Orders', 'Invoices', 'Payments'],
+    items: ['Overview', 'Apps', 'Customer Relationships', 'Products', 'Inventory', 'Quotations', ...marketTabs, 'Customers', 'Orders', 'Invoices', 'Payments'],
   },
   {
     label: 'Finance & intelligence',
@@ -309,7 +315,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     if (currentScope.current !== viewScope) return;
     const latest = requestGate.current.begin();
     const current = () => latest() && currentScope.current === viewScope;
-    if (!org || tab==='Expenses' || marketTabs.includes(tab) || !canReadServiceTab(market,tab) || tab === 'Business Passport' || operationsTabs.includes(tab)) {
+    if (!org || ['Apps','Customer Relationships','Products','Inventory','Quotations'].includes(tab) || tab==='Expenses' || marketTabs.includes(tab) || !canReadServiceTab(market,tab) || tab === 'Business Passport' || operationsTabs.includes(tab)) {
       setError('');
       setBusy(false);
       return;
@@ -816,7 +822,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                 Production (collection disabled)
               </option>
             </select>}
-            <span>{me?.email}</span>
+            {org&&!isDemo()&&<NotificationBell key={org+'\0'+environment} api={call} scope={org+'\0'+environment} navigate={setTab}/>}<span>{me?.email}</span>
           </div>
         </header>
         <main className="workspace-content">
@@ -900,7 +906,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
           )}
           {!org || creating === ('workspace' as any) ? (
             onboardingForm()
-          ) : marketTabs.includes(tab) ? <Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)}/> : (
+          ) : tab==='Apps' ? <AppsWorkspace api={call} scope={org+'\0'+environment} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)} navigate={setTab} services={market.catalog?.services||[]} onServicesChanged={market.reload}/> : marketTabs.includes(tab) ? <Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)}/> : (
             <ServiceGate market={market} tab={tab} navigate={setTab}><>
               {creating && (
                 <form className="panel create-form" onSubmit={create}>
@@ -992,7 +998,11 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                   serviceIds={market.catalog?.services.filter((s:any)=>s.status==='active').map((s:any)=>s.id)||[]}
                 />
               )}
-              {tab==='Customers'&&<CustomerTools api={call} org={org} environment={environment} writable={writable} onChanged={load}/>}
+              {tab==='Customer Relationships'&&<CrmWorkspace api={call} scope={org+'\0'+environment} navigate={setTab}/>}
+{tab==='Products'&&<ProductCatalog api={call} scope={org+'\0'+environment}/>}
+{tab==='Inventory'&&<InventoryWorkspace api={call} scope={org+'\0'+environment}/>}
+{tab==='Quotations'&&<SalesWorkspace api={call} scope={org+'\0'+environment} navigate={setTab}/>}
+{tab==='Customers'&&<CustomerTools api={call} org={org} environment={environment} writable={writable} onChanged={load}/>}
               {['Cash Flow','Reports'].includes(tab)&&<FinancialOverview api={call} scope={org+'\0'+environment}/>}
               {tab==='Invoices'&&<div className="finance-toolbar" aria-label="Invoice views">{[['all','All invoices'],['draft','Drafts'],['outstanding','Outstanding'],['overdue','Overdue'],['paid','Paid'],['credited','Credited']].map(([value,label])=><button key={value} className="secondary-button" aria-pressed={invoiceFilter===value} onClick={()=>{setOffset(0);setInvoiceFilter(value);}}>{label}</button>)}</div>}
               {['Payments','Reconciliation'].includes(tab)&&<PaymentCentre key={org+environment+tab} api={call} scope={org+'\0'+environment} writable={writable} admin={['owner','admin'].includes(organization?.role)} reconcile={tab==='Reconciliation'}/>}

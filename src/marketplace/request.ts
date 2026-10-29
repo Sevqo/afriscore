@@ -30,6 +30,7 @@ export async function checkServiceAccess(req:Request,a:Access){
  if(meter==='protected_payments'&&req.route.path!=='/organizations/:org/protected-sales')meter=undefined;
  if(meter==='reconciliation'&&req.route.path!=='/organizations/:org/reconciliation/:id/review')meter=undefined;
  if(meter==='reconciliation'&&req.method!=='POST')meter=undefined;
+ if(meter==='inventory'&&req.route.path==='/organizations/:org/inventory/incoming/:id/action'&&req.body?.action!=='receive')meter=undefined;
  const services=[...new Set([...(a.api?['developer_api']:[]),...(meter?[meter]:[])])];
  context.reservations||=[];
  for(const service of services)if(!context.reservations.some(r=>r.service===service))context.reservations.push({id:await reserve(a,service),service});
