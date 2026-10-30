@@ -1,3 +1,6 @@
+import {NotificationCentre} from '../apps/NotificationCentre';
+import {NotificationBell} from '../apps/NotificationBell';
+import {WorkspaceAccountMenu} from '../apps/WorkspaceAccountMenu';
 import {AppsWorkspace} from '../apps/AppsWorkspace';
 import {ProductCatalog} from '../apps/ProductCatalog';
 import {DataPlatformView} from '../operations/DataPlatformView';
@@ -33,6 +36,7 @@ export function FocusedWorkspace({
     ? [
         "Overview",
         "Apps",
+        "Notifications",
         ...marketTabs,
         "Assistant",
         "Income",
@@ -47,6 +51,7 @@ export function FocusedWorkspace({
       ]
     : [
         "Overview",
+        "Notifications",
         "Products",
         ...marketTabs,
         "Assistant",
@@ -108,7 +113,7 @@ export function FocusedWorkspace({
     setBusy(true);
     setError("");
     setData({});
-    if(['Apps','Products'].includes(tab)||marketTabs.includes(tab)||!canReadServiceTab(market,tab)){setBusy(false);return;}
+    if(['Apps','Products','Notifications'].includes(tab)||marketTabs.includes(tab)||!canReadServiceTab(market,tab)){setBusy(false);return;}
     const read=(needed:boolean,path:string)=>needed?call(path):Promise.resolve({data:[]});
     const has=(id:string)=>market.catalog?.services.some((s:any)=>s.id===id&&s.status==='active');
     const requests = personal
@@ -238,6 +243,7 @@ export function FocusedWorkspace({
           No {tab.toLowerCase()} records yet. Add a record using the form above.
         </p>
       );
+  const notificationNavigate=(target:string)=>setTab(personal?(({Customers:'Clients',Payments:'Payment Records',Reconciliation:'Payment Records',Approvals:'Notifications',Automations:'Notifications'} as Record<string,string>)[target]||target):(items.includes(target)?target:'Notifications'));
   const navigation=<>
         <Logo />
         <p>{personal ? "PERSONAL WORKSPACE" : "DEVELOPER CONSOLE"}</p>
@@ -285,7 +291,7 @@ export function FocusedWorkspace({
         </button>
       </aside>
       <main className="account-content">
-        <div className="focused-mobile-header"><button className="quiet-button" aria-label={'Open '+(personal?'Personal':'Developer')+' navigation'} aria-expanded={navigationOpen} onClick={()=>setNavigationOpen(true)}><Icon name="menu"/></button><span>{w.name}</span><a href="/app/workspaces">Workspaces</a></div>
+        <div className="focused-mobile-header"><button className="quiet-button" aria-label={'Open '+(personal?'Personal':'Developer')+' navigation'} aria-expanded={navigationOpen} onClick={()=>setNavigationOpen(true)}><Icon name="menu"/></button><span>{w.name}</span><div className="focused-user-actions"><NotificationBell kind={w.kind} api={call} scope={w.id+'\0'+environment} navigate={notificationNavigate}/><WorkspaceAccountMenu name={account.profile?.display_name} email={account.user?.email} role={w.role}/></div></div>
         {navigationOpen&&<Overlay onClose={()=>setNavigationOpen(false)}><aside role="dialog" aria-modal="true" aria-label="Workspace navigation" className="account-nav focused-drawer"><button onClick={()=>setNavigationOpen(false)}>Close menu <Icon name="close"/></button>{navigation}</aside></Overlay>}
         <header className="account-top">
           <div>
@@ -319,7 +325,7 @@ export function FocusedWorkspace({
         <h2>{tab}</h2>
         <Alert error={error} />
         {busy && <p role="status">Updating workspace…</p>}
-        {tab==='Apps'&&personal?<AppsWorkspace api={call} scope={w.id+'\0'+environment} manager={['owner','admin'].includes(w.role)} navigate={tab=>setTab(({Customers:'Clients',Payments:'Payment Records',Reconciliation:'Payment Records'} as Record<string,string>)[tab]||tab)} services={market.catalog?.services||[]} onServicesChanged={market.reload}/>:tab==='Products'&&!personal?<ServiceGate market={market} tab={tab} navigate={setTab}><ProductCatalog api={call} scope={w.id+'\0'+environment}/></ServiceGate>:marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>{tab==='Data'&&<DataPlatformView key={w.id+environment} api={call} writable={['owner','admin','finance'].includes(w.role)}/>} {tab==='Assistant'&&<AssistantView key={w.id+environment} api={call} currency={currency}/>}
+        {tab==='Notifications'?<NotificationCentre api={call} scope={w.id+'\0'+environment} kind={w.kind} navigate={notificationNavigate}/>:tab==='Apps'&&personal?<AppsWorkspace role={w.role} api={call} scope={w.id+'\0'+environment} manager={['owner','admin'].includes(w.role)} navigate={tab=>setTab(({Customers:'Clients',Payments:'Payment Records',Reconciliation:'Payment Records'} as Record<string,string>)[tab]||tab)} services={market.catalog?.services||[]} onServicesChanged={market.reload}/>:tab==='Products'&&!personal?<ServiceGate market={market} tab={tab} navigate={setTab}><ProductCatalog writable={['owner','admin','finance','operations'].includes(w.role)} api={call} scope={w.id+'\0'+environment}/></ServiceGate>:marketTabs.includes(tab)?<Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(w.role)}/>:<ServiceGate market={market} tab={tab} navigate={setTab}>{tab==='Data'&&<DataPlatformView key={w.id+environment} api={call} writable={['owner','admin','finance'].includes(w.role)}/>} {tab==='Assistant'&&<AssistantView key={w.id+environment} api={call} currency={currency}/>}
         {personal && (
           <>
             {['Overview','Cash Flow','Reports'].includes(tab)&&<DateRange from={from} to={to} onApply={(start,end)=>{setFrom(start);setTo(end);}}><Field label="Currency"><Currency value={currency} onChange={(e:any)=>setCurrency(e.target.value)}/></Field></DateRange>}

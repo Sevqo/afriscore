@@ -1,3 +1,8 @@
+import {NotificationCentre} from './apps/NotificationCentre';
+import {WorkspaceSearch} from './apps/WorkspaceSearch';
+import {WorkspaceAccountMenu} from './apps/WorkspaceAccountMenu';
+import {OrderDraftEditor} from './apps/OrderDraftEditor';
+import {useAppContext,AppContextNavigation} from './apps/AppNavigation';
 import {CrmWorkspace} from './apps/CrmWorkspace';
 import {InventoryWorkspace} from './apps/InventoryWorkspace';
 import {SalesWorkspace} from './apps/SalesWorkspace';
@@ -311,6 +316,10 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
     if(idempotent&&!creationKeys.current.has(intent))creationKeys.current.set(intent,crypto.randomUUID());
     return api(base+suffix,method,body,environment,idempotent?{'Idempotency-Key':creationKeys.current.get(intent)!,...headers}:headers).then(result=>{if(idempotent)creationKeys.current.delete(intent);return result;});
   };
+  const [recordTarget,setRecordTarget]=useState<{tab:string;id:string;scope:string}|null>(null);
+  function openRecord(tab:string,id:string){if(tab==='Products'){const scope=org+'\0'+environment;void call('/products/'+id).then(p=>{if(!currentScope.current.startsWith(scope+'\0'))return;const url=new URL(location.href);url.searchParams.set('product-query',p.sku);url.searchParams.set('product-id',p.id);history.replaceState(null,'',url.pathname+url.search+url.hash);setTab('Products');dispatchEvent(new Event('africore:product-search'));}).catch(e=>{if(currentScope.current.startsWith(scope+'\0'))setError(e.message);});return;}setTab(tab);setRecordTarget({tab,id,scope:org+'\0'+environment});setNavOpen(false);}
+  useEffect(()=>{if(!recordTarget||recordTarget.tab!==tab||recordTarget.scope!==org+'\0'+environment)return;let current=true;call('/records/'+tab.toLowerCase()+'/'+recordTarget.id).then(row=>{if(current){setSelected(row);setRecordTarget(null);}}).catch(e=>{if(current){setError(e.message);setRecordTarget(null);}});return()=>{current=false;};},[recordTarget,tab,org,environment]);
+  const appContext=useAppContext(call,org+'\0'+environment,!!org&&!isDemo());
   async function load() {
     if (currentScope.current !== viewScope) return;
     const latest = requestGate.current.begin();
@@ -435,7 +444,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
   const organization = orgs.find((o) => o.id === org),
     writable =
       organization &&
-      ['owner', 'admin', 'finance', 'operations'].includes(organization.role);
+      ['owner', 'admin', 'finance', 'operations'].includes(organization.role),financeWritable=!!organization&&['owner','admin','finance'].includes(organization.role),adminWritable=!!organization&&['owner','admin'].includes(organization.role);
   // The browser demo stores profile fields directly; the API stores serialized profile JSON.
   const profile = organization?.profile
     ? typeof organization.profile === 'string'
@@ -723,7 +732,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
         </div>
         <span className="workspace-label">Business workspace</span>
         <nav aria-label="Business navigation">
-          {[{label:'Pinned services',icon:'grid' as IconName,items:favoriteTabs(market)},...navigation].map(group=>({...group,items:group.items.filter(t=>visibleServiceTab(market,t))})).filter(group=>group.items.length).map((group) => (
+          {appContext.app?<AppContextNavigation app={appContext.app} section={appContext.section} tab={tab} navigate={value=>{setTab(value);setCreating(false);setNavOpen(false);}}/>:[{label:'Pinned services',icon:'grid' as IconName,items:favoriteTabs(market)},...navigation].map(group=>({...group,items:group.items.filter(t=>visibleServiceTab(market,t))})).filter(group=>group.items.length).map((group) => (
             <details
               key={group.label}
               className="workspace-nav-group"
@@ -811,6 +820,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
               + Workspace
             </button>
           </div>
+          {!isDemo()&&org&&<WorkspaceSearch api={call} scope={org+'\0'+environment} services={market.catalog?.services||[]} navigate={setTab} openRecord={openRecord}/>}
           <div>
             {(isDemo()||tab==='Developers')&&<select
               aria-label="Data environment"
@@ -822,7 +832,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                 Production (collection disabled)
               </option>
             </select>}
-            {org&&!isDemo()&&<NotificationBell key={org+'\0'+environment} api={call} scope={org+'\0'+environment} navigate={setTab}/>}<span>{me?.email}</span>
+            {org&&!isDemo()&&<NotificationBell key={org+'\0'+environment} api={call} scope={org+'\0'+environment} navigate={setTab} openRecord={openRecord}/>}{!isDemo()?<WorkspaceAccountMenu name={account?.profile?.display_name} email={me?.email} role={organization?.role}/>:<span>{me?.email}</span>}
           </div>
         </header>
         <main className="workspace-content">
@@ -861,7 +871,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
               </p>
             </div>
             {org &&
-              writable &&
+              writable && (tab==='Invoices'?financeWritable:['Integrations','Developers'].includes(tab)?adminWritable:true) &&
               visibleServiceTab(market,tab) &&
               [
                 'Customers',
@@ -906,7 +916,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
           )}
           {!org || creating === ('workspace' as any) ? (
             onboardingForm()
-          ) : tab==='Apps' ? <AppsWorkspace api={call} scope={org+'\0'+environment} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)} navigate={setTab} services={market.catalog?.services||[]} onServicesChanged={market.reload}/> : marketTabs.includes(tab) ? <Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)}/> : (
+          ) : tab==='Apps' ? <AppsWorkspace openRecord={openRecord} role={organization?.role} api={call} scope={org+'\0'+environment} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)} navigate={setTab} services={market.catalog?.services||[]} onServicesChanged={market.reload}/> : marketTabs.includes(tab) ? <Services market={market} view={tab} navigate={setTab} manager={['owner','admin'].includes(orgs.find((w:any)=>w.id===org)?.role)}/> : (
             <ServiceGate market={market} tab={tab} navigate={setTab}><>
               {creating && (
                 <form className="panel create-form" onSubmit={create}>
@@ -935,6 +945,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                       <Field label="Phone">
                         <input name="phone" />
                       </Field>
+                      <Field label="Address"><textarea name="address" maxLength={1000}/></Field>
                       <Field label="Notes">
                         <textarea name="notes" />
                       </Field>
@@ -998,16 +1009,17 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                   serviceIds={market.catalog?.services.filter((s:any)=>s.status==='active').map((s:any)=>s.id)||[]}
                 />
               )}
-              {tab==='Customer Relationships'&&<CrmWorkspace api={call} scope={org+'\0'+environment} navigate={setTab}/>}
-{tab==='Products'&&<ProductCatalog api={call} scope={org+'\0'+environment}/>}
-{tab==='Inventory'&&<InventoryWorkspace api={call} scope={org+'\0'+environment}/>}
-{tab==='Quotations'&&<SalesWorkspace api={call} scope={org+'\0'+environment} navigate={setTab}/>}
+              {tab==='Customer Relationships'&&<CrmWorkspace writable={!!writable} api={call} scope={org+'\0'+environment} navigate={setTab}/>}
+{tab==='Products'&&<ProductCatalog writable={!!writable} api={call} scope={org+'\0'+environment}/>}
+{tab==='Inventory'&&<InventoryWorkspace writable={!!writable} api={call} scope={org+'\0'+environment}/>}
+{tab==='Quotations'&&<SalesWorkspace writable={!!writable} api={call} scope={org+'\0'+environment} navigate={setTab} services={market.catalog?.services||[]}/>}
 {tab==='Customers'&&<CustomerTools api={call} org={org} environment={environment} writable={writable} onChanged={load}/>}
               {['Cash Flow','Reports'].includes(tab)&&<FinancialOverview api={call} scope={org+'\0'+environment}/>}
               {tab==='Invoices'&&<div className="finance-toolbar" aria-label="Invoice views">{[['all','All invoices'],['draft','Drafts'],['outstanding','Outstanding'],['overdue','Overdue'],['paid','Paid'],['credited','Credited']].map(([value,label])=><button key={value} className="secondary-button" aria-pressed={invoiceFilter===value} onClick={()=>{setOffset(0);setInvoiceFilter(value);}}>{label}</button>)}</div>}
               {['Payments','Reconciliation'].includes(tab)&&<PaymentCentre key={org+environment+tab} api={call} scope={org+'\0'+environment} writable={writable} admin={['owner','admin'].includes(organization?.role)} reconcile={tab==='Reconciliation'}/>}
               {['Cash Flow','Expenses'].includes(tab)&&<MoneyTools api={call} scope={org+'\0'+environment} cashFlow={tab==='Cash Flow'} writable={['owner','admin','finance'].includes(organization?.role)}/>}
-              {operationsTabs.includes(tab) && (
+              {tab==='Notifications'&&<NotificationCentre api={call} scope={org+'\0'+environment} kind="business" navigate={setTab} openRecord={openRecord}/>}
+{operationsTabs.includes(tab)&&tab!=='Notifications' && (
                 <OperationsWorkspace
                   key={org + environment + tab}
                   section={tab}
@@ -1506,7 +1518,8 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                     ) : (
                       <pre>{JSON.stringify(selected, null, 2)}</pre>
                     )}
-                    {['invoices','customers','orders'].includes(selected.kind)&&<RecordFinanceDetails key={org+environment+selected.id} row={selected} api={call} writable={writable} onChanged={async()=>{const scope=viewScope;await load();try{const fresh=await call('/records/'+selected.kind+'/'+selected.id);if(currentScope.current===scope)setSelected(fresh);}catch(e){if(currentScope.current===scope)setError((e as Error).message);}}}/>}
+                    {selected.kind==='orders'&&selected.status==='draft'&&writable&&!isDemo()&&<OrderDraftEditor row={selected} api={call} scope={org+'\0'+environment} services={market.catalog?.services||[]} customers={customers} onSaved={async()=>{const scope=viewScope;await load();try{const fresh=await call('/records/orders/'+selected.id);if(currentScope.current===scope)setSelected(fresh);}catch(e){if(currentScope.current===scope)setError((e as Error).message);}}}/>}
+{['invoices','customers','orders'].includes(selected.kind)&&<RecordFinanceDetails key={org+environment+selected.id} row={selected} api={call} writable={financeWritable} onChanged={async()=>{const scope=viewScope;await load();try{const fresh=await call('/records/'+selected.kind+'/'+selected.id);if(currentScope.current===scope)setSelected(fresh);}catch(e){if(currentScope.current===scope)setError((e as Error).message);}}}/>}
                     {selected.kind === 'customers' && writable && (
                       <form
                         onSubmit={async (e) => {
@@ -1549,6 +1562,7 @@ export function BusinessApp({initialOrg,account}:{initialOrg?:string;account?:an
                             defaultValue={selected.phone}
                           />
                         </Field>
+                        <Field label="Address"><textarea name="address" maxLength={1000} defaultValue={selected.address||''}/></Field>
                         <Field label="Notes">
                           <textarea
                             name="notes"

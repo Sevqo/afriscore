@@ -82,7 +82,7 @@ for (const op of operations) {
         default: 'sandbox',
       },
     });
-  if (path.endsWith('/payment-requests') && method === 'post'||['post','put','patch'].includes(method)&&(/\/apps\/[^/]+\/(?:install|uninstall)$/.test(path)||/\/products(?:\/\{id\})?$/.test(path)||/\/inventory\/(?:warehouses(?:\/\{id\}\/locations)?|movements|incoming(?:\/\{id\}\/action)?)$/.test(path)||/\/crm\/(?:entries(?:\/\{id\})?|customers\/\{id\})$/.test(path)||/\/sales\/quotations(?:\/\{id\}(?:\/action)?)?$/.test(path)))
+  if ((method==='post'&&(/\/business\/orders\/\{id\}\/draft$/.test(path)||/\/inventory\/replenishment-suggestions\/\{id\}\/review$/.test(path)))||(method==='patch'&&/\/inventory\/warehouses\/\{id\}$/.test(path))||path.endsWith('/payment-requests') && method === 'post'||method==='post'&&/\/(?:adjustment-approvals|discount-approvals|correction-review)$/.test(path)||['post','put','patch'].includes(method)&&(/\/apps\/[^/]+\/(?:install|uninstall)$/.test(path)||/\/products(?:\/\{id\})?$/.test(path)||/\/inventory\/(?:warehouses(?:\/\{id\}\/locations)?|movements|incoming(?:\/\{id\}\/action)?)$/.test(path)||/\/crm\/(?:entries(?:\/\{id\})?|customers\/\{id\})$/.test(path)||/\/sales\/quotations(?:\/\{id\}(?:\/action)?)?$/.test(path)))
     parameters.push({
       name: 'Idempotency-Key',
       in: 'header',
@@ -137,7 +137,7 @@ for (const op of operations) {
   if(method==='post'&&path.includes('/automation-runs/')&&path.endsWith('/control'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/workflowControlInput'};
   if(method==='post'&&path.endsWith('/feedback'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/feedbackInput'};
   if(method==='post'&&path.includes('/approvals/')&&path.endsWith('/cancel'))operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/approvalCancelInput'};
-  if(path.includes('/apps/')&&method!=='get'||path.endsWith('/business/workflows/{id}/test'))operation.security=[{session:[]},{managedSession:[]}];
+  if(path.includes('/apps/')&&method!=='get'||path.endsWith('/business/workflows/{id}/test')||/\/(?:adjustment-approvals|discount-approvals|correction-review)$/.test(path))operation.security=[{session:[]},{managedSession:[]}];
   const businessSchema=method==='post'?(path.endsWith('/install')?'app_installInput':path.endsWith('/uninstall')?'app_uninstallInput':path.endsWith('/products')?'inventory_productInput':path.endsWith('/inventory/warehouses')?'inventory_warehouseInput':path.endsWith('/locations')?'inventory_locationInput':path.endsWith('/inventory/movements')?'inventory_movementInput':path.endsWith('/inventory/incoming')?'inventory_incomingInput':path.endsWith('/crm/entries')?'crm_entryInput':path.endsWith('/sales/quotations')?'sales_documentInput':path.endsWith('/business/saved-reports')?'analytics_savedReportInput':null):null;
   if(businessSchema)operation.requestBody.content['application/json'].schema={$ref:'#/components/schemas/'+businessSchema};
   const schemaName = path.includes('/trust/')

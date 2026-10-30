@@ -1,0 +1,8 @@
+import {useState} from 'react';
+import {Overlay} from '../components/Overlay';
+import {Icon} from '../components/Icon';
+import {managedSignOut} from '../accounts/auth';
+export function WorkspaceAccountMenu({name,email,role}:{name?:string;email?:string;role?:string}){
+ const [open,setOpen]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),label=name?.trim()||email?.split('@')[0]||'Account',initials=label.split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
+ return <><button className="workspace-account-button" aria-label={'Account menu for '+label} aria-expanded={open} aria-haspopup="dialog" onClick={()=>setOpen(true)}><span className="initial-avatar" aria-hidden="true">{initials}</span><span className="workspace-account-label"><strong>{label}</strong><small>{role}</small></span><Icon name="down"/></button>{open&&<Overlay onClose={()=>setOpen(false)}><section className="panel workspace-account-menu" role="dialog" aria-modal="true" aria-labelledby="workspace-account-title"><div className="section-heading"><h2 id="workspace-account-title">{label}</h2><button className="icon-button" aria-label="Close account menu" onClick={()=>setOpen(false)}><Icon name="close"/></button></div><p>{email}</p><nav aria-label="Account actions"><a href="/app/account">Profile & account security</a><a href="/app/workspaces">Switch or add workspace</a><a href="/support">Help & support</a><button className="secondary-button" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{await managedSignOut();location.href='/login';}catch(e){setError((e as Error).message);setBusy(false);}}}>{busy?'Signing out…':'Sign out'}</button></nav>{error&&<p role="alert">{error}</p>}</section></Overlay>}</>;
+}

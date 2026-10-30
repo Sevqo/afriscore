@@ -65,10 +65,12 @@ export function Form({
   children,
   submit,
   className = 'panel',
+  disabled=false,
 }: {
   children: ReactNode;
   submit: (data: any) => Promise<any>;
   className?: string;
+  disabled?:boolean;
 }) {
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -86,7 +88,7 @@ export function Form({
   }
   return (
     <form className={className} onSubmit={onSubmit}>
-      <fieldset disabled={busy} className="form-fieldset">
+      <fieldset disabled={busy||disabled} className="form-fieldset">
         {children}
         {error && (
           <p className="alert error" role="alert">

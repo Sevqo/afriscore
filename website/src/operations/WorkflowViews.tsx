@@ -1,3 +1,4 @@
+import {ApprovalDetails} from './ApprovalDetails';
 import {WorkflowDetail,RunControl} from './WorkflowDetail';
 import {parseMoney} from '../../../src/finance/money';
 import { DataTable } from '../components/DataTable';
@@ -286,16 +287,18 @@ export function ApprovalView({
   api,
   action,
   admin,
+  finance=true,
 }: {
   data: any;
   secondary: any;
   api: API;
   action: Action;
   admin: boolean;
+  finance?:boolean;
 }) {
   return (
     <>
-      <Form
+      {finance&&<Form
         submit={(d) =>
           action(
             () => api('/approvals', 'POST', {action:d.action,approver:d.approver,resource_id:d.resource_id,parameters:d.action==='dispute_resolution'?{decision:d.dispute_decision}:{}}),
@@ -313,7 +316,6 @@ export function ApprovalView({
                 'dispute_resolution',
                 'protected_refund',
                 'sensitive_integration_change',
-                'invoice_adjustment',
                 'manual_reconciliation',
               ].map((t) => (
                 <option key={t}>{t}</option>
@@ -340,18 +342,16 @@ export function ApprovalView({
           does not execute a financial action.
         </p>
         <button className="button">Request approval</button>
-      </Form>
+      </Form>}
+      <p>Request exact invoice-credit, stock-adjustment and quotation-discount reviews from the original service record.</p>
       <section className="panel">
         <h2>My review queue</h2>
         {data?.data?.length ? (
           data.data.map((a: any) => (
             <article className="approval-item" key={a.id}>
               <div>
-                <b>{a.action}</b>
-                <p>{a.resource_id}</p>
-                <code>Approval: {a.id}</code>
-                {a.review_summary&&<p>Reviewed details: {a.review_summary}</p>}
-                {a.parameters&&<p>Exact decision: {a.parameters}</p>}
+                <b>{a.action.replaceAll('_',' ')}</b>
+                <ApprovalDetails approval={a}/>
                 {!a.resource_hash&&<p>This older request needs a new review before execution.</p>}
                 {a.consumed_at&&<small>Already used · a new action requires a new approval.</small>}
                 <p>
@@ -361,8 +361,8 @@ export function ApprovalView({
                   })}
                 </p>
               </div>
-              {a.status==='pending'&&<details><summary>Cancel this request</summary><Form submit={d=>action(()=>api('/approvals/'+a.id+'/cancel','POST',{reason:d.reason}),'Approval request cancelled.')}><Field label="Cancellation reason"><input name="reason" required minLength={5} maxLength={500}/></Field><button className="quiet-button">Cancel request</button></Form></details>}
-              {a.status === 'pending' && admin && (
+              {a.status==='pending'&&(admin||a.requester===data.current_actor)&&<details><summary>Cancel this request</summary><Form submit={d=>action(()=>api('/approvals/'+a.id+'/cancel','POST',{reason:d.reason}),'Approval request cancelled.')}><Field label="Cancellation reason"><input name="reason" required minLength={5} maxLength={500}/></Field><button className="quiet-button">Cancel request</button></Form></details>}
+              {a.status === 'pending' && admin && a.approver===data.current_actor && a.requester!==data.current_actor && (
                 <Form
                   className="approval-form"
                   submit={(d) =>

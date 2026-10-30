@@ -101,7 +101,7 @@ export function OperationsWorkspace({
       } else if (section === 'Notifications')
         publishData(await api('/notifications'));
       else if (section === 'Approvals') {
-        publishData(await api('/approvals'));
+        publishData(await api('/business/approvals'));
         publishSecondary({ team: (await api('/team')).data });
       } else if (section === 'Fulfillment') {
         publishData(await api('/shipments'));
@@ -242,6 +242,7 @@ export function OperationsWorkspace({
       )}
       {section === 'Approvals' && (
         <ApprovalView
+            finance={finance}
           data={data}
           secondary={secondary}
           api={api}

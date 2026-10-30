@@ -24,6 +24,7 @@ export async function notify(
     capability?:'read'|'operations'|'finance';
     action_data?:{app_id?:'finance'|'crm'|'inventory'|'sales'|'analytics'|'automations';section?:string;record_id?:string;approval_id?:string};
   },
+  at = new Date(),
 ) {
   const members = await dbAll(
     'SELECT user_id,role FROM ac_memberships WHERE org_id=?' +
@@ -39,7 +40,7 @@ export async function notify(
       continue;
     const cap = await dbGet(
       'SELECT COUNT(*) AS total FROM ac2_notifications WHERE org_id=? AND user_id=? AND created_at>=?',
-      [a.org, member.user_id, day() + 'T00:00:00'],
+      [a.org, member.user_id, new Date(day(at)+'T00:00:00+03:00').toISOString()],
     );
     if (Number(cap.total) >= 100) continue;
     const result = await dbRun(
@@ -54,7 +55,7 @@ export async function notify(
         input.body,
         input.resource_id || null,
         input.key,
-        now(),
+        at.toISOString(),
         input.severity||(input.category==='security'?'security':'informational'),
         JSON.stringify(input.action_data||{}),
       ],
@@ -192,10 +193,7 @@ async function candidates(a: Access, w: any, at: Date) {
 export async function runAutomations(a: Access, at = new Date()) {
   return atomic(a, async () => {
     await requireServices(a,['automations']);
-    await dbRun(
-      "UPDATE ac2_approvals SET status='expired' WHERE org_id=? AND environment=? AND status='pending' AND expires_at<?",
-      [a.org, a.environment, at.toISOString()],
-    );
+    await expireApprovals(a,at);
     const workflows = await all(a, 'automations');
     let queued = 0;
     for (const w of workflows.filter((w) => w.enabled)) {
@@ -367,7 +365,7 @@ export async function requestApproval(a: Access, input: unknown) {
         'sales_discount',
       ]),
       resource_id: z.string().uuid(),
-      parameters:z.object({decision:z.enum(['release','refund']).optional(),movement:movementInput.omit({approval_id:true}).optional(),sales_discount:z.object({quote_version:z.number().int().positive(),discount_minor:z.number().int().min(0).max(1e11)}).strict().optional(),credit_note:z.object({amount_minor:z.number().int().positive().max(1e11),reason:z.string().min(5).max(1000),issued_on:z.string().date()}).strict().optional()}).strict().default({}),
+      parameters:z.object({decision:z.enum(['release','refund']).optional(),movement:movementInput.omit({approval_id:true}).optional(),sales_discount:z.object({quote_version:z.number().int().positive(),discount_minor:z.number().int().min(0).max(1e11)}).strict().optional(),credit_note:z.object({amount_minor:z.number().int().positive().max(1e11),reason:z.string().trim().min(5).max(1000),issued_on:z.string().date()}).strict().optional()}).strict().default({}),
     })
     .strict()
     .parse(input);
@@ -401,7 +399,8 @@ export async function requestApproval(a: Access, input: unknown) {
   const id = randomUUID();
   const resourceHash=await approvalResourceHash(a,d.resource_id);
   const resourceRow=await dbGet('SELECT kind,data FROM ac2_objects WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment])||await dbGet('SELECT kind,data FROM ac_records WHERE id=? AND org_id=? AND environment=?',[d.resource_id,a.org,a.environment])||await dbGet("SELECT 'products' AS kind,data FROM ac_products WHERE id=? AND org_id=? AND environment=?",[d.resource_id,a.org,a.environment])||await dbGet("SELECT 'quotations' AS kind,data FROM ac_sales_quotes WHERE id=? AND org_id=? AND environment=?",[d.resource_id,a.org,a.environment]);
-  const source=JSON.parse(resourceRow.data),summary=Object.fromEntries(['amount_minor','currency','buyer_name','recipient_org','state','status','description'].filter(key=>source[key]!==undefined).map(key=>[key,source[key]]));
+  const source=JSON.parse(resourceRow.data),summary=Object.fromEntries(['amount_minor','currency','buyer_name','recipient_org','state','status','description','name','sku','unit','reference','discount_minor','total_minor'].filter(key=>source[key]!==undefined).map(key=>[key,source[key]]));
+  if(d.parameters.movement){const m=d.parameters.movement,w=await dbGet('SELECT name FROM ac_warehouses WHERE id=? AND org_id=? AND environment=?',[m.warehouse_id,a.org,a.environment]);if(!w)fail(404,'Warehouse not found');summary.warehouse_name=w.name;if(m.location_id){const location=await dbGet('SELECT name FROM ac_stock_locations WHERE id=? AND warehouse_id=? AND org_id=? AND environment=?',[m.location_id,m.warehouse_id,a.org,a.environment]);if(!location)fail(404,'Warehouse location not found');summary.location_name=location.name;}}
   await dbRun(
     'INSERT INTO ac2_approvals(id,org_id,environment,requester,approver,action,resource_id,status,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
     [
@@ -502,3 +501,5 @@ export async function previewAutomation(a:Access,id:string){
  const owner={...a,actor:w.created_by,role:member.role,api:false};if(w.template==='customer_onboarding')await requireServices(owner,['crm']);if(w.template==='stock_replenishment')await requireServices(owner,['inventory']);const template=automationTemplates.find(t=>t.id===w.template);if(!template)fail(409,'Unsupported workflow template');const matches=(await candidates(owner,w,new Date())).filter(t=>(!t.payload.currency||t.payload.currency===w.conditions.currency)&&(t.payload.amount_minor===undefined||t.payload.amount_minor>=w.conditions.minimum_minor));
  return {workflow_id:w.id,version:w.version,enabled:w.enabled,trigger:template!.trigger,action:workflowAction(w.template),candidate_count:matches.length,candidate_limit:100,delay_minutes:w.delay_minutes||0,side_effects_performed:0,notice:'Plan only. No run, task, suggestion, notification, supplier order or payment was created. Execution rechecks the current configuration, source, permissions, limits and preferences.'};
 }
+
+export async function expireApprovals(a:Access,at=new Date()){return atomic(a,async()=>{const rows=await dbAll("SELECT id FROM ac2_approvals WHERE org_id=? AND environment=? AND status='pending' AND expires_at<=? ORDER BY expires_at,id LIMIT 100",[a.org,a.environment,at.toISOString()]);let expired=0;for(const row of rows){const changed=await dbRun("UPDATE ac2_approvals SET status='expired' WHERE id=? AND org_id=? AND environment=? AND status='pending'",[row.id,a.org,a.environment]);if(!changed.changes)continue;expired++;await emit(a,'approval.expired',{id:row.id,automatic:true},{key:'approval.expired:'+row.id});await audit(a.org,a.actor,'approval.expired_automatically',row.id);}return {expired};});}
