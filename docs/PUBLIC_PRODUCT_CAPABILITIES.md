@@ -45,4 +45,4 @@ Trust: src/trust implements private evidence/manual review, signed JOSE credenti
 
 Developer: existing scoped keys, environment/capability/service fences, OpenAPI and explorer remain authoritative. Webhook egress additionally requires an approved receiver and runtime enablement.
 
-Pricing: src/marketplace/schema.ts evaluationPrice creates evaluation-v1 free estimates with charging disabled; published immutable price versions and existing selections take precedence in authenticated review. No invented allowance or permanent-free promise. Capital and a future installable-app marketplace remain deferred.
+Pricing: src/marketplace/schema.ts evaluationPrice creates evaluation-v1 free estimates with charging disabled; published immutable price versions and existing selections take precedence in authenticated review. No invented allowance or permanent-free promise. Capital remains deferred. The first six optional Business apps and simplified Personal Finance/Analytics are available in the authenticated evaluation workspace; see APPS_WAVE_1_REPORT.md for exact release scope and qualification.

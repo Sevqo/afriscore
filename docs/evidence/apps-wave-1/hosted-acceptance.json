@@ -1,0 +1,56 @@
+{
+  "managedIdentity": true,
+  "checks": [
+    {
+      "kind": "personal",
+      "apps": [
+        "analytics",
+        "finance"
+      ],
+      "installationFee": 0
+    },
+    {
+      "kind": "personal",
+      "notificationPreferences": 200,
+      "notificationCentre": 200,
+      "financialSummary": 200
+    },
+    {
+      "kind": "business",
+      "apps": [
+        "analytics",
+        "automations",
+        "crm",
+        "finance",
+        "inventory",
+        "sales"
+      ],
+      "installationFee": 0
+    },
+    {
+      "kind": "business",
+      "notificationPreferences": 200,
+      "notificationCentre": 200,
+      "financialSummary": 200
+    },
+    {
+      "kind": "business",
+      "informedFinancePreview": 200,
+      "noInstallationPerformed": true
+    },
+    {
+      "kind": "developer",
+      "businessAppsDenied": true
+    },
+    {
+      "kind": "developer",
+      "notificationPreferences": 200,
+      "notificationCentre": 200,
+      "financialSummary": 200
+    }
+  ],
+  "anonymousDenied": true,
+  "directBackendDenied": true,
+  "readOnly": true,
+  "realFundsMoved": false
+}

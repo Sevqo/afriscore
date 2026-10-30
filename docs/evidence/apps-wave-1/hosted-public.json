@@ -1,0 +1,427 @@
+{
+  "origin": "https://africore-web.cypriankiprop41.workers.dev",
+  "publicRoutes": 67,
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/how-it-works",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/contact",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/about",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/docs",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/developers",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/business-passport",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/automation",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/business-trust",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/api-basics",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/blockchain-proof",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/developer-starter",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/connect-and-data",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/digital-credentials",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/forecasts",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/business-trust-starter",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/cash-flow",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/private-sharing",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/glossary",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/organize-business-records",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/protected-payments",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/payment-links",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/freelancer-starter",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/sandbox",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/pricing",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/reconciliation",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/receivables",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/learn/small-shop-starter",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/blockchain-verification",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/assistant",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/business-passport",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/business",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/automations",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/customers",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/cash-flow",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/business-verification",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/connect",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/expenses",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/data",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/invoicing",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/orders",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/intelligence",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/passport-privacy",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/fulfillment",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/income",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/protected-payments",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/verifiable-credentials",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/verification-api",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/pay",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/trust-network",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/reconciliation",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/fintechs",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/freelancers",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/contractors",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/products/webhooks",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/security",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/sandbox",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/smes",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/service-businesses",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/retail",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/social-commerce",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/solutions/suppliers",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/support",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    },
+    {
+      "path": "/terms",
+      "status": 200,
+      "titleMatches": true,
+      "canonicalMatches": true
+    }
+  ],
+  "notFoundChecks": 4,
+  "assets": [
+    {
+      "path": "/assets/index-BETxb6ea.js",
+      "sha256": "bc52bcb4db1f2a04937ce16e945c16479008ccef3307c3cb8474c98b0c563a55",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/BusinessApp-BnZ3GUYT.js",
+      "sha256": "4220aace14c28896f50f794f838bfa5414ccb94785325c9a6d7b3fd5cc6bb290",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/Accounts-DxXD5set.js",
+      "sha256": "ecfd11edca1f0c79545d5efeeafb1d469cff665fdb440c36ea153a49255392fc",
+      "matchesBuild": true
+    }
+  ],
+  "applicationShell": 200
+}

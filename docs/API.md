@@ -49,7 +49,7 @@ Independent business services use `/products`, `/inventory`, `/crm` and `/sales/
 
 `GET /notifications/summary` returns the current member's scoped unread count and 30 undismissed notifications per page, with `offset`, total count, and authoritative approval state. `POST /notifications/read-all` and `POST /notifications/:id/dismiss` take `{ "confirm": true }`; pending approval notifications cannot be dismissed. The existing `PATCH /notifications/:id` marks only the current user's scoped record read. Notification action metadata is an allowlisted internal app/section/resource reference, never an arbitrary external URL. Polling is visible-page only; free hosting can pause background workers.
 
-This section documents local source in progress. Migrations 010/011 are not hosted at this checkpoint; this does not describe the currently deployed Milestone 4 API. See APPS_WAVE_1_ARCHITECTURE.md for verification and outstanding release work.
+The Apps API is deployed in evaluation source8ccd42e with migrations010/011 applied to approved development only. See APPS_WAVE_1_REPORT.md for hosted checks and the owner-approved final visual QA limitation.
 
 `GET/PUT /notifications/preferences` is private to the current human member and available across all three workspace kinds without app installation. Categories and delivery preferences never grant approval authority. `/business/analytics/records` provides permission-aware customer/order header drilldown using the same Nairobi dates and current-status filters as the report; it excludes contact addresses, emails and financial amounts.
 

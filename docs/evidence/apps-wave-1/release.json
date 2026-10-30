@@ -1,0 +1,26 @@
+{
+  "applicationSource": "8ccd42e48e3300b52254a9f2ba1d8ca3c2cd6000",
+  "mainApplicationSource": "8ccd42e48e3300b52254a9f2ba1d8ca3c2cd6000",
+  "ci": {
+    "id": 41026579619,
+    "conclusion": "success"
+  },
+  "render": {
+    "service": "srv-dbgcrl6c6qcc73f1hi50",
+    "source": "8ccd42e48e3300b52254a9f2ba1d8ca3c2cd6000",
+    "liveConfirmedByOwner": true,
+    "newEndpointsVerified": true,
+    "deploymentIdAvailable": false
+  },
+  "cloudflare": {
+    "worker": "africore-web",
+    "version": "29e6ed7d-0300-4444-85f9-e4056c192563",
+    "url": "https://africore-web.cypriankiprop41.workers.dev"
+  },
+  "migrations": [
+    "010-business-apps",
+    "011-connected-business-operations"
+  ],
+  "finalInteractiveVisualQA": "unverified-owner-approved-waiver",
+  "noRealFunds": true
+}

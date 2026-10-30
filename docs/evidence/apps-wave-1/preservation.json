@@ -1,0 +1,60 @@
+{
+  "approvedDevelopmentOnly": true,
+  "checks": [
+    {
+      "table": "ac_users",
+      "before": 8,
+      "after": 8,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_workspaces",
+      "before": 10,
+      "after": 10,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_memberships",
+      "before": 10,
+      "after": 10,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_identity_links",
+      "before": 4,
+      "after": 4,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_organizations",
+      "before": 10,
+      "after": 10,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_records",
+      "before": 0,
+      "after": 0,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_events",
+      "before": 0,
+      "after": 0,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_allocations",
+      "before": 0,
+      "after": 0,
+      "originalRowsUnchanged": true
+    },
+    {
+      "table": "ac_journal",
+      "before": 0,
+      "after": 0,
+      "originalRowsUnchanged": true
+    }
+  ],
+  "migrations010and011": true
+}
