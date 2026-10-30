@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..'),
   dist = path.join(root, 'dist');
+// Container website stages do not copy the deployment tooling directory.
+await fs.mkdir(path.resolve(root, '../deploy/cloudflare'), { recursive: true });
 const server = await createServer({
   root,
   configFile: false,
